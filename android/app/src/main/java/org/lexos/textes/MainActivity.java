@@ -92,8 +92,10 @@ public class MainActivity extends Activity {
   if (request != 1) return;
   try {
    Uri selected = data.getData();
-   int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-   getContentResolver().takePersistableUriPermission(selected,flags);
+   int required = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+   if ((data.getFlags() & required) != required) throw new SecurityException("Dossier non accessible en écriture");
+   getContentResolver().takePersistableUriPermission(selected,
+     Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
    folder = selected; getPreferences(0).edit().putString("folder",folder.toString()).apply(); status.setText("Dossier sélectionné.");
   } catch (Exception e) { status.setText("Accès refusé. Choisis un autre dossier."); }
  }
