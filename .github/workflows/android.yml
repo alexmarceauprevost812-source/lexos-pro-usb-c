@@ -1,7 +1,7 @@
 name: Construire APK Android
 on:
   push:
-    branches: [supabase]
+    branches: [chatgpt]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -23,7 +23,9 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Préparer le SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0' 
       - name: Vérifier les noms des fichiers
         run: bash tests/verifier-noms.sh
       - name: Construire et contrôler Android
