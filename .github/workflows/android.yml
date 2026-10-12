@@ -2,6 +2,7 @@ name: Construire APK Android
 on:
   push:
     branches: [chatgpt]
+    paths: ["android/**", ".github/workflows/android.yml"]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -35,3 +36,10 @@ jobs:
           name: lexos-textes-android-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Conserver les rapports Android
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-android
+          path: android/app/build/reports/
+          if-no-files-found: ignore

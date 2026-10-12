@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
   super.onCreate(state);
   String remembered = getPreferences(0).getString("folder", null);
   if (remembered != null) folder = Uri.parse(remembered);
-  LinearLayout box = new LinearLayout(this); box.setOrientation(1);
+  LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
   int pad = (int)(20 * getResources().getDisplayMetrics().density); box.setPadding(pad,pad,pad,pad);
   ScrollView scroll = new ScrollView(this); scroll.addView(box); setContentView(scroll);
   TextView title = new TextView(this); title.setText("LexOS Textes"); title.setTextSize(26); box.addView(title);
@@ -62,7 +62,7 @@ public class MainActivity extends Activity {
   project = field(box,"Nom du projet","mon-projet",false);
   filename = field(box,"Nom du texte sans extension","introduction",false);
   body = field(box,"Ton texte","",true);
-  project.setId(101); filename.setId(102); body.setId(103);
+  project.setId(R.id.project_name); filename.setId(R.id.text_filename); body.setId(R.id.text_body);
   project.setText(getPreferences(0).getString("draft_project","mon-projet"));
   filename.setText(getPreferences(0).getString("draft_filename","introduction"));
   body.setText(getPreferences(0).getString("draft_body",""));
@@ -76,13 +76,13 @@ public class MainActivity extends Activity {
   };
   project.addTextChangedListener(watcher); filename.addTextChangedListener(watcher); body.addTextChangedListener(watcher);
   save = new Button(this); save.setText("Enregistrer le projet"); box.addView(save); save.setOnClickListener(v -> saveText());
-  status = new TextView(this); status.setAccessibilityLiveRegion(1); box.addView(status);
+  status = new TextView(this); status.setAccessibilityLiveRegion(android.view.View.ACCESSIBILITY_LIVE_REGION_POLITE); box.addView(status);
   status.setText(folder == null ? "Choisis un dossier." : "Dossier mémorisé : rebranche la clé pour sauvegarder.");
  }
  private EditText field(LinearLayout box,String label,String initial,boolean multi) {
   TextView heading = new TextView(this); heading.setText(label); box.addView(heading);
   EditText edit = new EditText(this); edit.setContentDescription(label); edit.setText(initial); edit.setSingleLine(!multi);
-  if (multi) { edit.setMinLines(8); edit.setGravity(48); edit.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE); }
+  if (multi) { edit.setMinLines(8); edit.setGravity(android.view.Gravity.TOP); edit.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE); }
   box.addView(edit); return edit;
  }
  @Override protected void onActivityResult(int request,int result,Intent data) {

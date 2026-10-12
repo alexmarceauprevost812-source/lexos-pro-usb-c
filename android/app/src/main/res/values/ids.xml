@@ -1,0 +1,5 @@
+<resources>
+    <item name="project_name" type="id" />
+    <item name="text_filename" type="id" />
+    <item name="text_body" type="id" />
+</resources>

@@ -2,6 +2,7 @@ name: Construire versions PC
 on:
   push:
     branches: [chatgpt]
+    paths: ["desktop/**", ".github/workflows/desktop.yml"]
   pull_request:
   workflow_dispatch:
 permissions:
