@@ -20,6 +20,7 @@
 #    --sans-modeles   ne télécharge pas les modèles
 #    --sans-rea       n'ajoute pas REA (agent ti-lex, dépôt ti-lex-ia-REA-)
 #    --modele NOM     télécharge seulement ce modèle (répétable). Ex. : --modele gemma4:26b
+#    --images         ajoute la création d'images Z-Image Turbo (≈ 8 Go, gratuit, hors ligne)
 #    --forcer         continuer même sur une clé FAT32
 #
 #  Internet est requis pendant la préparation, plus après.
@@ -30,7 +31,7 @@ ORANGE=$'\033[38;2;224;96;32m'; VERT=$'\033[38;2;53;214;76m'; GRIS=$'\033[90m'; 
 etape() { echo; echo "${ORANGE}▸ $*${RAZ}"; }
 erreur() { echo "${ROUGE}✗ $*${RAZ}" >&2; exit 1; }
 
-VOULUS=(); CLE=""; PROFIL=2; WINDOWS=0; ARCH=amd64; MOTEUR=1; MODELES=1; FORCER=0; REA=1
+IMAGES=0; VOULUS=(); CLE=""; PROFIL=2; WINDOWS=0; ARCH=amd64; MOTEUR=1; MODELES=1; FORCER=0; REA=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --profil) PROFIL="${2:-}"; shift ;;
@@ -39,9 +40,10 @@ while [ $# -gt 0 ]; do
     --sans-moteur) MOTEUR=0 ;;
     --sans-modeles) MODELES=0 ;;
     --sans-rea) REA=0 ;;
+    --images) IMAGES=1 ;;
     --modele) [ -n "${2:-}" ] || erreur "--modele : indique un nom (ex. gemma4:26b)"; VOULUS+=("$2"); shift ;;
     --forcer) FORCER=1 ;;
-    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
     -*) erreur "option inconnue : $1" ;;
     *) CLE="$1" ;;
   esac
@@ -73,7 +75,7 @@ fi
 # ── 1. Copier LexOS IA sur la clé (sans toucher aux modèles ni à la config) ─
 etape "Copie de LexOS IA sur la clé"
 mkdir -p "$DEST/apps" "$IA/modeles"
-for f in lexos_ia.py lexos_ia_app.py rea_lexos.py ACTIVER-IA.sh ACTIVER-IA.bat raccourcis-bureau.sh; do
+for f in lexos_ia.py lexos_ia_app.py images_ia.py rea_lexos.py ACTIVER-IA.sh ACTIVER-IA.bat raccourcis-bureau.sh; do
   cp "$DEPOT/lexos-ia/$f" "$DEST/$f"
 done
 mkdir -p "$DEST/icones" && cp "$DEPOT"/lexos-ia/icones/*.svg "$DEST/icones/"
@@ -105,7 +107,7 @@ LexOS IA — les IA locales sont sur cette clé USB-C
 UN CLIC — APPLICATION TI-LEX-AL (fenêtre comme ti-lex v10) :
   Linux   : double-clic sur APP-IA.sh (ou : bash APP-IA.sh)
   Windows : double-clic sur APP-IA.bat
-  Menu à gauche : Chat (Agent AL, photos), Codex, CodexTerminal, Cerveau.
+  Menu à gauche : Chat (Agent AL, photos), Codex, Équipe IA, REA, Images, Projets, Cerveau.
 
 UN CLIC — VERSION TERMINAL :
   Linux   : double-clic sur ACTIVER-IA.sh (ou dans un terminal : bash ACTIVER-IA.sh)
@@ -247,6 +249,74 @@ if [ "$REA" = 1 ]; then
     fi
   else
     echo "${ROUGE}REA non téléchargé (Internet ?). Relance plus tard avec --sans-moteur --sans-modeles.${RAZ}"
+  fi
+fi
+
+# ── 5. Images : Z-Image Turbo avec stable-diffusion.cpp (MIT) ───────────────
+# Moteur : dernière version de github.com/leejet/stable-diffusion.cpp (Vulkan :
+# NVIDIA, AMD, Intel ; + une version « processeur » de secours).
+# Modèle : Z-Image Turbo (Alibaba, Apache 2.0 : images libres de droits).
+if [ "$IMAGES" = 1 ]; then
+  etape "Images — Z-Image Turbo (≈ 8 Go)"
+  IMG="$DEST/images-ia"
+  mkdir -p "$IMG/modeles"
+  HF="https://huggingface.co"
+  FICHIERS_IMAGES="$HF/leejet/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q6_K.gguf 5.3
+$HF/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf 2.5
+$HF/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors 0.4"
+  ECHECS_IMG=()
+  # 1) le moteur sd-cli
+  if INFO="$(curl -fsSL --retry 3 https://api.github.com/repos/leejet/stable-diffusion.cpp/releases/latest)"; then
+    choisir() {  # motif → URL du zip correspondant dans la dernière version
+      printf '%s' "$INFO" | python3 -c 'import json,re,sys
+for a in json.load(sys.stdin).get("assets", []):
+    if re.search(sys.argv[1], a["name"]):
+        print(a["browser_download_url"]); break' "$1"
+    }
+    for cible in "linux|Linux-.*-x86_64-vulkan\.zip$" "linux-cpu|Linux-.*-x86_64\.zip$" \
+                 "windows|bin-win-vulkan-x64\.zip$" "windows-cpu|bin-win-avx2-x64\.zip$"; do
+      dossier="${cible%%|*}"; motif="${cible#*|}"
+      case "$dossier" in windows*) [ "$WINDOWS" = 1 ] || continue ;; esac
+      [ "$ARCH" = arm64 ] && case "$dossier" in linux*) continue ;; esac
+      url="$(choisir "$motif")"
+      if [ -z "$url" ]; then
+        [ "$dossier" = windows-cpu ] || ECHECS_IMG+=("moteur $dossier"); continue
+      fi
+      echo "${ORANGE}↓ moteur $dossier${RAZ}"
+      if telecharger "$url" "$TMP/sd-$dossier.zip"; then
+        rm -rf "${IMG:?}/${dossier:?}" && mkdir -p "$IMG/$dossier"
+        python3 -m zipfile -e "$TMP/sd-$dossier.zip" "$IMG/$dossier/"
+        # le zip peut contenir un sous-dossier : on remonte tout à plat
+        find "$IMG/$dossier" -mindepth 2 -type f -exec mv -f {} "$IMG/$dossier/" \; 2>/dev/null || true
+        chmod +x "$IMG/$dossier"/sd-* 2>/dev/null || true
+        rm -f "$TMP/sd-$dossier.zip"
+      else
+        ECHECS_IMG+=("moteur $dossier")
+      fi
+    done
+  else
+    ECHECS_IMG+=("moteur (GitHub ne répond pas)")
+  fi
+  # 2) les trois fichiers du modèle, directement sur la clé (reprise si coupé)
+  while read -r url go; do
+    nom="${url##*/}"
+    if [ -f "$IMG/modeles/$nom" ]; then echo "${VERT}✔ $nom déjà sur la clé${RAZ}"; continue; fi
+    libre="$(df -Pk "$CLE" | awk 'NR == 2 { printf "%.1f", $4 / 1024 / 1024 }')"
+    if awk -v b="$go" -v l="$libre" 'BEGIN { exit !(l < b + 0.5) }'; then
+      echo "${ROUGE}✗ $nom : il faut ≈ $go Go, il reste $libre Go sur la clé.${RAZ}"; ECHECS_IMG+=("$nom"); continue
+    fi
+    echo "${ORANGE}↓ $nom${RAZ} ${GRIS}(≈ $go Go)${RAZ}"
+    if curl -fL --retry 3 -C - --progress-bar -o "$IMG/modeles/$nom.part" "$url"; then
+      mv -f "$IMG/modeles/$nom.part" "$IMG/modeles/$nom"
+    else
+      ECHECS_IMG+=("$nom")
+      echo "${GRIS}  Relance la même commande : le téléchargement reprendra où il était rendu.${RAZ}"
+    fi
+  done <<<"$FICHIERS_IMAGES"
+  if [ ${#ECHECS_IMG[@]} -eq 0 ]; then
+    echo "${VERT}✔ Z-Image Turbo prêt : menu 🎨 Images dans TI-LEX-AL (ou « /image … » dans le Chat)${RAZ}"
+  else
+    echo "${ROUGE}Images — non installé : ${ECHECS_IMG[*]}${RAZ}"
   fi
 fi
 

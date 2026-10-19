@@ -41,6 +41,8 @@ Elle reprend la même interface que ti-lex v10, branchée sur les IA de la clé.
 
 **📱 Sur ton téléphone (même Wi-Fi)** : menu → **📱 Téléphone**, puis scanne le code QR. Le téléphone ouvre **CodexLocal** avec les IA et les projets de la clé branchée dans le PC. Dans Chrome, **⋮ → Ajouter à l'écran d'accueil** le transforme en app. Le code reste valide d'une fois à l'autre ; « Nouveau code » bloque les anciens et « Couper l'accès téléphone » ferme tout. Si le téléphone ne se connecte pas et que le pare-feu est actif sur le PC : `sudo ufw allow 47801/tcp`. À utiliser sur ton Wi-Fi à la maison.
 
+**🎨 Images** : écris ce que tu veux voir et **Z-Image Turbo** le dessine, sur la clé et sans Internet. C'est le modèle d'images gratuit le mieux noté qui tourne sur une carte graphique de 8 Go, et sa licence (Apache 2.0) te laisse même vendre tes images. Tu choisis le format : carré, portrait, paysage, ou rapide (512 × 512). La **graine** 🎲 permet de refaire la même image en changeant un détail. Chaque image peut être téléchargée ou mise dans le projet actif (dossier `images/`). Dans le Chat, `/image un loup orange en néon` la dessine directement dans la conversation. Pendant le dessin, les modèles de texte sont retirés de la carte graphique pour lui laisser la place. Le moteur est stable-diffusion.cpp en version Vulkan (NVIDIA, AMD, Intel), avec une version processeur de secours si le pilote graphique ne répond pas. Pour l'ajouter : option `--images` (≈ 8 Go).
+
 Sécurité : sans le mode téléphone, l'app n'écoute que sur ton PC (127.0.0.1) et chaque appel demande un jeton secret. Un site web ouvert dans ton navigateur ne peut donc ni parler aux IA ni lancer de commandes.
 
 ## 1. Préparer la clé (une seule fois, sous Linux, avec Internet)
@@ -61,6 +63,7 @@ bash usb/installer-sur-cle.sh /media/$USER/NOM_DE_LA_CLE --windows
 | `--profil 3` | tout, environ 40 Go : ajoute le raisonnement et le gros Codex |
 | `--windows` | ajoute le moteur pour Windows (environ 1,5 Go de plus) |
 | `--sans-moteur --sans-modeles` | met à jour seulement le code de la clé |
+| `--images` | ajoute la création d'images Z-Image Turbo (≈ 8 Go) |
 | `--modele gemma4:26b` | télécharge seulement ce modèle (vérifie d'abord la place libre sur la clé) |
 
 La liste des modèles se trouve dans [`modeles.txt`](modeles.txt), et tu peux la modifier :
@@ -77,6 +80,16 @@ La liste des modèles se trouve dans [`modeles.txt`](modeles.txt), et tu peux la
 | gemma4:26b | **Gros modèle** (≈ 18 Go) : images, outils, réflexion | à la demande (`--modele`) |
 
 Le gros modèle **gemma4:26b** demande 32 Go de mémoire vive. Sur un PC qui en a au moins 28 Go, le Chat le prend tout seul. Sur un PC plus petit, la clé reste sur qwen3:8b. Tu peux aussi le télécharger depuis l'app : **Cerveau → 🦣 gemma4:26b · 18 Go → Télécharger**.
+
+### Repartir à neuf en gardant les modèles
+
+Trop de vieux projets sur la clé ? `reformater-cle.sh` copie d'abord les modèles IA sur le PC (avec le Cerveau et tes choix de modèles), puis formate la clé en exFAT. Il remet ensuite les modèles sur la clé et installe la dernière version :
+
+```bash
+bash usb/reformater-cle.sh /media/$USER/LEXOS --images
+```
+
+Avant d'effacer quoi que ce soit, il te montre ce qui sera gardé et ce qui sera effacé, puis attend que tu tapes **OUI**. Il refuse un disque qui n'est pas une clé USB, ou une clé sans dossier `lexos-ia`, et il n'efface rien si la copie des modèles n'est pas complète. Il faut `exfatprogs` et `parted` (`sudo apt install exfatprogs parted`). La copie reste dans `~/lexos-sauvegarde-…` jusqu'à ce que tu l'effaces.
 
 ## 2. Un clic pour activer les IA
 

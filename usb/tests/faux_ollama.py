@@ -125,6 +125,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
             self._json({"version": "0.0.0-faux"})
         elif self.path == "/api/tags":
             self._json({"models": self.server.modeles})
+        elif self.path == "/api/ps":  # modèles chargés dans la carte graphique
+            self._json({"models": [{"name": n} for n in getattr(self.server, "charges", [])]})
         else:
             self._json({"error": "inconnu"}, 404)
 
@@ -136,6 +138,11 @@ class Gestionnaire(BaseHTTPRequestHandler):
     def do_POST(self):
         donnees = self._lire()
         self.server.requetes.append((self.path, donnees))
+        if self.path == "/api/generate" and donnees.get("keep_alive") == 0:  # décharger un modèle
+            charges = getattr(self.server, "charges", [])
+            if donnees.get("model") in charges:
+                charges.remove(donnees.get("model"))
+            return self._json({"done": True})
         if self.path == "/api/show":
             nom = donnees.get("model")
             return self._json({"capabilities": ["completion"] + (["vision"] if nom in VISION else [])})

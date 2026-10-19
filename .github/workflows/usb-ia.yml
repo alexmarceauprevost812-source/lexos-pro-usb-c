@@ -31,4 +31,4 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Vérifier les scripts shell
         if: runner.os == 'Linux'
-        run: shellcheck -S warning usb/installer-sur-cle.sh usb/lexos-ia/ACTIVER-IA.sh usb/lexos-ia/raccourcis-bureau.sh
+        run: shellcheck -S warning usb/installer-sur-cle.sh usb/reformater-cle.sh usb/lexos-ia/ACTIVER-IA.sh usb/lexos-ia/raccourcis-bureau.sh

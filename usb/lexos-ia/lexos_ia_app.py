@@ -25,6 +25,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import images_ia
 import lexos_ia as ia
 
 ICI = Path(__file__).resolve().parent
@@ -337,10 +338,14 @@ class App(BaseHTTPRequestHandler):
                 if b"\0" in donnees[:8000]:
                     raise ValueError("fichier binaire : pas modifiable ici")
                 return self._envoyer(200, {"contenu": donnees.decode("utf-8", "replace")})
+            if url.path == "/api/images":
+                return self._envoyer(200, {"etat": images_ia.etat(), "images": images_ia.lister()})
+            if url.path == "/api/image":
+                return self._envoyer(200, images_ia.chemin_image((q.get("nom") or [""])[0]).read_bytes(), "image/png")
             if url.path == "/api/conversation":
                 chemin = chemin_conv((q.get("id") or [""])[0])
                 return self._envoyer(200, json.loads(chemin.read_text(encoding="utf-8")))
-        except (ia.ErreurIA, ValueError, OSError) as e:
+        except (ia.ErreurIA, images_ia.ErreurImage, ValueError, OSError) as e:
             return self._envoyer(400, {"erreur": str(e)})
         self._envoyer(404, {"erreur": "inconnu"})
 
@@ -389,6 +394,8 @@ class App(BaseHTTPRequestHandler):
             "/api/apercu": self._apercu_creer, "/api/video-mp4": self._video_mp4,
             "/api/rea/demander": self._rea_demander, "/api/rea/repondre": self._rea_repondre,
             "/api/rea/oublier": self._rea_oublier,
+            "/api/image/creer": self._image_creer, "/api/image/supprimer": self._image_supprimer,
+            "/api/image/projet": self._image_projet,
             "/api/video-images": self._video_images,
             "/api/ping": lambda d: self._envoyer(200, {"ok": True}), "/api/quitter": self._quitter,
             "/api/telephone": self._telephone,
@@ -397,7 +404,7 @@ class App(BaseHTTPRequestHandler):
             return self._envoyer(404, {"erreur": "inconnu"})
         try:
             route(d)
-        except (ia.ErreurIA, ValueError, OSError) as e:
+        except (ia.ErreurIA, images_ia.ErreurImage, ValueError, OSError) as e:
             self._envoyer(400, {"erreur": str(e)})
 
     def _chat(self, d):
@@ -761,6 +768,32 @@ class App(BaseHTTPRequestHandler):
             if p == projet:
                 entree["agent"].reset()
         self._envoyer(200, {"ok": True})
+
+    # -- Images (Z-Image Turbo) --
+    def _image_creer(self, d):
+        """Flux : {"info"} {"progres": {etape, total, phase}} … {"image": {...}} ou {"erreur"}."""
+        self._flux_debut()
+        try:
+            info = images_ia.creer(str(d.get("texte", "")), str(d.get("format", "carre")), d.get("etapes", 8),
+                                   d.get("graine"), rappel=self._ligne, ia=ia)
+            self._ligne({"image": info})
+        except images_ia.ErreurImage as e:
+            self._ligne({"erreur": str(e)})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def _image_supprimer(self, d):
+        images_ia.supprimer(str(d.get("nom", "")))
+        self._envoyer(200, {"ok": True})
+
+    def _image_projet(self, d):
+        source = images_ia.chemin_image(str(d.get("nom", "")))
+        dossier = dossier_projet(str(d.get("projet", "")))
+        if not dossier.is_dir():
+            raise ValueError("projet introuvable")
+        (dossier / "images").mkdir(exist_ok=True)
+        shutil.copy2(source, dossier / "images" / source.name)
+        self._envoyer(200, {"ok": True, "chemin": f"images/{source.name}"})
 
     # -- Mémoire --
     def _memoire_ajouter(self, d):

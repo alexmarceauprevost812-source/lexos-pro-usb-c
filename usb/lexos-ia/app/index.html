@@ -80,6 +80,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .entete-agent h2{font-size:26px;letter-spacing:.16em;font-weight:500}
 .entete-agent .sous{color:var(--gris);font-size:15px;margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .point{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--vert)}
+.point.eteint{background:var(--gris2)}
 .point.rouge{background:var(--rouge)}
 .securisee{color:var(--vert);font-weight:700}
 .accueil{text-align:center;padding:9vh 0 5vh}
@@ -356,7 +357,43 @@ html.telephone .pc-seulement{display:none!important}
 @keyframes point{0%,80%,100%{transform:scale(.5);opacity:.35}40%{transform:scale(1);opacity:1}}
 @keyframes reflet{0%{background-position:100% 0}100%{background-position:0 0}}
 @keyframes halo{0%{box-shadow:0 0 0 0 rgba(255,122,0,.6)}100%{box-shadow:0 0 0 13px rgba(255,122,0,0)}}
-@media (prefers-reduced-motion:reduce){.onde i,.points i,.pensee-titre,.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:none}}
+/* ─── Images (Z-Image Turbo) ─── */
+.img-compo{border:1px solid var(--ligne);border-radius:var(--rayon);background:var(--carte);padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.img-compo textarea{width:100%;min-height:92px;resize:vertical;background:transparent;border:0;outline:0;color:var(--texte);font:inherit;font-size:17px;line-height:1.5}
+.img-options{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.img-options .format{border:1px solid var(--ligne);border-radius:999px;padding:7px 13px;font-size:14px;color:var(--gris);display:flex;align-items:center;gap:6px}
+.img-options .format i{display:inline-block;border:2px solid currentColor;border-radius:3px}
+.img-options .format.choisi{border-color:var(--orange);color:var(--orange);background:rgba(255,122,0,.08)}
+.img-options .graine{display:flex;align-items:center;gap:6px;color:var(--gris);font-size:14px;margin-left:auto}
+.img-options .graine input{width:120px;background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:7px 10px;color:var(--texte);font:inherit;font-size:14px}
+.img-creer{margin-left:4px;display:flex;align-items:center;gap:8px}
+.img-encours{margin-top:18px;border:1px solid var(--orange);border-radius:var(--rayon);overflow:hidden;background:var(--carte);display:grid;grid-template-columns:minmax(0,1fr);}
+.img-encours[hidden],.img-absent[hidden]{display:none}
+.img-toile{position:relative;aspect-ratio:1;margin:0 auto;width:100%;max-width:420px;background:
+  radial-gradient(circle at 30% 30%,rgba(255,122,0,.22),transparent 55%),radial-gradient(circle at 70% 70%,rgba(255,154,61,.14),transparent 50%),#101010;overflow:hidden}
+.img-toile::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);animation:balayage 1.8s linear infinite}
+.img-toile .pinceau{position:absolute;inset:0;display:grid;place-items:center;font-size:56px;animation:flotte 2.4s ease-in-out infinite}
+@keyframes balayage{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes flotte{50%{transform:translateY(-8px) rotate(-6deg)}}
+.img-etat{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.img-etat .phase{font-weight:600}
+.img-etat .phase small{color:var(--gris);font-weight:400;margin-left:6px}
+.img-etat .progres{margin-top:0}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:18px}
+.vignette{border:1px solid var(--ligne);border-radius:18px;overflow:hidden;background:var(--carte);display:flex;flex-direction:column}
+.vignette img{width:100%;aspect-ratio:1;object-fit:cover;background:#111;cursor:zoom-in;display:block}
+.vignette .legende{padding:10px 12px 4px;font-size:14px;line-height:1.35;color:var(--texte);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vignette .meta{padding:0 12px;color:var(--gris);font-size:12px}
+.vignette .actions{display:flex;gap:6px;padding:10px 12px 12px;flex-wrap:wrap}
+.vignette .actions button{border:1px solid var(--ligne);border-radius:10px;padding:6px 9px;font-size:13px;background:var(--carte2)}
+.vignette .actions button:hover{border-color:var(--orange);color:var(--orange)}
+.img-absent{margin-top:18px;border:1px dashed var(--orange);border-radius:var(--rayon);padding:18px;line-height:1.6}
+.img-absent code{background:var(--fond2);padding:3px 7px;border-radius:7px;font-family:var(--mono);font-size:13px;word-break:break-all}
+.img-grande{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.88);display:grid;place-items:center;padding:24px;cursor:zoom-out}
+.img-grande img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 0 0 1px #333}
+.msg .image-chat{max-width:min(100%,420px);border-radius:14px;display:block;margin-top:8px;border:1px solid var(--ligne)}
+@media (max-width:640px){.img-options .graine{margin-left:0}.img-creer{width:100%;justify-content:center}}
+@media (prefers-reduced-motion:reduce){.img-toile::after,.img-toile .pinceau,.onde i,.points i,.pensee-titre,.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:none}}
 
 /* ── Mémoire ───────────────────────────────── */
 .memo-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
@@ -439,6 +476,7 @@ html.telephone .pc-seulement{display:none!important}
   <button class="nav" data-vue="codex"><span class="ico">💻</span>Codex</button>
   <button class="nav" data-vue="equipe"><span class="ico">👥</span>Équipe IA</button>
   <button class="nav" data-vue="rea"><span class="ico">🤖</span>REA</button>
+  <button class="nav" data-vue="images"><span class="ico">🎨</span>Images</button>
   <button class="nav" data-vue="projets"><span class="ico">📁</span>Projets</button>
   <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
   <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
@@ -619,6 +657,45 @@ html.telephone .pc-seulement{display:none!important}
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- ═══ IMAGES ═══ -->
+  <section class="vue" id="vue-images">
+    <div class="barre-local">Local : Z-Image Turbo · sur la clé USB-C · gratuit · hors ligne</div>
+    <div class="defile"><div class="colonne">
+      <div class="entete-agent">
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <div>
+          <h2>TI-LEX-AL · IMAGES</h2>
+          <div class="sous"><span class="point" id="point-images"></span> 🎨 Z-Image Turbo · tes images restent sur la clé · <span class="securisee">libres de droits (Apache 2.0)</span></div>
+        </div>
+      </div>
+      <div id="img-absent" class="img-absent" hidden></div>
+      <div class="img-compo">
+        <textarea id="img-texte" placeholder="Décris l'image… ex. : un logo de loup orange sur fond noir, style néon, avec le texte « TI-LEX »"></textarea>
+        <div class="img-options">
+          <button class="format choisi" data-format="carre"><i style="width:12px;height:12px"></i>Carré</button>
+          <button class="format" data-format="portrait"><i style="width:9px;height:13px"></i>Portrait</button>
+          <button class="format" data-format="paysage"><i style="width:14px;height:9px"></i>Paysage</button>
+          <button class="format" data-format="rapide" title="512 × 512 : 4 fois plus rapide, pour essayer une idée"><i style="width:8px;height:8px"></i>Rapide</button>
+          <label class="graine" title="Même graine + même texte = même image. Vide = surprise.">🎲 Graine <input id="img-graine" inputmode="numeric" placeholder="au hasard"></label>
+          <button class="btn-orange img-creer" id="img-creer">🎨 Créer</button>
+        </div>
+      </div>
+      <div class="puces" style="justify-content:flex-start;margin-top:12px">
+        <button class="puce" data-idee>un loup orange en néon sur fond noir, logo, texte « TI-LEX »</button>
+        <button class="puce" data-idee>le lac Saint-Jean au coucher du soleil, photo réaliste, en hiver</button>
+        <button class="puce" data-idee>icône d'application ronde, clé USB-C avec un cerveau lumineux, style 3D</button>
+      </div>
+      <div id="img-encours" class="img-encours" hidden>
+        <div class="img-toile" id="img-toile"><div class="pinceau">🖌️</div></div>
+        <div class="img-etat">
+          <div class="phase" id="img-phase">Préparation…</div>
+          <div class="progres"><div id="img-barre"></div></div>
+        </div>
+      </div>
+      <div class="galerie" id="galerie"></div>
+    </div></div>
   </section>
 
   <!-- ═══ PROJETS ═══ -->
@@ -1031,6 +1108,8 @@ async function envoyer(mode) {
     bulleIA(mode, e ? `<p>🧠 C'est noté, je vais m'en souvenir :</p><p><strong>${echap(e.texte)}</strong></p><p style="color:var(--gris);font-size:14px">Cerveau → Mémoire pour voir ou effacer mes souvenirs.</p>` : "<p>Je n'ai pas pu le retenir.</p>");
     return;
   }
+  const aDessiner = texte.match(/^\/image\s+(.+)/is);
+  if (aDessiner && mode !== "terminal") { zone.value = ""; ajuster(zone); return imageDansChat(mode, aDessiner[1].trim()); }
   if (mode === "rea") { zone.value = ""; ajuster(zone); return lancerRea(texte); }
   if (mode === "equipe") {
     const fichiers = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n");
@@ -1923,14 +2002,135 @@ document.addEventListener("click", async e => {
 });
 
 // ─── Navigation, tiroir, thème, notifications ───
+// ─── Images : Z-Image Turbo sur la clé ───
+const PHASES_IMAGE = { chargement: "Chargement de Z-Image Turbo depuis la clé…", dessin: "Je dessine", finition: "Finition de l'image…" };
+S.images = { format: "carre", liste: [], urls: {}, etat: null, enCours: false };
+async function urlImage(nom) {  // l'image passe par l'API (jeton) puis devient une URL blob
+  if (S.images.urls[nom]) return S.images.urls[nom];
+  const r = await fetch("/api/image?nom=" + encodeURIComponent(nom), { headers: { "X-LexOS-Jeton": JETON } });
+  if (!r.ok) throw new Error("image introuvable");
+  return (S.images.urls[nom] = URL.createObjectURL(await r.blob()));
+}
+async function chargerImages() {
+  try {
+    const d = await api("/api/images");
+    S.images.etat = d.etat; S.images.liste = d.images;
+  } catch (e) { S.images.etat = { pret: false, manque: ["serveur"] }; S.images.liste = []; }
+  const absent = $("#img-absent"), pret = S.images.etat.pret;
+  $("#point-images").classList.toggle("eteint", !pret);
+  absent.hidden = pret;
+  if (!pret) absent.innerHTML = `<strong>🎨 Le moteur d'images n'est pas encore sur ta clé.</strong><br>
+    Sur le PC, avec Internet, tape (≈ 8 Go) :<br><code>bash usb/installer-sur-cle.sh /media/$USER/LEXOS --sans-moteur --sans-modeles --images</code>`;
+  rendreGalerie();
+}
+function rendreGalerie() {
+  const g = $("#galerie");
+  if (!S.images.liste.length) { g.innerHTML = S.images.etat?.pret ? '<div class="vide">Tes images apparaîtront ici.</div>' : ""; return; }
+  g.innerHTML = S.images.liste.map(i => `
+    <div class="vignette" data-nom="${echap(i.nom)}">
+      <img alt="${echap(i.texte)}">
+      <div class="legende">${echap(i.texte || i.nom)}</div>
+      <div class="meta">${i.largeur ? i.largeur + "×" + i.hauteur : ""}${i.secondes ? " · " + i.secondes + " s" : ""}${i.graine != null ? " · 🎲 " + i.graine : ""}</div>
+      <div class="actions">
+        <button data-act="dl" title="Télécharger">⬇</button>
+        <button data-act="projet" title="Mettre dans le projet actif (dossier images/)">📁 Projet</button>
+        <button data-act="refaire" title="Reprendre le texte et la graine pour la modifier">✏️ Modifier</button>
+        <button data-act="suppr" title="Supprimer de la clé">🗑</button>
+      </div>
+    </div>`).join("");
+  $$("#galerie .vignette").forEach(async v => {
+    const nom = v.dataset.nom, info = S.images.liste.find(i => i.nom === nom), img = v.querySelector("img");
+    urlImage(nom).then(u => img.src = u).catch(() => {});
+    img.onclick = () => agrandir(img.src);
+    v.querySelectorAll("[data-act]").forEach(b => b.onclick = async () => {
+      const act = b.dataset.act;
+      if (act === "dl") { const a = document.createElement("a"); a.href = await urlImage(nom); a.download = nom; a.click(); }
+      if (act === "refaire") { $("#img-texte").value = info.texte; $("#img-graine").value = info.graine ?? ""; $("#img-texte").focus(); toast("Change le texte, garde la graine : l'image restera proche"); }
+      if (act === "projet") {
+        if (!S.projet) return toast("Choisis d'abord un projet dans 📁 Projets");
+        try { const r = await api("/api/image/projet", { nom, projet: S.projet }); toast(`Ajoutée à ${S.projet}/${r.chemin}`); } catch (e) { toast(e.message); }
+      }
+      if (act === "suppr") {
+        if (!confirm("Supprimer cette image de la clé ?")) return;
+        await api("/api/image/supprimer", { nom }).catch(e => toast(e.message));
+        URL.revokeObjectURL(S.images.urls[nom]); delete S.images.urls[nom]; chargerImages();
+      }
+    });
+  });
+}
+function agrandir(src) {
+  const f = document.createElement("div"); f.className = "img-grande"; f.innerHTML = `<img src="${src}" alt="">`;
+  f.onclick = () => f.remove(); document.body.appendChild(f);
+}
+// Crée une image ; surEtat(texte, pourcentage) suit l'avancement. Retourne l'info de l'image.
+async function dessiner(texte, options, surEtat) {
+  if (S.images.enCours) throw new Error("une image est déjà en cours");
+  S.images.enCours = true; let info = null, erreur = null;
+  try {
+    await flux("/api/image/creer", { texte, ...options }, o => {
+      if (o.erreur) erreur = o.erreur;
+      if (o.info) surEtat(o.info, null);
+      if (o.progres) {
+        const p = o.progres, nom = PHASES_IMAGE[p.phase] || "";
+        if (p.phase === "dessin" && p.total) surEtat(`${nom} <small>étape ${p.etape} / ${p.total}</small>`, 10 + 80 * p.etape / p.total);
+        else if (p.phase === "finition") surEtat(nom, 92);
+        else surEtat(nom, 5);
+      }
+      if (o.image) info = o.image;
+    });
+  } finally { S.images.enCours = false; }
+  if (erreur || !info) throw new Error(erreur || "aucune image reçue");
+  return info;
+}
+async function creerImage() {
+  const texte = $("#img-texte").value.trim();
+  if (!texte) return toast("Décris d'abord l'image à créer");
+  const boite = $("#img-encours"), phase = $("#img-phase"), barre = $("#img-barre"), bouton = $("#img-creer");
+  const [l, h] = (S.images.etat?.formats || {})[S.images.format] || [1, 1];
+  $("#img-toile").style.aspectRatio = `${l} / ${h}`; $("#img-toile").style.maxWidth = `min(100%, ${Math.round(420 * l / h)}px)`;
+  boite.hidden = false; bouton.disabled = true; bouton.textContent = "⏳ En cours…";
+  boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  try {
+    const info = await dessiner(texte, { format: S.images.format, graine: $("#img-graine").value.trim() || null },
+      (html, pct) => { phase.innerHTML = html; if (pct != null) barre.style.width = pct + "%"; });
+    barre.style.width = "100%";
+    notifier(`🎨 Image créée en ${info.secondes} s`);
+    await chargerImages();
+  } catch (e) { toast("Image non créée : " + e.message); }
+  finally { boite.hidden = true; barre.style.width = "0"; bouton.disabled = false; bouton.textContent = "🎨 Créer"; }
+}
+$("#img-creer").onclick = creerImage;
+$("#img-texte").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) creerImage(); });
+$$("#vue-images [data-format]").forEach(b => b.onclick = () => {
+  S.images.format = b.dataset.format; $$("#vue-images [data-format]").forEach(x => x.classList.toggle("choisi", x === b));
+});
+$$("#vue-images [data-idee]").forEach(b => b.onclick = () => { $("#img-texte").value = b.textContent; $("#img-texte").focus(); });
+// « /image … » dans le Chat : l'image apparaît dans la conversation
+async function imageDansChat(mode, texte) {
+  bulleToi(mode, "/image " + texte);
+  const id = "ic" + Date.now();
+  bulleIA(mode, `<p id="${id}">🎨 <span>Je prépare ton image…</span></p>`);
+  const etat = () => document.getElementById(id)?.querySelector("span");
+  try {
+    const info = await dessiner(texte, { format: "carre" }, (html) => { const s = etat(); if (s) s.innerHTML = html; });
+    const p = document.getElementById(id);
+    if (p) p.outerHTML = `<p>🎨 Voici ton image (${info.secondes} s · 🎲 ${info.graine}) :</p><img class="image-chat" src="${await urlImage(info.nom)}" alt="${echap(texte)}">
+      <p style="color:var(--gris);font-size:14px">Elle est sur la clé : menu 🎨 Images pour la télécharger ou la mettre dans un projet.</p>`;
+    const defile = $(`#vue-${mode} .defile`), img = $(`#vue-${mode} .fil .image-chat:last-of-type`);
+    const enBas = () => defile && defile.scrollTo({ top: defile.scrollHeight, behavior: "smooth" });
+    if (img) img.onload = enBas; enBas();
+    S.images.liste = []; // la galerie se recharge à la prochaine visite
+  } catch (e) { const s = etat(); if (s) s.textContent = "Image non créée : " + e.message; }
+}
 function aller(vue) {
   S.vue = vue;
   $$(".vue").forEach(v => v.classList.toggle("active", v.id === "vue-" + vue));
   $$(".nav[data-vue]").forEach(n => n.classList.toggle("actif", n.dataset.vue === vue));
-  $("#fab").style.display = vue === "cerveau" || vue === "projets" ? "none" : "";
+  $("#fab").style.display = ["cerveau", "projets", "images"].includes(vue) ? "none" : "";
   if (vue === "cerveau") { chargerModeles().catch(() => {}); chargerMemoire(); }
   if (vue === "projets") chargerProjets();
   if (vue === "rea") etatRea();
+  if (vue === "images") chargerImages();
   const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
   if (innerWidth < 1200) fermerTiroir();
 }
