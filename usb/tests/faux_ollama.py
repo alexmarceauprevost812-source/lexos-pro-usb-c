@@ -101,6 +101,9 @@ if __name__ == "__main__":  # imite la commande `ollama`
             with open(trace, "a") as f:
                 f.write(f"serve {port} {os.environ.get('OLLAMA_MODELS')}\n")
         serveur = ThreadingHTTPServer((hote or "127.0.0.1", int(port)), Gestionnaire)
+        # Le vrai Ollama ouvre son port puis détecte la carte graphique avant de répondre.
+        import time
+        time.sleep(float(os.environ.get("FAUX_OLLAMA_DELAI", "0")))
         serveur.reponses, serveur.requetes = [], []
         serveur.modeles = [dict(m) for m in MODELES]
         serveur.serve_forever()

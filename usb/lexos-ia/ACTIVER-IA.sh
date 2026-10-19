@@ -68,7 +68,17 @@ else
 fi
 
 # ── 3. Démarrer le moteur (port 11434, ou 11435 si un Ollama tourne déjà) ──
+PY="$(command -v python3 || command -v python || true)"
+if [ -z "$PY" ]; then
+  echo "${ROUGE}Python 3 est requis sur ce PC (sudo apt install python3).${RAZ}"; pause_et_sortir
+fi
 port_ouvert() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+# Le port s'ouvre AVANT que le moteur réponde (il détecte d'abord la carte
+# graphique) : on attend donc une vraie réponse HTTP.
+ia_repond() {
+  "$PY" -c 'import sys,urllib.request as u
+u.build_opener(u.ProxyHandler({})).open("http://127.0.0.1:%s/api/version" % sys.argv[1], timeout=3).read()' "$1" 2>/dev/null
+}
 PORT=11434
 if port_ouvert 11434; then
   PORT=11435
@@ -89,12 +99,18 @@ arreter() { kill "$PID" 2>/dev/null; wait "$PID" 2>/dev/null; }
 trap arreter EXIT
 trap 'exit 130' INT TERM HUP
 
-for _ in $(seq 1 60); do
-  port_ouvert "$PORT" && break
-  kill -0 "$PID" 2>/dev/null || break
-  sleep 0.5
+DEBUT=$SECONDS
+AVERTI=0
+until ia_repond "$PORT"; do
+  if ! kill -0 "$PID" 2>/dev/null || [ $((SECONDS - DEBUT)) -ge 240 ]; then break; fi
+  if [ "$AVERTI" = 0 ] && [ $((SECONDS - DEBUT)) -ge 5 ]; then
+    printf '\n%s' "${GRIS}(détection de la carte graphique : la 1re fois sur un PC peut prendre 1 à 3 minutes)${RAZ} "
+    AVERTI=1
+  fi
+  printf '.'
+  sleep 1
 done
-if ! port_ouvert "$PORT"; then
+if ! ia_repond "$PORT"; then
   echo; echo "${ROUGE}Le moteur IA n'a pas démarré. Journal : $JOURNAL${RAZ}"
   tail -n 15 "$JOURNAL" 2>/dev/null
   pause_et_sortir
@@ -102,10 +118,6 @@ fi
 echo "${ORANGE}prêt ✔${RAZ}"
 
 # ── 4. Lancer LexOS IA (ou LexOS Textes) ────────────────────────────────────
-PY="$(command -v python3 || command -v python || true)"
-if [ -z "$PY" ]; then
-  echo "${ROUGE}Python 3 est requis sur ce PC (sudo apt install python3).${RAZ}"; pause_et_sortir
-fi
 if [ "$MODE" = "textes" ]; then
   "$PY" "$ICI/apps/lexos_textes.py"
   exit $?

@@ -120,6 +120,23 @@ def ia_disponible():
         return False
 
 
+def attendre_ia(delai=90):
+    """Attend que le moteur réponde (il peut être en train de démarrer)."""
+    import time
+    fin = time.monotonic() + delai
+    if ia_disponible():
+        return True
+    print(f"{GRIS}Le moteur IA démarre…{RAZ} ", end="", flush=True)
+    while time.monotonic() < fin:
+        time.sleep(1)
+        if ia_disponible():
+            print(f"{VERT}prêt ✔{RAZ}", flush=True)
+            return True
+        print(".", end="", flush=True)
+    print(flush=True)
+    return False
+
+
 def modeles_installes():
     """Liste des modèles présents sur la clé : [{'name':..., 'size':...}, ...]."""
     with _requete("/api/tags") as r:
@@ -828,7 +845,7 @@ def main(arguments=None):
     if arguments and arguments[0] in ("-h", "--help", "aide"):
         print(__doc__)
         return 0
-    if not ia_disponible():
+    if not attendre_ia(float(os.environ.get("LEXOS_IA_ATTENTE", "90"))):
         afficher(f"Le moteur IA ne répond pas sur {hote()}.", ROUGE)
         afficher("Lance ACTIVER-IA (sur la clé) : il démarre les IA puis ouvre ce terminal.", GRIS)
         return 1

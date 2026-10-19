@@ -156,6 +156,8 @@ class TestAvecFauxMoteur(unittest.TestCase):
 
     def test_moteur_absent(self):
         os.environ["LEXOS_IA_HOTE"] = "127.0.0.1:9"
+        os.environ["LEXOS_IA_ATTENTE"] = "2"
+        self.addCleanup(os.environ.pop, "LEXOS_IA_ATTENTE", None)
         with redirect_stdout(io.StringIO()) as sortie:
             self.assertEqual(ia.main([]), 1)
         self.assertIn("ACTIVER-IA", sortie.getvalue())
@@ -171,6 +173,13 @@ class TestActiverIA(unittest.TestCase):
     """Teste le bouton un clic sur une fausse clé, avec un faux moteur Ollama."""
 
     def test_un_clic_demarre_puis_arrete_les_ia(self):
+        self.lancer(delai=0)
+
+    def test_moteur_lent_a_repondre(self):
+        """Bug du 19 oct. : le port s'ouvre mais le moteur répond 6 s plus tard."""
+        self.lancer(delai=6)
+
+    def lancer(self, delai):
         with tempfile.TemporaryDirectory() as d:
             cle = Path(d) / "cle" / "lexos-ia"
             shutil.copytree(USB / "lexos-ia", cle)
@@ -181,7 +190,7 @@ class TestActiverIA(unittest.TestCase):
             (moteur / "ollama").chmod(0o755)
             trace = Path(d) / "trace.txt"
             env = dict(os.environ, HOME=d, LEXOS_IA_SANS_TERMINAL="1", NO_COLOR="1",
-                       FAUX_OLLAMA_TRACE=str(trace))
+                       FAUX_OLLAMA_TRACE=str(trace), FAUX_OLLAMA_DELAI=str(delai))
             env.pop("LEXOS_IA_HOTE", None)
             r = subprocess.run(["bash", str(cle / "ACTIVER-IA.sh"), "chat"], input="Salut\n/quitter\n",
                                capture_output=True, text=True, env=env, timeout=60)
