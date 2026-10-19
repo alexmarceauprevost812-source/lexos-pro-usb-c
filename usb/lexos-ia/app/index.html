@@ -192,7 +192,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .role{display:flex;align-items:center;gap:6px;border:1.5px solid var(--c);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:700;color:var(--c);white-space:nowrap}
 .role select{background:var(--carte);border:0;border-radius:999px;color:var(--texte);padding:5px 8px;font-size:12.5px;max-width:150px;outline:0}
 .trio{display:flex;justify-content:center;gap:14px}
-.trio span{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;font-size:36px;border:2px solid var(--c);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}
+.trio span{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-size:28px;border:2px solid var(--c);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}
 .avatar-agent{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:20px;border:2px solid var(--c);margin-top:2px}
 .qui{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--c);margin-bottom:4px}
 .qui span{color:var(--gris2);font-weight:400;letter-spacing:0;margin-left:6px}
@@ -399,6 +399,7 @@ html.telephone .pc-seulement{display:none!important}
 
   <!-- ═══ ÉQUIPE IA ═══ -->
   <section class="vue" id="vue-equipe" data-mode="equipe">
+    <div class="barre-local" id="barre-equipe">Local : Équipe IA · sur la clé USB-C · hors ligne</div>
     <div class="barre-equipe">
       <label class="role" style="--c:#4FC3F7">🧭 Architecte <select data-role="architecte"></select></label>
       <label class="role" style="--c:#FF7A00">💻 Codeur <select data-role="codeur"></select></label>
@@ -406,12 +407,12 @@ html.telephone .pc-seulement{display:none!important}
       <label class="role" style="--c:#C792EA">🔁 Révisions <select id="tours"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></label>
     </div>
     <div class="defile"><div class="colonne">
-      <div class="accueil" data-accueil>
-        <div class="trio"><span style="--c:#4FC3F7">🧭</span><span style="--c:#FF7A00">💻</span><span style="--c:#35D64C">🔍</span></div>
-        <h1 style="font-size:42px">Équipe IA</h1>
-        <p>Les IA de la clé travaillent ensemble sur ton code.</p>
-        <p style="margin-top:6px"><b style="color:#4FC3F7">L'Architecte</b> planifie · <b style="color:#FF7A00">le Codeur</b> écrit · <b style="color:#35D64C">le Réviseur</b> vérifie, puis le Codeur corrige jusqu'à l'approbation.</p>
-        <p class="aide">« + » ajoute tes fichiers · le même modèle pour les 3 rôles va plus vite</p>
+      <div class="accueil codex" data-accueil>
+        <img class="logo-badge" src="images/marceau.png" alt="">
+        <h1>CodexLocal · Équipe</h1>
+        <p>Plusieurs IA locales codent ensemble — fonctionne sans réseau</p>
+        <div class="trio" style="margin-top:22px"><span style="--c:#4FC3F7">🧭</span><span style="--c:#FF7A00">💻</span><span style="--c:#35D64C">🔍</span></div>
+        <p class="aide" style="margin-top:14px"><b style="color:#4FC3F7">Architecte</b> planifie · <b style="color:#FF7A00">Codeur</b> écrit · <b style="color:#35D64C">Réviseur</b> vérifie et fait corriger<br>« + » ajoute un fichier de code · le même modèle pour les 3 rôles va plus vite</p>
       </div>
       <div class="fil" data-fil></div>
     </div></div>
@@ -419,8 +420,8 @@ html.telephone .pc-seulement{display:none!important}
       <div class="pieces colonne" data-pieces style="max-width:880px;margin:0 auto 8px"></div>
       <div class="compo-codex">
         <button class="plus" data-plus title="Ajouter un fichier">+</button>
-        <textarea rows="1" data-saisie placeholder="Donne un projet à l'équipe…"></textarea>
-        <button class="btn-code" data-envoyer title="Lancer l'équipe">👥</button>
+        <textarea rows="1" data-saisie placeholder="Donne un projet à l'équipe : code, correction, explication…"></textarea>
+        <button class="btn-code" data-envoyer title="Lancer l'équipe">&lt;/&gt;</button>
       </div>
     </div>
   </section>
@@ -707,7 +708,11 @@ $$("select[data-modele]").forEach(sel => sel.addEventListener("change", async ()
   try { await api("/api/config", { [role]: sel.value }); S.defauts[role] = sel.value; } catch (e) {}
   majBarreCodex(); toast(`${mode === "chat" ? "Agent AL" : "Codex"} utilise ${sel.value}`);
 }));
-function majBarreCodex() { $("#barre-codex").textContent = `Local : ${modeleDe("codex") || "aucun modèle"} · sur la clé USB-C · hors ligne`; }
+function majBarreCodex() {
+  $("#barre-codex").textContent = `Local : ${modeleDe("codex") || "aucun modèle"} · sur la clé USB-C · hors ligne`;
+  const noms = [...new Set(["architecte", "codeur", "reviseur"].map(modeleRole).filter(Boolean))];
+  $("#barre-equipe").textContent = `Local : Équipe · ${noms.join(" + ") || "aucun modèle"} · sur la clé USB-C · hors ligne`;
+}
 
 // ─── Pièces jointes : photos (Chat) et fichiers (Codex) ───
 function reduirePhoto(fichier) {
@@ -765,7 +770,7 @@ function boutonEnvoi(mode, enCours) {
   const b = $(`#vue-${mode} [data-envoyer]`);
   b.classList.toggle("arreter", enCours);
   if (mode === "codex") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
-  else if (mode === "equipe") b.innerHTML = enCours ? "■" : "👥";
+  else if (mode === "equipe") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
   else b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
 }
 async function reponseIA(mode, modele) {
@@ -845,7 +850,7 @@ function modeleRole(role) {
   if (role === "reviseur") { const r = S.modeles.find(m => m.nom.startsWith("deepseek-r1")); if (r) return r.nom; }
   return S.defauts.chat;
 }
-$$("select[data-role]").forEach(sel => sel.addEventListener("change", () => { S.roles[sel.dataset.role] = sel.value; toast(`${ROLES[sel.dataset.role].nom} → ${sel.value}`); }));
+$$("select[data-role]").forEach(sel => sel.addEventListener("change", () => { S.roles[sel.dataset.role] = sel.value; majBarreCodex(); toast(`${ROLES[sel.dataset.role].nom} → ${sel.value}`); }));
 function bulleAgent(role, modele) {
   const r = ROLES[role], el = document.createElement("div"); el.className = "msg ia";
   el.innerHTML = `<div class="avatar-agent" style="--c:${r.c}">${r.ico}</div><div class="bulle"><div class="qui" style="--c:${r.c}">${r.nom}<span>${echap(modele || "")}</span></div><div class="corps-agent"></div></div>`;
