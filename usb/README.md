@@ -89,7 +89,7 @@ Trop de vieux projets sur la clé ? `reformater-cle.sh` copie d'abord les modèl
 bash usb/reformater-cle.sh /media/$USER/LEXOS --images
 ```
 
-Avant d'effacer quoi que ce soit, il te montre ce qui sera gardé et ce qui sera effacé, puis attend que tu tapes **OUI**. Il refuse un disque qui n'est pas une clé USB, ou une clé sans dossier `lexos-ia`, et il n'efface rien si la copie des modèles n'est pas complète. Il faut `exfatprogs` et `parted` (`sudo apt install exfatprogs parted`). La copie reste dans `~/lexos-sauvegarde-…` jusqu'à ce que tu l'effaces.
+Avant d'effacer quoi que ce soit, il te montre ce qui sera gardé et ce qui sera effacé, puis attend que tu tapes **OUI**. Il refuse un disque qui n'est pas une clé USB, ou une clé sans dossier `lexos-ia`, et il n'efface rien si la copie des modèles n'est pas complète. Il faut `exfatprogs` et `parted` (`sudo apt install exfatprogs parted`). La copie reste dans `~/lexos-sauvegarde-…` jusqu'à ce que tu l'effaces. Si quelque chose bloque après le formatage, le script affiche la commande exacte pour remettre la sauvegarde : `bash usb/reformater-cle.sh /media/$USER/LEXOS --restaurer ~/lexos-sauvegarde-…`. Il demande le mot de passe avant de commencer et vérifie aussi la copie remise sur la clé.
 
 ## 2. Un clic pour activer les IA
 
