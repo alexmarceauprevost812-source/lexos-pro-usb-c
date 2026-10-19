@@ -83,6 +83,14 @@ Le gros modèle **gemma4:26b** demande 32 Go de mémoire vive. Sur un PC qui en 
 
 ### Repartir à neuf en gardant les modèles
 
+**Le plus simple, sans formater :** `--nettoyer` efface tout sur la clé (projets, conversations, vieux fichiers, corbeille) sauf les modèles IA et le Cerveau, puis réinstalle. Ça ne fait aucune copie sur le PC, donc il n'y a pas besoin de place libre :
+
+```bash
+bash usb/reformater-cle.sh /media/$USER/LEXOS --nettoyer --images
+```
+
+**Pour vraiment formater :** il faut assez de place pour copier les modèles. Si le PC est trop plein, mets la copie sur un autre disque avec `--sauvegarde /chemin/disque`.
+
 Trop de vieux projets sur la clé ? `reformater-cle.sh` copie d'abord les modèles IA sur le PC (avec le Cerveau et tes choix de modèles), puis formate la clé en exFAT. Il remet ensuite les modèles sur la clé et installe la dernière version :
 
 ```bash

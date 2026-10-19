@@ -14,6 +14,9 @@
 #    --images        ajoute aussi la création d'images Z-Image Turbo
 #    --windows       ajoute aussi le moteur pour Windows
 #    --sans-memoire  ne garde pas le Cerveau (mémoire) ni les choix de modèles
+#    --nettoyer      NE FORMATE PAS : efface tout sur la clé sauf les modèles IA
+#                    (et le Cerveau), puis réinstalle. Aucune copie sur le PC.
+#    --sauvegarde DOSSIER  où copier les modèles avant de formater (défaut : ~)
 #    --restaurer DOSSIER   remet une sauvegarde (~/lexos-sauvegarde-…) sur une clé
 #                          déjà formatée, sans rien formater (si quelque chose a raté)
 #
@@ -27,13 +30,15 @@ etape() { echo; echo "${ORANGE}▸ $*${RAZ}"; }
 erreur() { echo "${ROUGE}✗ $*${RAZ}" >&2; exit 1; }
 NOM="LEXOS"
 
-CLE=""; MEMOIRE=1; OPTIONS=(); RESTAURER=""
+CLE=""; MEMOIRE=1; OPTIONS=(); RESTAURER=""; NETTOYER=0; BASE_SAUVE="$HOME"; SAUVE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --images|--windows) OPTIONS+=("$1") ;;
     --sans-memoire) MEMOIRE=0 ;;
+    --nettoyer) NETTOYER=1 ;;
+    --sauvegarde) BASE_SAUVE="${2:-}"; [ -n "$BASE_SAUVE" ] || erreur "--sauvegarde : indique un dossier"; shift ;;
     --restaurer) RESTAURER="${2:-}"; [ -n "$RESTAURER" ] || erreur "--restaurer : indique le dossier de sauvegarde"; shift ;;
-    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     -*) erreur "option inconnue : $1" ;;
     *) CLE="$1" ;;
   esac
@@ -98,7 +103,7 @@ secours() {
       echo "     ${ORANGE}bash \"$DEPOT/reformater-cle.sh\" /media/$USER/$NOM --restaurer \"$SAUVE\"${OPTIONS[*]:+ ${OPTIONS[*]}}${RAZ}" ;;
     installation)
       echo
-      echo "${ROUGE}L'installation n'a pas fini, mais tes modèles sont déjà sur la clé (copie aussi dans $SAUVE).${RAZ}"
+      echo "${ROUGE}L'installation n'a pas fini, mais tes modèles sont sur la clé${SAUVE:+ (copie aussi dans $SAUVE)}.${RAZ}"
       echo "  Relance :  ${ORANGE}bash \"$DEPOT/installer-sur-cle.sh\" \"$CLE\" --sans-modeles${OPTIONS[*]:+ ${OPTIONS[*]}}${RAZ}" ;;
   esac
 }
@@ -118,7 +123,7 @@ remettre_et_installer() {
   echo
   echo "${VERT}${GRAS}✔ Clé toute neuve, avec tes modèles IA (copie vérifiée).${RAZ}"
   echo "  Ouvre l'app :   ${ORANGE}bash $CLE/APP-IA.sh${RAZ}"
-  echo "  Quand tout marche, efface la copie du PC :  ${GRIS}rm -rf \"$SAUVE\"${RAZ}"
+  [ -z "$SAUVE" ] || echo "  Quand tout marche, efface la copie du PC :  ${GRIS}rm -rf \"$SAUVE\"${RAZ}"
 }
 
 # ── Mode --restaurer : remettre une sauvegarde sur une clé déjà formatée ────
@@ -134,6 +139,51 @@ if [ -n "$RESTAURER" ]; then
   exit 0
 fi
 
+# ── Mode --nettoyer : tout effacer sauf les modèles, sans formater ──────────
+if [ "$NETTOYER" = 1 ]; then
+  echo "${ORANGE}${GRAS}LexOS IA — nettoyer la clé en gardant les modèles IA (sans formater)${RAZ}"
+  [ -d "$CLE/lexos-ia" ] || erreur "$CLE ne contient pas lexos-ia : ce n'est pas ta clé LexOS IA. Rien n'a été touché."
+  shopt -s dotglob nullglob
+  GARDE=(ia images-ia)
+  [ "$MEMOIRE" = 1 ] && GARDE+=(memoire config.json)
+  garde() { local x; for x in "${GARDE[@]}"; do [ "$1" = "$x" ] && return 0; done; return 1; }
+  etape "On garde"
+  for g in "${GARDE[@]}"; do
+    [ -e "$CLE/lexos-ia/$g" ] && echo "  ${VERT}✔${RAZ} lexos-ia/$g ${GRIS}($(du -sh "$CLE/lexos-ia/$g" | cut -f1))${RAZ}"
+  done
+  if [ -d "$CLE/lexos-ia/ia/modeles/manifests" ]; then
+    find "$CLE/lexos-ia/ia/modeles/manifests" -mindepth 3 -type f 2>/dev/null \
+      | sed -E 's#.*/manifests/[^/]+/(library/)?##; s#/#:#' | awk 'NR <= 20 { print "      • " $0 }'
+  fi
+  etape "On efface"
+  EFFACER=()
+  for f in "$CLE"/*; do [ "${f##*/}" = lexos-ia ] || EFFACER+=("$f"); done
+  for f in "$CLE"/lexos-ia/*; do garde "${f##*/}" || EFFACER+=("$f"); done
+  for f in "${EFFACER[@]}"; do
+    echo "  ${ROUGE}✗${RAZ} ${f#"$CLE"/} ${GRIS}($(du -sh "$f" 2>/dev/null | cut -f1))${RAZ}"
+  done | awk 'NR <= 60'
+  [ ${#EFFACER[@]} -gt 0 ] || echo "${GRIS}  (rien à effacer)${RAZ}"
+  echo
+  echo "${GRAS}Clé : $CLE · $TAILLE_DISQUE · ${MODELE_DISQUE:-clé USB}${RAZ}  ${GRIS}(espace libre : $(df -h --output=avail "$CLE" | tail -1 | tr -d ' '))${RAZ}"
+  printf '%s' "Pour effacer tout ça (les modèles restent), tape ${GRAS}OUI${RAZ} en majuscules : "
+  read -r reponse || reponse=""
+  [ "$reponse" = OUI ] || { echo "Annulé : rien n'a été touché."; exit 0; }
+  etape "Nettoyage"
+  for f in "${EFFACER[@]}"; do rm -rf "${f:?}"; done
+  sync
+  echo "${VERT}✔ clé nettoyée · espace libre : $(df -h --output=avail "$CLE" | tail -1 | tr -d ' ')${RAZ}"
+  shopt -u dotglob nullglob
+  PHASE="installation"
+  etape "Nouvelle interface LexOS IA"
+  bash "$DEPOT/installer-sur-cle.sh" "$CLE" --sans-modeles ${OPTIONS[@]+"${OPTIONS[@]}"}
+  PHASE=""
+  echo
+  echo "${VERT}${GRAS}✔ Clé propre, avec tes modèles IA.${RAZ}"
+  echo "  TI-LEX-AL :     ${ORANGE}bash $CLE/APP-IA.sh${RAZ}"
+  echo "  LexOS Moteur :  ${ORANGE}bash $CLE/LANCER-MOTEUR.sh${RAZ}"
+  exit 0
+fi
+
 echo "${ORANGE}${GRAS}LexOS IA — reformater la clé en gardant les modèles IA${RAZ}"
 for outil in wipefs parted mkfs.exfat; do
   command -v "$outil" >/dev/null || {
@@ -146,7 +196,11 @@ done
 
 # ── 1. Ce qu'on garde / ce qui sera effacé ──────────────────────────────────
 etape "Ce qu'on garde"
-SAUVE="$HOME/lexos-sauvegarde-$(date +%Y%m%d-%H%M%S)"
+[ -d "$BASE_SAUVE" ] && [ -w "$BASE_SAUVE" ] || erreur "dossier de sauvegarde introuvable ou non modifiable : $BASE_SAUVE"
+BASE_SAUVE="$(cd "$BASE_SAUVE" && pwd)"
+SOURCE_SAUVE="$(findmnt -fno SOURCE --target "$BASE_SAUVE" 2>/dev/null || true)"
+case "$SOURCE_SAUVE" in "$DISQUE"*) erreur "la sauvegarde ne peut pas aller sur la clé elle-même." ;; esac
+SAUVE="$BASE_SAUVE/lexos-sauvegarde-$(date +%Y%m%d-%H%M%S)"
 [ ! -e "$SAUVE" ] || erreur "$SAUVE existe déjà : attends une seconde et relance."
 GARDER=()
 [ -d "$CLE/lexos-ia/ia/modeles" ] && GARDER+=("lexos-ia/ia/modeles")
@@ -165,9 +219,13 @@ if [ -d "$CLE/lexos-ia/ia/modeles/manifests" ]; then
   find "$CLE/lexos-ia/ia/modeles/manifests" -mindepth 3 -type f 2>/dev/null \
     | sed -E 's#.*/manifests/[^/]+/(library/)?##; s#/#:#' | awk 'NR <= 20 { print "      • " $0 }'
 fi
-LIBRE_PC_KO="$(df -Pk "$HOME" | awk 'NR == 2 { print $4 }')"
+LIBRE_PC_KO="$(df -Pk "$BASE_SAUVE" | awk 'NR == 2 { print $4 }')"
 if [ "$LIBRE_PC_KO" -lt $((BESOIN_KO + 1048576)) ]; then
-  erreur "pas assez de place sur le PC pour garder les modèles : il faut $((BESOIN_KO / 1048576 + 1)) Go, il reste $((LIBRE_PC_KO / 1048576)) Go dans $HOME."
+  echo "${ROUGE}✗ pas assez de place pour la copie : il faut $((BESOIN_KO / 1048576 + 1)) Go, il reste $((LIBRE_PC_KO / 1048576)) Go dans $BASE_SAUVE.${RAZ}" >&2
+  echo "  Rien n'a été touché. Deux solutions :" >&2
+  echo "  • sans formater (aucune copie) :  ${ORANGE}bash usb/reformater-cle.sh $CLE --nettoyer${OPTIONS[*]:+ ${OPTIONS[*]}}${RAZ}" >&2
+  echo "  • copie sur un autre disque     :  ${ORANGE}bash usb/reformater-cle.sh $CLE --sauvegarde /chemin/disque${OPTIONS[*]:+ ${OPTIONS[*]}}${RAZ}" >&2
+  exit 1
 fi
 
 etape "Ce qui sera EFFACÉ"
