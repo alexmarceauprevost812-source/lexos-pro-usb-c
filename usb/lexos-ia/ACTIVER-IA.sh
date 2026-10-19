@@ -75,7 +75,7 @@ else
   pause_et_sortir
 fi
 
-# ── 3. Démarrer le moteur (port 11434, ou 11435 si un Ollama tourne déjà) ──
+# ── 3. Démarrer le moteur (port 11434, ou le suivant libre) ─────────────────
 PY="$(command -v python3 || command -v python || true)"
 if [ -z "$PY" ]; then
   echo "${ROUGE}Python 3 est requis sur ce PC (sudo apt install python3).${RAZ}"; pause_et_sortir
@@ -87,15 +87,46 @@ ia_repond() {
   "$PY" -c 'import sys,urllib.request as u
 u.build_opener(u.ProxyHandler({})).open("http://127.0.0.1:%s/api/version" % sys.argv[1], timeout=3).read()' "$1" 2>/dev/null
 }
-PORT=11434
-if port_ouvert 11434; then
-  PORT=11435
-  echo "${GRIS}Un Ollama tourne déjà sur ce PC : la clé utilise le port 11435.${RAZ}"
+# Un moteur de la clé resté allumé (terminal fermé d'un coup) ? S'il n'a plus
+# de lanceur vivant, on l'arrête. Vérification stricte : seulement un vrai
+# « …/lexos-ia/…/bin/ollama serve ». L'Ollama du PC n'est jamais touché.
+OUBLIES="$("$PY" - 2>/dev/null <<'FIN_PY'
+import os
+n = 0
+for pid in filter(str.isdigit, os.listdir("/proc")):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            args = [a.decode(errors="replace") for a in f.read().split(b"\0") if a]
+        i = next(i for i, a in enumerate(args[:2]) if a.endswith("/bin/ollama") and "lexos-ia/" in a)
+        if args[i + 1:i + 2] != ["serve"]:
+            continue
+        with open(f"/proc/{pid}/stat") as f:
+            ppid = f.read().rsplit(")", 1)[1].split()[1]
+        with open(f"/proc/{ppid}/cmdline", "rb") as f:
+            parent = f.read().replace(b"\0", b" ").decode(errors="replace")
+        if "ACTIVER-IA.sh" in parent or "installer-sur-cle.sh" in parent:
+            continue
+        os.kill(int(pid), 15)
+        n += 1
+    except (StopIteration, OSError, IndexError, ValueError):
+        continue
+print(n)
+FIN_PY
+)"
+if [ "${OUBLIES:-0}" -gt 0 ] 2>/dev/null; then
+  echo "${GRIS}Moteur IA oublié d'une session précédente : arrêté.${RAZ}"
+  sleep 1
 fi
-if port_ouvert "$PORT"; then
-  echo "${ROUGE}Le port $PORT est déjà pris. Ferme l'autre LexOS IA et réessaie.${RAZ}"
+# Premier port libre : 11434 (normal), sinon 11435, 11436…
+PORT=""
+for p in 11434 11435 11436 11437 11438 11439 11440; do
+  port_ouvert "$p" || { PORT="$p"; break; }
+done
+if [ -z "$PORT" ]; then
+  echo "${ROUGE}Aucun port libre (11434 à 11440). Redémarre le PC puis réessaie.${RAZ}"
   pause_et_sortir
 fi
+[ "$PORT" != 11434 ] && echo "${GRIS}Un Ollama tourne déjà sur ce PC : la clé utilise le port $PORT.${RAZ}"
 export OLLAMA_HOST="127.0.0.1:$PORT"
 export LEXOS_IA_HOTE="127.0.0.1:$PORT"
 JOURNAL="$CACHE/ollama.log"

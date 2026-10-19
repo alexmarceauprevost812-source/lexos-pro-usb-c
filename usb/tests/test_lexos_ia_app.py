@@ -138,8 +138,8 @@ class TestAppUnClic(unittest.TestCase):
             shutil.copytree(USB / "lexos-ia", cle)
             moteur = cle / "ia" / "ollama-linux-amd64" / "bin"
             moteur.mkdir(parents=True)
-            (moteur / "ollama").write_text(
-                f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).parent / "faux_ollama.py"}" "$@"\n')
+            (moteur / "ollama").write_text(f"#!{sys.executable}\n" +
+                                           (Path(__file__).parent / "faux_ollama.py").read_text())
             (moteur / "ollama").chmod(0o755)
             trace = Path(d) / "trace.txt"
             env = dict(os.environ, HOME=d, NO_COLOR="1", LEXOS_IA_SANS_NAVIGATEUR="1", FAUX_OLLAMA_TRACE=str(trace))

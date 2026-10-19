@@ -175,26 +175,40 @@ class TestActiverIA(unittest.TestCase):
     def test_un_clic_demarre_puis_arrete_les_ia(self):
         self.lancer(delai=0)
 
+    def test_moteur_oublie_est_arrete(self):
+        """Bug du 19 oct. : un moteur de la clé resté allumé bloquait le port 11435."""
+        self.lancer(delai=0, oublie=True)
+
     def test_moteur_lent_a_repondre(self):
         """Bug du 19 oct. : le port s'ouvre mais le moteur répond 6 s plus tard."""
         self.lancer(delai=6)
 
-    def lancer(self, delai):
+    def lancer(self, delai, oublie=False):
         with tempfile.TemporaryDirectory() as d:
             cle = Path(d) / "cle" / "lexos-ia"
             shutil.copytree(USB / "lexos-ia", cle)
             moteur = cle / "ia" / "ollama-linux-amd64" / "bin"
             moteur.mkdir(parents=True)
-            (moteur / "ollama").write_text(
-                f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).parent / "faux_ollama.py"}" "$@"\n')
+            (moteur / "ollama").write_text(f"#!{sys.executable}\n" +
+                                           (Path(__file__).parent / "faux_ollama.py").read_text())
             (moteur / "ollama").chmod(0o755)
             trace = Path(d) / "trace.txt"
             env = dict(os.environ, HOME=d, LEXOS_IA_SANS_TERMINAL="1", NO_COLOR="1",
                        FAUX_OLLAMA_TRACE=str(trace), FAUX_OLLAMA_DELAI=str(delai))
             env.pop("LEXOS_IA_HOTE", None)
+            if oublie:  # moteur orphelin d'une session précédente, sur 11434
+                subprocess.run(["setsid", "-f", str(moteur / "ollama"), "serve"],
+                               env=dict(env, OLLAMA_HOST="127.0.0.1:11434", FAUX_OLLAMA_TRACE=""), check=True)
+                for _ in range(50):
+                    if port_ouvert(11434):
+                        break
+                    time.sleep(0.1)
+                self.assertTrue(port_ouvert(11434))
             r = subprocess.run(["bash", str(cle / "ACTIVER-IA.sh"), "chat"], input="Salut\n/quitter\n",
                                capture_output=True, text=True, env=env, timeout=60)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            if oublie:
+                self.assertIn("oublié", r.stdout)
             self.assertIn("prêt", r.stdout)
             self.assertIn("ici l'IA de la clé", r.stdout)
             port, dossier_modeles = trace.read_text().split()[1:3]
