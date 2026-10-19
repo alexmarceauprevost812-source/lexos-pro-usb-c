@@ -91,6 +91,10 @@ bash usb/reformater-cle.sh /media/$USER/LEXOS --images
 
 Avant d'effacer quoi que ce soit, il te montre ce qui sera gardé et ce qui sera effacé, puis attend que tu tapes **OUI**. Il refuse un disque qui n'est pas une clé USB, ou une clé sans dossier `lexos-ia`, et il n'efface rien si la copie des modèles n'est pas complète. Il faut `exfatprogs` et `parted` (`sudo apt install exfatprogs parted`). La copie reste dans `~/lexos-sauvegarde-…` jusqu'à ce que tu l'effaces. Si quelque chose bloque après le formatage, le script affiche la commande exacte pour remettre la sauvegarde : `bash usb/reformater-cle.sh /media/$USER/LEXOS --restaurer ~/lexos-sauvegarde-…`. Il demande le mot de passe avant de commencer et vérifie aussi la copie remise sur la clé.
 
+### LexOS Moteur (2e interface)
+
+À la racine de la clé, **LANCER-MOTEUR.sh** (Windows : **LANCER-MOTEUR.bat**) ouvre l'interface « LexOS · Moteur portable » : Chat, Codex, Codex équipe, Schémas animés, Modèles, fonds d'écran. Elle utilise le même moteur et les mêmes modèles IA que TI-LEX-AL (`lexos-ia/ia/`). Ses conversations et ses projets sont gardés dans `MOTEUR-INTERFACE/` sur la clé, et une mise à jour de la clé ne remplace que son code. Son code source est dans [`moteur-interface/`](moteur-interface/).
+
 ## 2. Un clic pour activer les IA
 
 | Sur… | Fais |

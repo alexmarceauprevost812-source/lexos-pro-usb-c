@@ -125,6 +125,19 @@ ICÔNES SUR LE BUREAU DU PC (Linux, une seule fois par PC) :
 Tout fonctionne sans Internet. Quitter (0) arrête les IA.
 Python 3 doit être présent sur le PC.
 EOF
+# Moteur d'interface portable (LANCER-MOTEUR) à la racine de la clé.
+# Seul le code est remplacé : conversations, projets, fonds et schémas restent.
+if [ -d "$DEPOT/moteur-interface/MOTEUR-INTERFACE" ]; then
+  MI="$CLE/MOTEUR-INTERFACE"
+  mkdir -p "$MI"
+  rm -rf "${MI:?}/interface" && cp -r "$DEPOT/moteur-interface/MOTEUR-INTERFACE/interface" "$MI/interface"
+  cp "$DEPOT/moteur-interface/MOTEUR-INTERFACE/moteur.py" "$MI/moteur.py"
+  for f in LANCER-MOTEUR.sh LANCER-MOTEUR.bat LISEZ-MOI-MOTEUR.txt; do
+    cp "$DEPOT/moteur-interface/$f" "$CLE/$f"
+  done
+  sed "s|^Icon=.*|Icon=$MI/interface/logo.png|" "$DEPOT/moteur-interface/LexOS-Moteur.desktop" >"$CLE/LexOS-Moteur.desktop"
+  chmod +x "$CLE/LANCER-MOTEUR.sh" "$CLE/LexOS-Moteur.desktop" 2>/dev/null || true
+fi
 echo "${VERT}✔ code, lanceurs et icônes copiés${RAZ}"
 
 # ── 2. Moteur Ollama portable ───────────────────────────────────────────────
