@@ -48,5 +48,79 @@ class TestREA(unittest.TestCase):
             faux.arreter()
 
 
+@unittest.skipUnless(SOURCE and (SOURCE / "ti_lex_agent" / "agent.py").exists(), "REA_SOURCE absent")
+class TestREADansLApp(unittest.TestCase):
+    """REA dans l'interface TI-LEX-AL : outils en direct et permissions données dans l'app."""
+
+    @classmethod
+    def setUpClass(cls):
+        import threading
+        from http.server import ThreadingHTTPServer
+        sys.path.insert(0, str(USB / "lexos-ia"))
+        import lexos_ia_app as app
+        cls.app = app
+        cls.faux = FauxOllama()
+        os.environ["LEXOS_IA_HOTE"] = cls.faux.hote
+        cls.tmp = tempfile.mkdtemp()
+        app.DOSSIER_REA = Path(cls.tmp) / "rea"
+        (app.DOSSIER_REA / "ti_lex_agent").mkdir(parents=True)
+        for f in COEUR:
+            shutil.copy(SOURCE / "ti_lex_agent" / f, app.DOSSIER_REA / "ti_lex_agent" / f)
+        app.DOSSIER_PROJETS = Path(cls.tmp) / "projets"
+        (app.DOSSIER_PROJETS / "meteo").mkdir(parents=True)
+        (app.DOSSIER_PROJETS / "meteo" / "index.html").write_text("<h1>Météo</h1>")
+        os.environ["TILEX_MEMORY"] = str(Path(cls.tmp) / "rea-memoire.md")
+        cls.serveur = ThreadingHTTPServer(("127.0.0.1", 0), app.App)
+        cls.serveur.adresse = f"127.0.0.1:{cls.serveur.server_address[1]}"
+        threading.Thread(target=cls.serveur.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.serveur.shutdown()
+        cls.faux.arreter()
+        os.environ.pop("LEXOS_IA_HOTE", None)
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def requete(self, chemin, corps):
+        import http.client
+        import json
+        c = http.client.HTTPConnection(*self.serveur.server_address, timeout=30)
+        c.request("POST", chemin, body=json.dumps(corps).encode(), headers={
+            "Host": self.serveur.adresse, "X-LexOS-Jeton": self.app.JETON, "Content-Type": "application/json"})
+        return c, c.getresponse()
+
+    def demander(self, texte, repondre=None):
+        """Lit le flux de REA ; `repondre` = True/False quand REA demande une permission."""
+        import json
+        c, r = self.requete("/api/rea/demander", {"texte": texte, "projet": "meteo"})
+        self.assertEqual(r.status, 200)
+        lignes = []
+        while True:
+            ligne = r.fp.readline()
+            if not ligne:
+                break
+            obj = json.loads(ligne)
+            lignes.append(obj)
+            if "confirmer" in obj:
+                c2, r2 = self.requete("/api/rea/repondre", {"id": obj["id"], "oui": repondre})
+                self.assertEqual(r2.status, 200); r2.read(); c2.close()
+        c.close()
+        return lignes
+
+    def test_outil_dans_le_projet(self):
+        lignes = self.demander("liste les fichiers")
+        self.assertEqual(lignes[0]["info"]["projet"], "meteo")
+        self.assertTrue(any("list_files" in l.get("outil", "") for l in lignes))
+        self.assertIn("index.html", "".join(l.get("t", "") for l in lignes))
+        self.assertTrue(lignes[-1].get("fin"))
+
+    def test_permission_oui_puis_non(self):
+        lignes = self.demander("lance une commande", repondre=True)
+        self.assertTrue(any("echo Bonjour de REA" in l.get("confirmer", "") for l in lignes))
+        self.assertIn("Bonjour de REA", "".join(l.get("t", "") for l in lignes))  # la commande a tourné
+        lignes = self.demander("lance une commande", repondre=False)
+        self.assertNotIn("Bonjour de REA\n", "".join(l.get("t", "") for l in lignes))  # refusée : rien exécuté
+
+
 if __name__ == "__main__":
     unittest.main()

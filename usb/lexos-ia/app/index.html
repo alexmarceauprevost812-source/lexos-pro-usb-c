@@ -319,6 +319,17 @@ html.telephone .pc-seulement{display:none!important}
 .garde{color:var(--gris);font-size:13px;margin:12px 0;line-height:1.5}
 .actions-tel{display:flex;gap:8px;flex-wrap:wrap}
 
+/* ── REA : outils utilisés ─────────────────── */
+.rea-outils{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.rea-outils:empty{display:none}
+.outil{display:flex;align-items:center;gap:10px;font-size:13.5px;border:1px solid var(--ligne);border-left:3px solid var(--orange);border-radius:10px;padding:7px 12px;background:rgba(255,122,0,.04);animation:apparait .3s ease}
+.outil .ico{font-size:16px}
+.outil .nom{font-weight:700;color:var(--orange2);white-space:nowrap}
+.outil code{font-family:var(--mono);font-size:12px;color:var(--gris);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;background:none;padding:0}
+.rea-outils .carte-cmd{animation:apparait .3s ease}
+.rea-outils .carte-cmd pre{margin:0;padding:12px 14px;font-family:var(--mono);font-size:14px;white-space:pre-wrap;color:#fff}
+@keyframes apparait{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
 /* ── Mode réflexion animé ─────────────────── */
 .pensee{margin-bottom:8px}
 .pensee-tete{display:inline-flex;align-items:center;gap:10px;font-size:14px;color:var(--gris);padding:5px 12px 5px 10px;border-radius:999px;border:1px solid var(--ligne);background:rgba(255,122,0,.05)}
@@ -426,13 +437,13 @@ html.telephone .pc-seulement{display:none!important}
   <button class="nav actif" data-vue="chat"><span class="ico">💬</span>Chat</button>
   <button class="nav" data-vue="codex"><span class="ico">💻</span>Codex</button>
   <button class="nav" data-vue="equipe"><span class="ico">👥</span>Équipe IA</button>
+  <button class="nav" data-vue="rea"><span class="ico">🤖</span>REA</button>
   <button class="nav" data-vue="projets"><span class="ico">📁</span>Projets</button>
   <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
   <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
   <div class="section pc-seulement">OUTILS</div>
   <button class="nav pc-seulement" id="btn-telephone"><span class="ico">📱</span>Téléphone</button>
   <button class="nav pc-seulement" data-ouvrir="textes"><span class="ico">📝</span>LexOS Textes</button>
-  <button class="nav pc-seulement" data-ouvrir="rea" title="Agent ti-lex : web, vision, fichiers du projet actif, commandes"><span class="ico">🤖</span>REA (agent)</button>
   <button class="nav pc-seulement" data-ouvrir="terminal"><span class="ico">🖥️</span>Terminal IA</button>
   <button class="nav pc-seulement" data-ouvrir="conversations"><span class="ico">📂</span>Mes fichiers</button>
   <div class="section">CONVERSATIONS</div>
@@ -571,6 +582,44 @@ html.telephone .pc-seulement{display:none!important}
   </section>
 
   <!-- ═══ CERVEAU ═══ -->
+  <!-- ═══ REA : agent ti-lex ═══ -->
+  <section class="vue" id="vue-rea" data-mode="rea">
+    <div class="barre-local" id="barre-rea">Local : REA · agent ti-lex · sur la clé USB-C</div>
+    <div class="defile"><div class="colonne">
+      <div class="entete-agent">
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <div>
+          <h2>TI-LEX-AL · REA</h2>
+          <div class="sous"><span class="point" id="point-rea"></span> 🔍 web · 👁 vision · 📁 fichiers · ⌨️ commandes · 🛡 <span class="securisee">avec ta permission</span></div>
+        </div>
+      </div>
+      <div class="accueil" data-accueil>
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <h1>REA</h1>
+        <p>L'agent ti-lex travaille dans ton projet : il cherche sur le web, regarde les images,<br>lit et écrit les fichiers et lance des commandes — toujours avec ta permission.</p>
+        <div class="puces">
+          <button class="puce">liste les fichiers du projet et explique-moi à quoi ils servent</button>
+          <button class="puce">cherche la dernière version de Python et dis-moi ce qui a changé</button>
+          <button class="puce">crée un site météo dans ce projet puis teste-le</button>
+        </div>
+        <p class="aide" id="rea-dispo"></p>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="compo">
+        <div class="rang">
+          <textarea rows="1" data-saisie placeholder="Donne une tâche à REA…"></textarea>
+          <button class="btn-envoyer" data-envoyer><img src="images/tilexal.png" alt=""><span>ENVOYER</span></button>
+        </div>
+        <div class="rang bas">
+          <button class="btn-plus" id="rea-oublier" title="Nouvelle conversation avec REA">⟲</button>
+          <label class="pilule">REA ·&nbsp;<select data-modele="rea" title="Modèle (doit savoir utiliser des outils)"></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ PROJETS ═══ -->
   <section class="vue" id="vue-projets">
     <div class="barre-local" id="barre-projets">Projets · sur la clé USB-C</div>
@@ -692,8 +741,8 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const S = {
   vue: "chat", modeles: [], defauts: {}, choix: {}, sensibles: [], langues: [], dossier: "",
-  convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal"), equipe: nouvelle("equipe") },
-  pieces: { chat: [], codex: [], terminal: [], equipe: [] }, enCours: null, notifs: [], nonLues: 0,
+  convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal"), equipe: nouvelle("equipe"), rea: nouvelle("rea") },
+  pieces: { chat: [], codex: [], terminal: [], equipe: [], rea: [] }, enCours: null, notifs: [], nonLues: 0,
   roles: {}, codeEquipe: "", projet: null, projetInfo: null, fichierOuvert: null, apercuUrl: null,
 };
 function nouvelle(mode) { return { id: null, mode, titre: "", messages: [] }; }
@@ -855,7 +904,7 @@ function rendreConversation(mode) {
 }
 
 // ─── Modèles ───
-function modeleDe(mode) { return S.choix[mode] || (mode === "chat" ? S.defauts.chat : S.defauts.codex) || (S.modeles[0] || {}).nom; }
+function modeleDe(mode) { return S.choix[mode] || (mode === "chat" ? S.defauts.chat : mode === "rea" ? (S.defauts.rea || S.defauts.chat) : S.defauts.codex) || (S.modeles[0] || {}).nom; }
 function voit(nom) { const m = S.modeles.find(x => x.nom === nom); return !!(m && m.capacites.includes("vision")); }
 async function chargerModeles() {
   const d = await api("/api/modeles");
@@ -874,6 +923,7 @@ async function chargerModeles() {
 }
 $$("select[data-modele]").forEach(sel => sel.addEventListener("change", async () => {
   const mode = sel.dataset.modele; S.choix[mode] = sel.value;
+  if (mode === "rea") { toast(`REA utilise ${sel.value}`); return; }
   const role = mode === "chat" ? "chat" : "codex";
   try { await api("/api/config", { [role]: sel.value }); S.defauts[role] = sel.value; } catch (e) {}
   majBarreCodex(); toast(`${mode === "chat" ? "Agent AL" : "Codex"} utilise ${sel.value}`);
@@ -942,6 +992,7 @@ function boutonEnvoi(mode, enCours) {
   const b = $(`#vue-${mode} [data-envoyer]`);
   b.classList.toggle("arreter", enCours);
   if (mode === "codex") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
+  else if (mode === "rea") b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
   else if (mode === "equipe") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
   else b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
 }
@@ -978,6 +1029,7 @@ async function envoyer(mode) {
     bulleIA(mode, e ? `<p>🧠 C'est noté, je vais m'en souvenir :</p><p><strong>${echap(e.texte)}</strong></p><p style="color:var(--gris);font-size:14px">Cerveau → Mémoire pour voir ou effacer mes souvenirs.</p>` : "<p>Je n'ai pas pu le retenir.</p>");
     return;
   }
+  if (mode === "rea") { zone.value = ""; ajuster(zone); return lancerRea(texte); }
   if (mode === "equipe") {
     const fichiers = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n");
     const affiche = (texte || "Améliore ces fichiers.") + (pieces.length ? "\n📄 " + pieces.map(p => p.nom).join(", ") : "");
@@ -1009,7 +1061,7 @@ async function envoyer(mode) {
   await reponseIA(mode, modele);
 }
 function ajuster(t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
-for (const mode of ["chat", "codex", "terminal", "equipe"]) {
+for (const mode of ["chat", "codex", "terminal", "equipe", "rea"]) {
   const zone = $(`#vue-${mode} [data-saisie]`);
   zone.addEventListener("input", () => ajuster(zone));
   zone.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(mode); } });
@@ -1183,7 +1235,7 @@ $("#dossier").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-
 // ─── Panneau TRAVAIL (tout le code des réponses) ───
 function majTravail() {
   const blocs = [];
-  for (const mode of ["chat", "codex", "equipe"]) for (const m of S.convs[mode].messages) if (m.role === "assistant" && m.agent !== "reviseur") blocs.push(...extraireBlocs(m.content));
+  for (const mode of ["chat", "codex", "equipe", "rea"]) for (const m of S.convs[mode].messages) if (m.role === "assistant" && m.agent !== "reviseur") blocs.push(...extraireBlocs(m.content));
   $("#contenu-travail").innerHTML = blocs.length ? blocs.map(b => "```" + b.langue + "\n" + b.code + "```").map((t, i) => md((blocs[i].chemin ? "Fichier: " + blocs[i].chemin + "\n" : "") + t)).join("")
     : '<div class="vide">Le code proposé par l\'IA apparaîtra ici.</div>';
   rendreSchemas($("#contenu-travail"));
@@ -1248,7 +1300,7 @@ async function sauver(mode) {
     if (!c.id) { c.id = d.id; listerConvs(); }
   } catch (e) {}
 }
-const ICONES = { chat: "💬", codex: "💻", terminal: "⌨️", equipe: "👥" };
+const ICONES = { chat: "💬", codex: "💻", terminal: "⌨️", equipe: "👥", rea: "🤖" };
 async function listerConvs() {
   let convs = [];
   try { convs = await api("/api/conversations"); } catch (e) {}
@@ -1706,6 +1758,81 @@ function schemaDuProjet() {
 }
 $("#p-schema").onclick = () => { const c = schemaDuProjet(); if (c) montrerContenu(blocSchema(c, "schemas/projet.mmd"), `🗺 Schéma de ${S.projet}`); };
 
+// ─── REA : l'agent ti-lex dans l'interface TI-LEX-AL ───
+const OUTILS_REA = {
+  web_search: ["🔍", "Recherche web"], fetch_page: ["🌐", "Lit la page"], describe_image: ["👁", "Regarde l'image"],
+  list_files: ["📂", "Liste les fichiers"], read_file: ["📄", "Lit le fichier"], write_file: ["✏️", "Écrit le fichier"],
+  run_command: ["⌨️", "Lance la commande"],
+};
+async function etatRea() {
+  try {
+    const d = await api("/api/rea");
+    $("#point-rea").classList.toggle("rouge", !d.disponible);
+    if (!d.disponible) { $("#rea-dispo").innerHTML = "⚠ REA n'est pas encore sur la clé : relance l'installateur avec <code>--sans-moteur --sans-modeles</code>."; return; }
+    S.defauts.rea = d.modele; S.reaVision = d.vision;
+    const sel = $("select[data-modele=rea]"); if (sel && !S.choix.rea) sel.value = d.modele;
+    $("#rea-dispo").textContent = `Modèle : ${d.modele} · vision : ${d.vision} · projet : ${S.projet || "rea"}`;
+    majBarreRea({ modele: modeleDe("rea"), vision: d.vision, projet: S.projet || "rea" });
+  } catch (e) {}
+}
+function majBarreRea(i) { $("#barre-rea").textContent = `Local : REA · ${i.modele} · vision ${i.vision} · 📁 ${i.projet} · sur la clé USB-C`; }
+function carteOutil(zone, texte) {
+  const m = String(texte).match(/^\W*(\w+)\((.*)\)\s*$/s), nom = m ? m[1] : "", args = m ? m[2] : texte;
+  const [ico, libelle] = OUTILS_REA[nom] || ["🔧", nom || "Outil"];
+  const el = document.createElement("div"); el.className = "outil";
+  el.innerHTML = `<span class="ico">${ico}</span><span class="nom">${echap(libelle)}</span><code>${echap(args)}</code>`;
+  zone.appendChild(el);
+}
+function cartePermission(zone, o, attentes) {
+  attentes.add(o.id);
+  const carte = document.createElement("div"); carte.className = "carte-cmd";
+  carte.innerHTML = `<div class="titre">REA DEMANDE TA PERMISSION</div><pre>${echap(o.confirmer)}</pre>` +
+    `<div class="actions"><button class="go">✔ Oui</button><button data-non>✕ Non</button></div>`;
+  zone.appendChild(carte); defiler("rea");
+  notifier("🤖 REA demande ta permission");
+  const repondre = async oui => {
+    carte.querySelectorAll("button").forEach(b => b.disabled = true); carte.classList.add("fini");
+    carte.querySelector(".titre").textContent = oui ? "✔ PERMISSION DONNÉE" : "✕ PERMISSION REFUSÉE";
+    attentes.delete(o.id);
+    try { await api("/api/rea/repondre", { id: o.id, oui }); } catch (e) { toast(e.message); }
+  };
+  carte.querySelector(".go").onclick = () => repondre(true);
+  carte.querySelector("[data-non]").onclick = () => repondre(false);
+}
+async function lancerRea(texte) {
+  if (S.enCours) { S.enCours.abort(); return; }
+  const conv = S.convs.rea;
+  if (!conv.titre) conv.titre = texte.slice(0, 60);
+  conv.messages.push({ role: "user", content: texte, affiche: texte });
+  bulleToi("rea", texte);
+  const bulle = bulleIA("rea", ""), z = animationReflexion(bulle, "rea");
+  const outils = document.createElement("div"); outils.className = "rea-outils"; z.reponse.before(outils);
+  const ctrl = new AbortController(), attentes = new Set(); S.enCours = ctrl; boutonEnvoi("rea", true);
+  let reponse = "";
+  try {
+    await flux("/api/rea/demander", { texte, projet: S.projet || "rea", modele: S.choix.rea || "" }, o => {
+      if (o.info) majBarreRea(o.info);
+      if (o.outil) { carteOutil(outils, o.outil); defiler("rea"); }
+      if (o.confirmer) cartePermission(outils, o, attentes);
+      if (o.t) { z.repondre(); reponse = o.t; }
+      if (o.erreur) throw new Error(o.erreur);
+    }, ctrl.signal);
+  } catch (e) {
+    if (e.name === "AbortError") { for (const id of attentes) api("/api/rea/repondre", { id, oui: false }).catch(() => {}); reponse = reponse || "(arrêté)"; }
+    else { z.reponse.innerHTML = `<span class="erreur">Erreur : ${echap(e.message)}</span>`; notifier("Erreur REA : " + e.message); }
+  } finally { z.terminer(); S.enCours = null; boutonEnvoi("rea", false); }
+  if (reponse) {
+    z.reponse.innerHTML = md(reponse); rendreSchemas(z.reponse);
+    conv.messages.push({ role: "assistant", content: reponse }); majTravail(); sauver("rea");
+    if (S.projet) ouvrirProjet(S.projet).catch(() => {});  // REA a peut-être créé des fichiers
+  }
+}
+$$("#vue-rea .puce").forEach(p => p.onclick = () => { const z = $("#vue-rea [data-saisie]"); z.value = p.textContent; envoyer("rea"); });
+$("#rea-oublier").onclick = async () => {
+  try { await api("/api/rea/oublier", { projet: S.projet || "rea" }); } catch (e) {}
+  S.convs.rea = nouvelle("rea"); rendreConversation("rea"); toast("🤖 Nouvelle conversation avec REA");
+};
+
 // ─── Mode réflexion animé : on voit l'IA travailler ───
 const PENSEES = {
   chat: ["Agent AL réfléchit", "analyse ta demande", "cherche la meilleure réponse", "met ses idées en ordre"],
@@ -1714,6 +1841,7 @@ const PENSEES = {
   architecte: ["L'Architecte réfléchit", "découpe le travail", "dessine le plan"],
   codeur: ["Le Codeur réfléchit", "écrit le code", "assemble les fichiers"],
   reviseur: ["Le Réviseur réfléchit", "relit le code", "cherche les bugs"],
+  rea: ["REA réfléchit", "choisit ses outils", "travaille dans le projet", "vérifie le résultat"],
 };
 function animationReflexion(zone, cle) {
   zone.innerHTML = `<div class="pensee"><button class="pensee-tete" type="button"><span class="onde"><i></i><i></i><i></i><i></i></span>` +
@@ -1800,6 +1928,7 @@ function aller(vue) {
   $("#fab").style.display = vue === "cerveau" || vue === "projets" ? "none" : "";
   if (vue === "cerveau") { chargerModeles().catch(() => {}); chargerMemoire(); }
   if (vue === "projets") chargerProjets();
+  if (vue === "rea") etatRea();
   const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
   if (innerWidth < 1200) fermerTiroir();
 }
@@ -1883,7 +2012,7 @@ async function demarrer() {
   }
   listerConvs();
   chargerProjets().catch(() => {});
-  ["chat", "codex", "terminal", "equipe"].forEach(majAccueil);
+  ["chat", "codex", "terminal", "equipe", "rea"].forEach(majAccueil);
   setInterval(() => { api("/api/ping", {}).catch(() => {}); listerConvs(); }, 20000);  // PC et téléphone voient les mêmes conversations
 }
 demarrer();

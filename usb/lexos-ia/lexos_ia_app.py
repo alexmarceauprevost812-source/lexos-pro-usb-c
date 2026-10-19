@@ -312,6 +312,11 @@ class App(BaseHTTPRequestHandler):
                 return self._envoyer(200, liste_modeles())
             if url.path == "/api/conversations":
                 return self._envoyer(200, lister_conversations())
+            if url.path == "/api/rea":
+                if not rea_disponible():
+                    return self._envoyer(200, {"disponible": False})
+                modele, vision = modeles_rea()
+                return self._envoyer(200, {"disponible": True, "modele": modele, "vision": vision})
             if url.path == "/api/memoire":
                 d = charger_memoire()
                 return self._envoyer(200, {"apprendre": d.get("apprendre", True), "entrees": d["entrees"],
@@ -382,6 +387,8 @@ class App(BaseHTTPRequestHandler):
             "/api/projet/github/cloner": self._github_cloner, "/api/projet/github/recuperer": self._github_recuperer,
             "/api/projet/github/envoyer": self._github_envoyer, "/api/projet/github/lier": self._github_lier,
             "/api/apercu": self._apercu_creer, "/api/video-mp4": self._video_mp4,
+            "/api/rea/demander": self._rea_demander, "/api/rea/repondre": self._rea_repondre,
+            "/api/rea/oublier": self._rea_oublier,
             "/api/video-images": self._video_images,
             "/api/ping": lambda d: self._envoyer(200, {"ok": True}), "/api/quitter": self._quitter,
             "/api/telephone": self._telephone,
@@ -688,6 +695,69 @@ class App(BaseHTTPRequestHandler):
                 mp4 = base64.b64encode(f.read()).decode()
         self._envoyer(200, {"mp4": mp4})
 
+    # -- REA --
+    def _rea_demander(self, d):
+        if not rea_disponible():
+            raise ValueError("REA n'est pas sur la clé : relance l'installateur (bash usb/installer-sur-cle.sh … --sans-moteur --sans-modeles)")
+        projet = str(d.get("projet") or "rea").lower()
+        dossier_projet(projet)  # valide le nom
+        texte = str(d.get("texte", "")).strip()
+        if not texte:
+            raise ValueError("demande vide")
+        modele, vision = modeles_rea()
+        modele = str(d.get("modele") or "") or modele
+        if not modele:
+            raise ValueError("aucun modèle sur la clé")
+        entree = agent_rea(projet, modele, vision)
+        if not entree["occupe"].acquire(blocking=False):
+            raise ValueError("REA travaille déjà sur ce projet : attends la fin")
+        try:
+            self._flux_debut()
+
+            def evenement(message):
+                self._ligne({"outil": str(message)})
+
+            def confirmer(question):
+                ident = secrets.token_hex(8)
+                attente = {"ev": threading.Event(), "oui": False}
+                _rea["attentes"][ident] = attente
+                self._ligne({"confirmer": str(question), "id": ident})
+                recu = attente["ev"].wait(900)
+                _rea["attentes"].pop(ident, None)
+                return bool(recu and attente["oui"])
+
+            entree["rappels"]["evenement"], entree["rappels"]["confirmer"] = evenement, confirmer
+            self._ligne({"info": {"modele": modele, "vision": vision, "projet": projet,
+                                  "dossier": str(entree["agent"].config.workspace)}})
+            reponse = entree["agent"].run(texte)
+            self._ligne({"t": reponse})
+            self._ligne({"fin": True})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:  # erreur du moteur ou d'un outil : on la montre dans l'interface
+            try:
+                self._ligne({"erreur": str(e)})
+            except OSError:
+                pass
+        finally:
+            entree["rappels"]["confirmer"] = lambda q: False
+            entree["occupe"].release()
+
+    def _rea_repondre(self, d):
+        attente = _rea["attentes"].get(str(d.get("id", "")))
+        if not attente:
+            raise ValueError("cette demande de permission n'existe plus")
+        attente["oui"] = d.get("oui") is True
+        attente["ev"].set()
+        self._envoyer(200, {"ok": True})
+
+    def _rea_oublier(self, d):
+        projet = str(d.get("projet") or "rea").lower()
+        for (p, _), entree in list(_rea["agents"].items()):
+            if p == projet:
+                entree["agent"].reset()
+        self._envoyer(200, {"ok": True})
+
     # -- Mémoire --
     def _memoire_ajouter(self, d):
         e, nouveau = ajouter_memoire(d.get("texte", ""), d.get("type", "fait"), d.get("source", "manuel"))
@@ -862,6 +932,54 @@ def garder_historique(nom, cible):
         rel = cible.relative_to(dossier_projet(nom).resolve()).as_posix().replace("/", "__")
         shutil.copy2(cible, hist / f"{rel}.{time.strftime('%Y%m%d-%H%M%S')}")
 
+
+# --------------------------------------------------------------------------
+# REA dans l'app : l'agent ti-lex (dépôt ti-lex-ia-REA-) avec l'interface TI-LEX-AL.
+# Les demandes de permission (commande, fichier écrasé) passent par l'interface.
+# --------------------------------------------------------------------------
+DOSSIER_REA = ICI / "rea"
+MODELES_OUTILS = ["qwen3:8b", "qwen3", "llama3.2", "qwen2.5-coder:7b", "qwen2.5-coder", "qwen2.5", "llama3.1", "mistral"]
+MODELES_VISION = ["qwen2.5vl", "qwen3-vl", "gemma3", "llava", "minicpm-v"]
+_rea = {"agents": {}, "attentes": {}, "verrou": threading.Lock()}
+
+
+def rea_disponible():
+    return (DOSSIER_REA / "ti_lex_agent" / "agent.py").exists()
+
+
+def premier_modele(noms, prefixes):
+    for p in prefixes:
+        for n in noms:
+            if n.startswith(p):
+                return n
+    return None
+
+
+def modeles_rea():
+    noms = [m["name"] for m in ia.modeles_installes()]
+    modele = premier_modele(noms, MODELES_OUTILS) or (noms[0] if noms else None)
+    return modele, premier_modele(noms, MODELES_VISION) or modele
+
+
+def agent_rea(projet, modele, vision):
+    """Un agent par projet et par modèle ; la conversation est gardée entre les demandes."""
+    with _rea["verrou"]:
+        cle = (projet, modele)
+        if cle not in _rea["agents"]:
+            for chemin in (DOSSIER_REA, DOSSIER_REA / "libs"):
+                if str(chemin) not in sys.path:
+                    sys.path.insert(0, str(chemin))
+            os.environ.setdefault("TILEX_MEMORY", str(ICI / "memoire" / "rea-memoire.md"))
+            from ti_lex_agent.agent import Agent
+            from ti_lex_agent.config import Config
+            from ti_lex_agent.params import DEFAULTS
+            rappels = {"evenement": lambda m: None, "confirmer": lambda q: False}
+            config = Config(ollama_host="http://" + ia.hote(), model=modele, vision_model=vision,
+                            workspace=DOSSIER_PROJETS / projet)
+            agent = Agent(config, confirm=lambda q: rappels["confirmer"](q),
+                          on_event=lambda m: rappels["evenement"](m), options=dict(DEFAULTS))
+            _rea["agents"][cle] = {"agent": agent, "rappels": rappels, "occupe": threading.Lock()}
+        return _rea["agents"][cle]
 
 # --------------------------------------------------------------------------
 # Mémoire : les IA apprennent de leurs erreurs (tout reste sur la clé)

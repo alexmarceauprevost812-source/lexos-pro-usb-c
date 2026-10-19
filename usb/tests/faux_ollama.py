@@ -92,7 +92,12 @@ def reponse_outils(donnees, texte):
     dernier = messages[-1] if messages else {}
     if donnees.get("tools"):
         if dernier.get("role") == "tool":
+            if dernier.get("tool_name") == "run_command":
+                return {"role": "assistant", "content": "Résultat de la commande :\n" + str(dernier.get("content", ""))[:500]}
             return {"role": "assistant", "content": "Voici les fichiers du projet :\n" + str(dernier.get("content", ""))[:500]}
+        if dernier.get("role") == "user" and "commande" in str(dernier.get("content", "")).lower():
+            return {"role": "assistant", "content": "", "tool_calls": [
+                {"function": {"name": "run_command", "arguments": {"command": "echo Bonjour de REA"}}}]}
         if "fichiers" in str(dernier.get("content", "")).lower():
             return {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "list_files", "arguments": {}}}]}
     propre = texte.split("</think>")[-1]
