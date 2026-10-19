@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+lexos-ia/config.json
+lexos-ia/conversations/
+lexos-ia/ia/

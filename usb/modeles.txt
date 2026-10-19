@@ -1,0 +1,19 @@
+# Modèles IA à installer sur la clé LexOS USB-C
+#
+# Profils (cumulatifs) :  1 = léger   2 = complet (par défaut)   3 = tout
+#   léger   ≈  3 Go  : marche sur presque tous les PC (8 Go de RAM)
+#   complet ≈ 16 Go  : meilleure qualité, 16 Go de RAM conseillés
+#   tout    ≈ 40 Go  : + raisonnement et gros Codex (32 Go de RAM conseillés)
+#
+# Modifie librement : une ligne = un modèle (noms sur ollama.com/library).
+# Le rôle sert seulement d'indication ; on choisit le modèle du Chat et de
+# Codex dans LexOS IA → Modèles.
+#
+# profil  modèle                 rôle     taille   description
+1         llama3.2:3b            chat     2,0 Go   Chat rapide et léger
+1         qwen2.5-coder:1.5b     codex    1,0 Go   Codex léger
+2         qwen3:8b               chat     5,2 Go   Chat de qualité, bon en français
+2         qwen2.5-coder:7b       codex    4,7 Go   Codex principal
+2         gemma3:4b              images   3,3 Go   Comprend aussi les images
+3         deepseek-r1:8b         raison   5,2 Go   Raisonnement pas à pas
+3         qwen3-coder:30b        codex    19 Go    Gros Codex (PC puissant)

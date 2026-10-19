@@ -60,7 +60,11 @@ def ollama_generate(model, prompt):
     # Adresse fixe locale : les textes ne sont pas envoyés à un service cloud.
     payload = json.dumps({'model': model, 'stream': False, 'prompt': prompt,
                           'system': 'Réponds en français. Aide à rédiger et corriger les textes.'}).encode()
-    request = urllib.request.Request('http://127.0.0.1:11434/api/generate',
+    # LEXOS_IA_HOTE est fourni par ACTIVER-IA quand les IA tournent depuis la clé USB-C.
+    hote = os.environ.get('LEXOS_IA_HOTE', '127.0.0.1:11434')
+    if not re.fullmatch(r'127\.0\.0\.1:\d{1,5}', hote):
+        hote = '127.0.0.1:11434'
+    request = urllib.request.Request(f'http://{hote}/api/generate',
                                      data=payload, headers={'Content-Type': 'application/json'})
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     with opener.open(request, timeout=180) as response:
