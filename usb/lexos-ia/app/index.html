@@ -233,6 +233,22 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
   .p-gauche{width:auto;border-right:0;border-bottom:1px solid var(--ligne);overflow:visible}
   .p-editeur .editeur{min-height:55vh;flex:none}
 }
+/* ── Schémas (Mermaid, animés) ────────────── */
+.schema{border:1px solid #2e2e2e;border-radius:14px;overflow:hidden;margin:.6em 0;background:#0d0d0d}
+.schema .tete{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#161616;font-size:13px;color:var(--orange2);flex-wrap:wrap}
+.schema .tete .nom{flex:1;font-family:var(--mono)}
+.schema .tete button{border:1px solid #333;border-radius:8px;padding:3px 10px;font-size:12px;color:#ddd}
+.schema .tete button:hover{border-color:var(--orange);color:var(--orange)}
+.schema .dessin{padding:14px;overflow:auto;display:flex;justify-content:center}
+.schema .dessin svg{max-width:100%;height:auto}
+.schema .attente{color:var(--gris);font-style:italic;font-family:var(--mono);font-size:13px;white-space:pre-wrap}
+.schema .erreur-schema{color:var(--jaune);font-size:13px;margin-bottom:8px}
+.schema .anim{transition:opacity .45s ease}
+.schema .anim.cache{opacity:0}
+.schema path.trait{transition:stroke-dashoffset .6s ease}
+.feuille{width:100%;max-width:900px;align-self:flex-start;background:#0b0b0b;border:1px solid #222;border-radius:14px;padding:18px 22px;color:#eee;line-height:1.6}
+.feuille h4{color:var(--orange2)}
+
 /* ── Studio (aperçu) ──────────────────────── */
 #travail .onglets{display:flex;gap:4px;background:var(--carte);border-radius:999px;padding:3px}
 #travail .onglets button{padding:6px 12px;border-radius:999px;font-size:13px;color:var(--gris)}
@@ -524,6 +540,7 @@ html.telephone .pc-seulement{display:none!important}
         <div class="p-titre">FICHIERS</div>
         <div class="p-fichiers" id="p-fichiers"><div class="vide">Crée ou choisis un projet.</div></div>
         <button class="btn-petit" id="p-nouveau-fichier">＋ Nouveau fichier</button>
+        <button class="btn-petit" id="p-schema">🗺 Schéma du projet</button>
       </div>
       <div class="p-editeur">
         <div class="p-tete">
@@ -722,6 +739,11 @@ function md(t) {
     const f = avant.match(/[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**\s*$/i);
     html += texteMd(f ? avant.slice(0, f.index) : avant);
     const langue = (m[1] || "").toLowerCase(), nom = f ? f[1].trim() : "";
+    if (langue === "mermaid" || /\.mmd$/i.test(nom)) {
+      html += blocSchema(m[2], nom);
+      dernier = re.lastIndex; n++;
+      continue;
+    }
     const c = colorer(m[2], langue || langueDuNom(nom));
     const lignes = m[2].replace(/\n$/, "").split("\n").length;
     html += `<div class="bloc-code"><div class="tete"><span class="pastille-lang" style="background:${COULEUR_LANG[c.langue] || "#666"}"></span><span class="nom">${echap(nom || langue || c.langue || "code")}</span>` +
@@ -770,7 +792,7 @@ function rendreConversation(mode) {
     else if (m.role === "verdict") verdict(m.content, m.ok);
     else if (m.role === "assistant") bulleIA(mode, md(mode === "terminal" ? pourTerminal(m.content) : m.content));
   }
-  majAccueil(mode); majTravail();
+  majAccueil(mode); majTravail(); rendreSchemas(fil(mode));
 }
 
 // ─── Modèles ───
@@ -880,7 +902,7 @@ async function reponseIA(mode, modele) {
     if (e.name === "AbortError") texte += " [coupé]";
     else { bulle.innerHTML = `<span class="erreur">Erreur IA : ${echap(e.message)}</span>`; notifier("Erreur IA : " + e.message); texte = ""; }
   } finally { termine = true; S.enCours = null; boutonEnvoi(mode, false); }
-  if (texte) { bulle.innerHTML = montrer(texte); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
+  if (texte) { bulle.innerHTML = montrer(texte); rendreSchemas(bulle); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
   return texte;
 }
 async function envoyer(mode) {
@@ -930,7 +952,7 @@ for (const mode of ["chat", "codex", "terminal", "equipe"]) {
 // ─── Équipe IA : Architecte → Codeur → Réviseur (→ corrections) ───
 const ROLES = {
   architecte: { nom: "ARCHITECTE", ico: "🧭", c: "#4FC3F7", systeme:
-    "Tu es l'Architecte d'une équipe de développeurs IA (LexOS). Tu ne codes pas : tu écris un PLAN court et clair, en français, pour le Codeur : 1) ce qu'il faut construire, 2) les fichiers à créer avec leur nom, 3) les étapes, 4) les pièges à éviter. Maximum 15 lignes." },
+    "Tu es l'Architecte d'une équipe de développeurs IA (LexOS). Tu ne codes pas : tu écris un PLAN court et clair, en français, pour le Codeur : 1) ce qu'il faut construire, 2) les fichiers à créer avec leur nom, 3) les étapes, 4) les pièges à éviter. Maximum 15 lignes. Ajoute ensuite le schéma du plan dans un bloc ```mermaid (flowchart TD, étiquettes courtes en français entre guillemets)." },
   codeur: { nom: "CODEUR", ico: "💻", c: "#FF7A00", systeme:
     "Tu es le Codeur d'une équipe de développeurs IA (LexOS). Tu écris du code complet, propre et fonctionnel en suivant le plan de l'Architecte. Pour chaque fichier, écris une ligne « Fichier: chemin/du/fichier » puis le bloc de code complet, sans rien couper. Explications très courtes, en français." },
   reviseur: { nom: "RÉVISEUR", ico: "🔍", c: "#35D64C", systeme:
@@ -975,7 +997,7 @@ async function diffuser(cible, modele, messages, ctrl) {
       if (o.t) { texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
       if (o.erreur) throw new Error(o.erreur);
     }, ctrl.signal);
-  } finally { fini = true; cible.innerHTML = md(texte || "…"); }
+  } finally { fini = true; cible.innerHTML = md(texte || "…"); rendreSchemas(cible); }
   return texte;
 }
 async function agent(role, contenu, ctrl) {
@@ -1086,6 +1108,7 @@ function majTravail() {
   for (const mode of ["chat", "codex", "equipe"]) for (const m of S.convs[mode].messages) if (m.role === "assistant" && m.agent !== "reviseur") blocs.push(...extraireBlocs(m.content));
   $("#contenu-travail").innerHTML = blocs.length ? blocs.map(b => "```" + b.langue + "\n" + b.code + "```").map((t, i) => md((blocs[i].chemin ? "Fichier: " + blocs[i].chemin + "\n" : "") + t)).join("")
     : '<div class="vide">Le code proposé par l\'IA apparaîtra ici.</div>';
+  rendreSchemas($("#contenu-travail"));
 }
 function ouvrirStudio(onglet) {
   $("#travail").classList.add("ouvert");
@@ -1106,6 +1129,14 @@ function montrerApercu(url, titre) {
   f.setAttribute("sandbox", "allow-scripts allow-forms allow-modals allow-popups");
   f.title = "Aperçu"; f.src = url;
   cadre.appendChild(f);
+  ouvrirStudio("apercu");
+}
+function montrerContenu(html, titre) {
+  S.apercuUrl = null;
+  $("#titre-apercu").textContent = titre;
+  const cadre = $("#cadre-apercu");
+  cadre.innerHTML = `<div class="feuille">${html}</div>`;
+  rendreSchemas(cadre);
   ouvrirStudio("apercu");
 }
 async function apercuHtml(code) {
@@ -1342,7 +1373,12 @@ async function enregistrerDansProjet(chemin, code, silencieux) {
   } catch (e) { toast(e.message); }
 }
 $("#p-enregistrer").onclick = enregistrerFichier;
-$("#p-apercu").onclick = () => apercuProjet(S.fichierOuvert && /\.html?$/i.test(S.fichierOuvert) ? S.fichierOuvert : "index.html");
+$("#p-apercu").onclick = () => {
+  const f = S.fichierOuvert || "";
+  if (/\.mmd$/i.test(f)) return montrerContenu(blocSchema(ZONE.value, f), `🗺 ${S.projet}/${f}`);
+  if (/\.(md|markdown)$/i.test(f)) return montrerContenu(md(ZONE.value), `📄 ${S.projet}/${f}`);
+  apercuProjet(/\.html?$/i.test(f) ? f : "index.html");
+};
 $("#p-codex").onclick = () => {
   if (!S.fichierOuvert) return toast("Ouvre d'abord un fichier");
   S.pieces.codex.push({ type: "fichier", nom: S.fichierOuvert, donnees: ZONE.value });
@@ -1353,6 +1389,99 @@ $("#p-suppr").onclick = async () => {
   try { await api("/api/projet/supprimer-fichier", { nom: S.projet, chemin: S.fichierOuvert }); fermerFichier(); await ouvrirProjet(S.projet); toast("🗑 Supprimé"); }
   catch (e) { toast(e.message); }
 };
+
+// ─── Moteur de schémas : Mermaid (sur la clé), dessiné puis animé étape par étape ───
+let promesseMermaid = null;
+function chargerMermaid() {
+  if (!promesseMermaid) promesseMermaid = new Promise((ok, ko) => {
+    const sc = document.createElement("script"); sc.src = "vendor/mermaid.min.js";
+    sc.onload = () => {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", flowchart: { curve: "basis" },
+        themeVariables: { background: "#0d0d0d", primaryColor: "#1b1b1b", primaryTextColor: "#f4f4f4", primaryBorderColor: "#FF7A00",
+          lineColor: "#FF9A3D", secondaryColor: "#141414", tertiaryColor: "#101010", clusterBkg: "#121212", clusterBorder: "#444",
+          noteBkgColor: "#1b1b1b", noteTextColor: "#f4f4f4", fontFamily: "Space Grotesk, sans-serif", fontSize: "15px" } });
+      ok(window.mermaid);
+    };
+    sc.onerror = () => ko(new Error("moteur de schémas introuvable"));
+    document.head.appendChild(sc);
+  });
+  return promesseMermaid;
+}
+function blocSchema(code, nom) {
+  return `<div class="schema" data-mermaid="${encodeURIComponent(code)}"><div class="tete"><span>🗺</span><span class="nom">${echap(nom || "schéma")}</span>` +
+    `<button data-rejouer>▶ Rejouer</button><button data-image>⬇ Image</button><button data-voir-code>&lt;/&gt; Code</button>` +
+    `${S.projet ? `<button data-schema-projet data-chemin="${echap(nom || "")}">💾 Projet</button>` : ""}</div>` +
+    `<div class="dessin"><pre class="attente">✏️ dessin du schéma…</pre></div></div>`;
+}
+let numSchema = 0;
+async function rendreSchemas(racine) {
+  if (!racine) return;
+  const blocs = [...racine.querySelectorAll(".schema[data-mermaid]:not([data-fait])")];
+  if (!blocs.length) return;
+  let mm;
+  try { mm = await chargerMermaid(); } catch (e) { return; }
+  for (const b of blocs) {
+    b.dataset.fait = "1";
+    const code = decodeURIComponent(b.dataset.mermaid), zone = b.querySelector(".dessin"), id = "schema-" + (++numSchema);
+    try {
+      const { svg } = await mm.render(id, code);
+      zone.innerHTML = svg;
+      animerSchema(zone.querySelector("svg"));
+    } catch (e) {
+      document.getElementById("d" + id)?.remove();
+      zone.innerHTML = `<div><div class="erreur-schema">⚠ Schéma illisible : l'IA a fait une erreur de syntaxe. Voici son code :</div><pre class="attente">${echap(code)}</pre></div>`;
+    }
+  }
+}
+function animerSchema(svg) {
+  if (!svg) return;
+  const noeuds = [...svg.querySelectorAll("g.node, g.cluster, g.actor, g.note, g.label-container, text.actor")];
+  const traits = [...svg.querySelectorAll("path.flowchart-link, .edgePaths path, path.messageLine0, path.messageLine1, line")];
+  const etiquettes = [...svg.querySelectorAll("g.edgeLabel, text.messageText")];
+  const ordre = [];
+  const n = Math.max(noeuds.length, traits.length);
+  for (let i = 0; i < n; i++) { if (noeuds[i]) ordre.push(noeuds[i]); if (traits[i]) ordre.push(traits[i]); if (etiquettes[i]) ordre.push(etiquettes[i]); }
+  if (!ordre.length) return;
+  for (const el of ordre) {
+    if (el.tagName === "path" && el.getTotalLength) {
+      const l = el.getTotalLength(); el.classList.add("trait");
+      el.style.strokeDasharray = l; el.style.strokeDashoffset = l;
+    } else { el.classList.add("anim", "cache"); }
+  }
+  ordre.forEach((el, i) => setTimeout(() => {
+    if (el.classList.contains("trait")) el.style.strokeDashoffset = 0; else el.classList.remove("cache");
+  }, 250 + i * 260));
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-rejouer],[data-image],[data-voir-code],[data-schema-projet]");
+  if (!b) return;
+  const bloc = b.closest(".schema"), code = decodeURIComponent(bloc.dataset.mermaid), svg = bloc.querySelector("svg");
+  if (b.dataset.rejouer !== undefined) { if (svg) { svg.querySelectorAll(".trait").forEach(p => { p.style.transition = "none"; p.style.strokeDashoffset = p.style.strokeDasharray; p.getBoundingClientRect(); p.style.transition = ""; }); svg.querySelectorAll(".anim").forEach(x => x.classList.add("cache")); const els = [...svg.querySelectorAll(".anim, .trait")]; els.forEach((el, i) => setTimeout(() => { if (el.classList.contains("trait")) el.style.strokeDashoffset = 0; else el.classList.remove("cache"); }, 250 + i * 260)); } }
+  else if (b.dataset.image !== undefined) { if (svg) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg.outerHTML], { type: "image/svg+xml" })); a.download = "schema.svg"; a.click(); } }
+  else if (b.dataset.voirCode !== undefined) { const z = bloc.querySelector(".dessin"); const vu = z.dataset.code === "1"; z.dataset.code = vu ? "" : "1"; if (vu) { delete bloc.dataset.fait; z.innerHTML = '<pre class="attente">✏️ dessin du schéma…</pre>'; rendreSchemas(bloc.parentElement); } else z.innerHTML = `<pre class="attente">${echap(code)}</pre>`; }
+  else enregistrerDansProjet(b.dataset.chemin || prompt(`Nom du schéma dans 📁 ${S.projet} :`, "schemas/plan.mmd"), code);
+});
+function schemaDuProjet() {
+  if (!S.projetInfo) return toast("Choisis un projet");
+  const etiquette = t => String(t).replace(/"/g, "'");
+  const lignes = ["flowchart LR", `  racine(["📁 ${etiquette(S.projet)}"])`, "  style racine fill:#2a1400,stroke:#FF7A00,stroke-width:2px"];
+  const vus = new Map(); let n = 0;
+  for (const f of S.projetInfo.fichiers.slice(0, 60)) {
+    const parts = f.chemin.split("/"); let parent = "racine", chemin = "";
+    parts.forEach((part, i) => {
+      chemin += (chemin ? "/" : "") + part;
+      if (!vus.has(chemin)) {
+        const k = "n" + (n++), fichier = i === parts.length - 1; vus.set(chemin, k);
+        lignes.push(fichier ? `  ${k}["${etiquette(part)}"]` : `  ${k}[/"📂 ${etiquette(part)}"/]`);
+        lignes.push(`  ${parent} --> ${k}`);
+        lignes.push(`  style ${k} stroke:${fichier ? couleurFichier(part) : "#888"},stroke-width:2px`);
+      }
+      parent = vus.get(chemin);
+    });
+  }
+  return lignes.join("\n");
+}
+$("#p-schema").onclick = () => { const c = schemaDuProjet(); if (c) montrerContenu(blocSchema(c, "schemas/projet.mmd"), `🗺 Schéma de ${S.projet}`); };
 
 // ─── Navigation, tiroir, thème, notifications ───
 function aller(vue) {

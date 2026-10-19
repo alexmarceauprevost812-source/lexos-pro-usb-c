@@ -90,7 +90,9 @@ def systeme(mode, dossier):
     return ("Tu es Agent AL, l'assistant de TI-LEX-AL (LexOS IA). Tu fonctionnes 100 % hors ligne "
             "depuis une clé USB-C. Réponds en français québécois clair et naturel (ou dans la langue de "
             "l'utilisateur s'il en change). Sois direct et concis. Si on t'envoie une photo, regarde-la "
-            "attentivement, décris ce que tu vois et réponds à la question.")
+            "attentivement, décris ce que tu vois et réponds à la question. Quand on te demande un plan, "
+            "un schéma, une organisation ou des étapes de travail, ajoute un schéma dans un bloc ```mermaid "
+            "(flowchart TD, étiquettes courtes en français entre guillemets).")
 
 
 def nettoyer_messages(messages):

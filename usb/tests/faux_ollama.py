@@ -41,6 +41,13 @@ def reponse_auto(messages):
         if "corrigé" in dernier:
             return "APPROUVÉ : la liste vide est gérée et le code est correct."
         return "CORRECTIONS :\n1. `moyenne([])` plante (division par zéro) : retourne 0.0 si la liste est vide."
+    if "Agent AL" in systeme and ("plan" in dernier.lower() or "schéma" in dernier.lower()):
+        return ("Voici le plan de travail pour ton site météo :\n\n```mermaid\nflowchart TD\n"
+                "  A[\"Idée : site météo\"] --> B[\"Maquette de la page\"]\n"
+                "  B --> C[\"index.html + style\"]\n  C --> D{\"Données météo ?\"}\n"
+                "  D -->|\"en ligne\"| E[\"API météo\"]\n  D -->|\"hors ligne\"| F[\"Valeurs locales\"]\n"
+                "  E --> G[\"Tests sur téléphone\"]\n  F --> G\n  G --> H[\"Envoi sur GitHub\"]\n```\n\n"
+                "On commence par la maquette, puis la page, puis les données.")
     if "CodexTerminal" in systeme:
         if dernier.startswith("TÂCHE"):
             return ("Je crée le fichier puis j'affiche son contenu.\n```bash\n"
