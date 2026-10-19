@@ -113,6 +113,26 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .bloc-code .tete button:hover{border-color:var(--orange);color:var(--orange)}
 .bloc-code pre{margin:0;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.5;color:#e9e9e9}
 .bloc-code pre code{background:none;padding:0}
+.bloc-code .tete .pastille-lang{width:10px;height:10px;border-radius:50%;flex:none}
+.bloc-code .corps{display:flex;overflow-x:auto}
+.bloc-code .nums{flex:none;padding:12px 10px 12px 14px;text-align:right;color:#4a4a4a;font-family:var(--mono);font-size:13.5px;line-height:1.5;user-select:none;white-space:pre;border-right:1px solid #1f1f1f}
+.bloc-code .corps pre{flex:1;overflow:visible}
+/* Couleurs du code — thème LexOS */
+.hljs-keyword,.hljs-selector-tag,.hljs-doctag,.hljs-meta .hljs-keyword{color:#FF7A00;font-weight:600}
+.hljs-string,.hljs-template-string,.hljs-regexp,.hljs-addition,.hljs-meta .hljs-string{color:#35D64C}
+.hljs-number,.hljs-literal,.hljs-symbol,.hljs-bullet{color:#C792EA}
+.hljs-comment,.hljs-quote{color:#6B7280;font-style:italic}
+.hljs-title,.hljs-title.function_,.hljs-section{color:#4FC3F7}
+.hljs-title.class_,.hljs-type,.hljs-built_in,.hljs-class .hljs-title{color:#FFCB6B}
+.hljs-attr,.hljs-attribute,.hljs-selector-attr{color:#FFCB6B}
+.hljs-property,.hljs-selector-class,.hljs-selector-id{color:#F78C6C}
+.hljs-variable,.hljs-template-variable,.hljs-params{color:#EEFFFF}
+.hljs-meta,.hljs-meta .hljs-keyword{color:#FF6AC1}
+.hljs-name,.hljs-tag{color:#FF9A3D}
+.hljs-deletion{color:#F07178}
+.hljs-subst{color:#EEFFFF}
+.hljs-punctuation,.hljs-operator{color:#89DDFF}
+.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}
 
 /* ── Barre d'écriture (ti-lex) ────────────── */
 .compo-zone{padding:8px 16px calc(14px + env(safe-area-inset-bottom))}
@@ -411,6 +431,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 <input type="file" id="choix-photo" accept="image/*" multiple hidden>
 <input type="file" id="choix-fichier" multiple hidden>
 
+<script src="vendor/highlight.min.js"></script>
 <script>
 "use strict";
 // ─── Jeton secret (dans l'adresse #t=…), jamais envoyé ailleurs ───
@@ -472,6 +493,25 @@ function telechargerTexte(nom, texte) {
 }
 const EXT = { python: "py", py: "py", javascript: "js", js: "js", typescript: "ts", html: "html", css: "css", bash: "sh", sh: "sh", shell: "sh", json: "json", markdown: "md", md: "md", java: "java", c: "c", cpp: "cpp", rust: "rs", go: "go", sql: "sql", yaml: "yml", php: "php", kotlin: "kt" };
 
+// ─── Couleurs du code (highlight.js, sur la clé : marche hors ligne) ───
+const COULEUR_LANG = { python: "#3776AB", javascript: "#F7DF1E", typescript: "#3178C6", bash: "#35D64C", shell: "#35D64C",
+  xml: "#E34F26", css: "#2965F1", scss: "#CC6699", json: "#FFB13B", rust: "#DEA584", go: "#00ADD8", java: "#B07219",
+  c: "#A8B9CC", cpp: "#F34B7D", csharp: "#178600", php: "#777BB4", ruby: "#CC342D", sql: "#E38C00", yaml: "#CB171E",
+  markdown: "#FF7A00", kotlin: "#A97BFF", swift: "#F05138", lua: "#000080" };
+const EXT_LANG = { py: "python", js: "javascript", mjs: "javascript", ts: "typescript", sh: "bash", html: "xml", htm: "xml",
+  css: "css", json: "json", rs: "rust", go: "go", java: "java", c: "c", h: "c", cpp: "cpp", cs: "csharp", php: "php",
+  rb: "ruby", sql: "sql", yml: "yaml", yaml: "yaml", md: "markdown", kt: "kotlin", swift: "swift", lua: "lua" };
+function langueDuNom(nom) { const e = (nom || "").split(".").pop().toLowerCase(); return EXT_LANG[e] || ""; }
+function colorer(code, langue) {
+  const h = window.hljs, id = EXT_LANG[langue] || langue;
+  if (!h || code.length > 60000) return { html: echap(code), langue: id };
+  try {
+    if (id && h.getLanguage(id)) return { html: h.highlight(code, { language: id, ignoreIllegals: true }).value, langue: id };
+    const r = h.highlightAuto(code, ["python", "javascript", "bash", "xml", "css", "json", "sql", "java", "cpp", "rust", "go", "php", "yaml", "typescript"]);
+    return { html: r.value, langue: r.language || id };
+  } catch (e) { return { html: echap(code), langue: id }; }
+}
+
 // ─── Markdown sûr (tout est échappé) ───
 const RE_BLOC = /(?:^|\n)[ \t]*(?:[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**[ \t]*\n+)?```([\w+.#-]*)[^\n]*\n([\s\S]*?)(?:```|$)/gi;
 function extraireBlocs(t) { const b = []; let m; RE_BLOC.lastIndex = 0; while ((m = RE_BLOC.exec(t))) b.push({ chemin: m[1] ? m[1].trim() : null, langue: (m[2] || "").toLowerCase(), code: m[3] }); return b; }
@@ -506,9 +546,11 @@ function md(t) {
     const f = avant.match(/[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**\s*$/i);
     html += texteMd(f ? avant.slice(0, f.index) : avant);
     const langue = (m[1] || "").toLowerCase(), nom = f ? f[1].trim() : "";
-    html += `<div class="bloc-code"><div class="tete"><span class="nom">${echap(nom || langue || "code")}</span>` +
-      `<button data-copier="${n}">Copier</button><button data-telecharger="${n}" data-nom="${echap(nom || ("code." + (EXT[langue] || "txt")))}">Télécharger</button></div>` +
-      `<pre><code>${echap(m[2])}</code></pre></div>`;
+    const c = colorer(m[2], langue || langueDuNom(nom));
+    const lignes = m[2].replace(/\n$/, "").split("\n").length;
+    html += `<div class="bloc-code"><div class="tete"><span class="pastille-lang" style="background:${COULEUR_LANG[c.langue] || "#666"}"></span><span class="nom">${echap(nom || langue || c.langue || "code")}</span>` +
+      `<button data-copier="${n}">Copier</button><button data-telecharger="${n}" data-nom="${echap(nom || ("code." + (EXT[langue] || EXT[c.langue] || "txt")))}">Télécharger</button></div>` +
+      `<div class="corps">${lignes > 1 ? `<div class="nums">${Array.from({ length: lignes }, (_, i) => i + 1).join("\n")}</div>` : ""}<pre><code class="hljs">${c.html}</code></pre></div></div>`;
     dernier = re.lastIndex; n++;
     if (m[0].length === 0) break;
   }
