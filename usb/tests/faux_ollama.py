@@ -9,13 +9,15 @@ import json
 import os
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODELES = [{"name": "llama3.2:3b", "size": 2_000_000_000},
            {"name": "qwen2.5-coder:7b", "size": 4_700_000_000},
            {"name": "gemma3:4b", "size": 3_300_000_000}]
 VISION = {"gemma3:4b"}
-REPONSE_DEFAUT = "<think>je réfléchis</think>Bonjour, ici l'IA de la clé !"
+REPONSE_DEFAUT = ("<think>L'utilisateur me salue. Je vais répondre en français québécois, de façon chaleureuse "
+                  "et courte, puis lui offrir mon aide.</think>Bonjour, ici l'IA de la clé !")
 
 
 def morceaux(texte, n=4):
@@ -130,7 +132,10 @@ class Gestionnaire(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")
             self.end_headers()
+            pause = getattr(self.server, "delai", 0)
             for m in morceaux(texte):
+                if pause:
+                    time.sleep(pause)
                 ligne = {"model": donnees.get("model"), "message": {"role": "assistant", "content": m}, "done": False}
                 self.wfile.write((json.dumps(ligne) + "\n").encode())
             self.wfile.write((json.dumps({"message": {"role": "assistant", "content": ""}, "done": True}) + "\n").encode())

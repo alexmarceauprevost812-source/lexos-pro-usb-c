@@ -82,6 +82,41 @@ def liste_modeles():
     }
 
 
+class FiltrePensee:
+    """Sépare la réponse visible des pensées <think>…</think> (montrées dans le mode réflexion)."""
+    OUVRE, FERME = "<think>", "</think>"
+
+    def __init__(self):
+        self.dedans = False
+        self.tampon = ""
+
+    def nourrir(self, morceau):
+        self.tampon += morceau
+        visible = pensee = ""
+        while True:
+            balise = self.FERME if self.dedans else self.OUVRE
+            i = self.tampon.find(balise)
+            if i >= 0:
+                if self.dedans:
+                    pensee += self.tampon[:i]
+                else:
+                    visible += self.tampon[:i]
+                self.tampon = self.tampon[i + len(balise):]
+                self.dedans = not self.dedans
+                continue
+            coupe = len(self.tampon) - ia._debut_partiel(self.tampon, balise)
+            if self.dedans:
+                pensee += self.tampon[:coupe]
+            else:
+                visible += self.tampon[:coupe]
+            self.tampon = self.tampon[coupe:]
+            return visible, pensee
+
+    def fin(self):
+        reste, self.tampon = self.tampon, ""
+        return ("", reste) if self.dedans else (reste, "")
+
+
 def systeme(mode, dossier):
     if mode == "codex":
         return ia.systeme_codex(dossier)
@@ -365,22 +400,24 @@ class App(BaseHTTPRequestHandler):
         if souvenirs:
             messages[0] = {"role": "system", "content": messages[0]["content"] + "\n\n" + souvenirs}
         self._flux_debut()
-        filtre = ia.FiltreReflexion()
-        reflexion = False
+        filtre = FiltrePensee()
         try:
             for obj in ia.flux("/api/chat", {"model": d.get("modele"), "messages": messages, "stream": True}):
                 msg = obj.get("message") or {}
-                if (msg.get("thinking") or filtre.dedans) and not reflexion:
-                    reflexion = True
-                    self._ligne({"reflexion": True})
-                texte = filtre.nourrir(msg.get("content") or "")
-                if texte:
-                    self._ligne({"t": texte})
+                if msg.get("thinking"):  # modèles qui réfléchissent (champ séparé)
+                    self._ligne({"pensee": msg["thinking"]})
+                visible, pensee = filtre.nourrir(msg.get("content") or "")
+                if pensee:  # pensées écrites entre <think> et </think>
+                    self._ligne({"pensee": pensee})
+                if visible:
+                    self._ligne({"t": visible})
                 if obj.get("done"):
                     break
-            reste = filtre.fin()
-            if reste:
-                self._ligne({"t": reste})
+            visible, pensee = filtre.fin()
+            if pensee:
+                self._ligne({"pensee": pensee})
+            if visible:
+                self._ligne({"t": visible})
             self._ligne({"fin": True})
         except ia.ErreurIA as e:
             self._ligne({"erreur": str(e)})

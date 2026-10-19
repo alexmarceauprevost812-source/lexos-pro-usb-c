@@ -93,6 +93,9 @@ class TestApp(unittest.TestCase):
                                            "messages": [{"role": "user", "content": "allo"}]})
         texte = "".join(l.get("t", "") for l in lignes)
         self.assertEqual(texte, "Bonjour, ici l'IA de la clé !")
+        pensee = "".join(l.get("pensee", "") for l in lignes)  # mode réflexion : les pensées arrivent à part
+        self.assertTrue(pensee.startswith("L'utilisateur me salue"), pensee)
+        self.assertNotIn("<think>", texte + pensee)
         self.assertTrue(lignes[-1].get("fin"))
         envoye = self.faux.requetes[-1][1]["messages"]
         self.assertIn("Agent AL", envoye[0]["content"])  # l'invite système est ajoutée

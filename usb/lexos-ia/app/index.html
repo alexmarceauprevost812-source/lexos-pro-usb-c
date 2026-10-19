@@ -319,6 +319,33 @@ html.telephone .pc-seulement{display:none!important}
 .garde{color:var(--gris);font-size:13px;margin:12px 0;line-height:1.5}
 .actions-tel{display:flex;gap:8px;flex-wrap:wrap}
 
+/* ── Mode réflexion animé ─────────────────── */
+.pensee{margin-bottom:8px}
+.pensee-tete{display:inline-flex;align-items:center;gap:10px;font-size:14px;color:var(--gris);padding:5px 12px 5px 10px;border-radius:999px;border:1px solid var(--ligne);background:rgba(255,122,0,.05)}
+.pensee-titre{font-style:italic;background:linear-gradient(90deg,#8a8a8a 0%,#8a8a8a 35%,#fff 45%,#FF9A3D 50%,#8a8a8a 60%,#8a8a8a 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:reflet 2.4s linear infinite}
+:root[data-theme=jour] .pensee-titre{background-image:linear-gradient(90deg,#555 0%,#555 35%,#000 45%,#FF7A00 50%,#555 60%,#555 100%)}
+.pensee.finie .pensee-titre{animation:none;background:none;color:var(--gris)}
+.chrono{font-family:var(--mono);font-size:12px;color:var(--gris2)}
+.fleche{font-size:11px;color:var(--gris2);transition:transform .2s}
+.pensee:not(.a-pense) .fleche{display:none}
+.pensee.ouverte .fleche{transform:rotate(180deg)}
+.onde{display:inline-flex;gap:3px;align-items:center;height:16px}
+.onde i{display:block;width:3px;height:4px;border-radius:2px;background:var(--orange);animation:onde 1s ease-in-out infinite}
+.onde i:nth-child(2){animation-delay:.12s}.onde i:nth-child(3){animation-delay:.24s}.onde i:nth-child(4){animation-delay:.36s}
+.pensee.finie .onde{display:none}
+.pensee-texte{display:none;margin-top:8px;padding:8px 12px;border-left:2px solid var(--orange);color:var(--gris);font-style:italic;font-size:13.5px;line-height:1.5;white-space:pre-wrap;max-height:170px;overflow:auto;background:rgba(255,122,0,.03);border-radius:0 10px 10px 0}
+.pensee.ouverte .pensee-texte{display:block}
+.pensee.finie.ouverte .pensee-texte{max-height:380px}
+.points{display:inline-flex;gap:6px;padding:8px 2px}
+.points i{width:8px;height:8px;border-radius:50%;background:var(--orange);animation:point 1.2s infinite ease-in-out}
+.points i:nth-child(2){animation-delay:.2s}.points i:nth-child(3){animation-delay:.4s}
+.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:halo 1.3s ease-out infinite;border-radius:50%}
+@keyframes onde{0%,100%{height:4px;opacity:.45}50%{height:16px;opacity:1}}
+@keyframes point{0%,80%,100%{transform:scale(.5);opacity:.35}40%{transform:scale(1);opacity:1}}
+@keyframes reflet{0%{background-position:100% 0}100%{background-position:0 0}}
+@keyframes halo{0%{box-shadow:0 0 0 0 rgba(255,122,0,.6)}100%{box-shadow:0 0 0 13px rgba(255,122,0,0)}}
+@media (prefers-reduced-motion:reduce){.onde i,.points i,.pensee-titre,.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:none}}
+
 /* ── Mémoire ───────────────────────────────── */
 .memo-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .memo-compte{flex:1;color:var(--gris);font-size:14px}
@@ -918,22 +945,23 @@ function boutonEnvoi(mode, enCours) {
   else b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
 }
 async function reponseIA(mode, modele) {
-  const bulle = bulleIA(mode, '<span class="curseur"></span>');
+  const bulle = bulleIA(mode, "");
+  const z = animationReflexion(bulle, mode);
   const ctrl = new AbortController(); S.enCours = ctrl; boutonEnvoi(mode, true);
   let texte = "", prevu = false, termine = false;
   const montrer = t => mode === "terminal" ? md(pourTerminal(t)) : md(t);
-  const peindre = () => { prevu = false; if (termine) return; bulle.innerHTML = montrer(texte) + '<span class="curseur"></span>'; defiler(mode); };
+  const peindre = () => { prevu = false; if (termine) return; z.reponse.innerHTML = montrer(texte) + '<span class="curseur"></span>'; defiler(mode); };
   try {
     await flux("/api/chat", { mode, modele, messages: S.convs[mode].messages.map(m => ({ role: m.role, content: m.content, images: m.images })) }, o => {
-      if (o.reflexion && !texte) bulle.innerHTML = '<span class="reflexion">Agent AL réfléchit…</span><span class="curseur"></span>';
-      if (o.t) { texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
+      if (o.pensee) { z.pensee(o.pensee); defiler(mode); }
+      if (o.t) { z.repondre(); texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
       if (o.erreur) throw new Error(o.erreur);
     }, ctrl.signal);
   } catch (e) {
     if (e.name === "AbortError") texte += " [coupé]";
-    else { bulle.innerHTML = `<span class="erreur">Erreur IA : ${echap(e.message)}</span>`; notifier("Erreur IA : " + e.message); texte = ""; }
-  } finally { termine = true; S.enCours = null; boutonEnvoi(mode, false); }
-  if (texte) { bulle.innerHTML = montrer(texte); rendreSchemas(bulle); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
+    else { z.reponse.innerHTML = `<span class="erreur">Erreur IA : ${echap(e.message)}</span>`; notifier("Erreur IA : " + e.message); texte = ""; }
+  } finally { termine = true; z.terminer(); S.enCours = null; boutonEnvoi(mode, false); }
+  if (texte) { z.reponse.innerHTML = montrer(texte); rendreSchemas(z.reponse); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
   return texte;
 }
 async function envoyer(mode) {
@@ -1025,23 +1053,23 @@ function codeDe(messages) {
   const dernier = codes.length ? codes[codes.length - 1].content : "";
   return extraireBlocs(dernier).map(b => (b.chemin ? `Fichier: ${b.chemin}\n` : "") + "```" + b.langue + "\n" + b.code + "```").join("\n\n");
 }
-async function diffuser(cible, modele, messages, ctrl) {
+async function diffuser(cible, modele, messages, ctrl, role) {
+  const z = animationReflexion(cible, role);
   let texte = "", prevu = false, fini = false;
-  const peindre = () => { prevu = false; if (!fini) { cible.innerHTML = md(texte) + '<span class="curseur"></span>'; defiler("equipe"); } };
-  cible.innerHTML = '<span class="curseur"></span>';
+  const peindre = () => { prevu = false; if (!fini) { z.reponse.innerHTML = md(texte) + '<span class="curseur"></span>'; defiler("equipe"); } };
   try {
     await flux("/api/chat", { mode: "equipe", modele, messages }, o => {
-      if (o.reflexion && !texte) cible.innerHTML = '<span class="reflexion">réfléchit…</span><span class="curseur"></span>';
-      if (o.t) { texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
+      if (o.pensee) { z.pensee(o.pensee); defiler("equipe"); }
+      if (o.t) { z.repondre(); texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
       if (o.erreur) throw new Error(o.erreur);
     }, ctrl.signal);
-  } finally { fini = true; cible.innerHTML = md(texte || "…"); rendreSchemas(cible); }
+  } finally { fini = true; z.terminer(); z.reponse.innerHTML = md(texte || "…"); rendreSchemas(z.reponse); }
   return texte;
 }
 async function agent(role, contenu, ctrl) {
   const modele = modeleRole(role);
   if (!modele) throw new Error("aucun modèle sur la clé");
-  const texte = await diffuser(bulleAgent(role, modele), modele, [{ role: "system", content: ROLES[role].systeme }, { role: "user", content: contenu }], ctrl);
+  const texte = await diffuser(bulleAgent(role, modele), modele, [{ role: "system", content: ROLES[role].systeme }, { role: "user", content: contenu }], ctrl, role);
   S.convs.equipe.messages.push({ role: "assistant", content: texte, agent: role, modele });
   return texte;
 }
@@ -1676,6 +1704,46 @@ function schemaDuProjet() {
   return lignes.join("\n");
 }
 $("#p-schema").onclick = () => { const c = schemaDuProjet(); if (c) montrerContenu(blocSchema(c, "schemas/projet.mmd"), `🗺 Schéma de ${S.projet}`); };
+
+// ─── Mode réflexion animé : on voit l'IA travailler ───
+const PENSEES = {
+  chat: ["Agent AL réfléchit", "analyse ta demande", "cherche la meilleure réponse", "met ses idées en ordre"],
+  codex: ["Codex réfléchit", "lit ton code", "prépare la solution", "écrit le code"],
+  terminal: ["planifie la prochaine étape", "choisit la commande", "vérifie le résultat"],
+  architecte: ["L'Architecte réfléchit", "découpe le travail", "dessine le plan"],
+  codeur: ["Le Codeur réfléchit", "écrit le code", "assemble les fichiers"],
+  reviseur: ["Le Réviseur réfléchit", "relit le code", "cherche les bugs"],
+};
+function animationReflexion(zone, cle) {
+  zone.innerHTML = `<div class="pensee"><button class="pensee-tete" type="button"><span class="onde"><i></i><i></i><i></i><i></i></span>` +
+    `<span class="pensee-titre"></span><span class="chrono">0 s</span><span class="fleche">▾</span></button><div class="pensee-texte"></div></div>` +
+    `<div class="reponse"><span class="points"><i></i><i></i><i></i></span></div>`;
+  const msg = zone.closest(".msg"), libelles = PENSEES[cle] || PENSEES.chat;
+  if (msg) msg.classList.add("travaille");
+  const z = { el: zone.querySelector(".pensee"), titre: zone.querySelector(".pensee-titre"), texte: zone.querySelector(".pensee-texte"),
+    chrono: zone.querySelector(".chrono"), reponse: zone.querySelector(".reponse"), pense: "", debut: performance.now(), n: 0, repond: false };
+  const secondes = () => Math.max(1, Math.round((performance.now() - z.debut) / 1000));
+  const changer = () => { if (!z.repond) z.titre.textContent = libelles[z.n++ % libelles.length] + "…"; };
+  changer();
+  z.boucle = setInterval(() => { if (!z.repond) { z.chrono.textContent = secondes() + " s"; if (secondes() % 3 === 0) changer(); } }, 1000);
+  z.el.querySelector(".pensee-tete").onclick = () => z.el.classList.toggle("ouverte");
+  z.pensee = t => {
+    z.pense += t;
+    z.el.classList.add("a-pense");
+    if (!z.repond) z.el.classList.add("ouverte");
+    z.texte.textContent = z.pense.trimStart().slice(-4000);
+    z.texte.scrollTop = z.texte.scrollHeight;
+  };
+  z.repondre = () => {
+    if (z.repond) return;
+    z.repond = true; z.duree = secondes();
+    z.el.classList.remove("ouverte"); z.el.classList.add("finie");
+    z.titre.textContent = z.pense ? `💭 A réfléchi ${z.duree} s` : ""; z.chrono.textContent = "";
+    if (!z.pense) z.el.style.display = "none";
+  };
+  z.terminer = () => { clearInterval(z.boucle); if (msg) msg.classList.remove("travaille"); z.repondre(); };
+  return z;
+}
 
 // ─── Mémoire : les IA apprennent de leurs erreurs ───
 async function retenir(texte, type, source, silencieux) {
