@@ -15,6 +15,7 @@ import os
 import re
 import secrets
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -32,14 +33,18 @@ DOSSIER_CONVS = ICI / "conversations" / "app"
 JETON = secrets.token_urlsafe(24)
 INACTIVITE_MAX = 180          # secondes sans signe de la fenêtre → on arrête
 PORT_DEFAUT = 47800           # fixe : le navigateur se souvient du thème jour/nuit
+PORT_TELEPHONE = 47801        # accès Wi-Fi du téléphone (seulement si activé depuis le PC)
+HOTE_IP = re.compile(r"^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$")  # adresse IP seulement (pas de nom de domaine)
+INTERDIT_TELEPHONE = {"/api/ouvrir", "/api/telephone", "/api/quitter"}
 TAILLE_MAX = 60 * 1024 * 1024  # photos comprises
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".js": "text/javascript; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg",
          ".svg": "image/svg+xml", ".woff2": "font/woff2", ".ico": "image/x-icon",
-         ".txt": "text/plain; charset=utf-8"}
+         ".txt": "text/plain; charset=utf-8", ".json": "application/manifest+json; charset=utf-8"}
 ID_VALIDE = re.compile(r"^[a-z0-9-]{1,64}$")
 
-etat_serveur = {"dernier_signe": time.monotonic(), "dossier": str(Path.home()), "capacites": {}}
+etat_serveur = {"dernier_signe": time.monotonic(), "dossier": str(Path.home()), "capacites": {},
+                "telephone": None, "jeton_tel": None}
 
 
 # --------------------------------------------------------------------------
@@ -211,13 +216,25 @@ class App(BaseHTTPRequestHandler):
 
     # -- sécurité --
     def _autorise(self, api):
-        if self.headers.get("Host") != self.server.adresse:
+        reseau = getattr(self.server, "reseau", False)
+        hote = self.headers.get("Host", "")
+        if hote != self.server.adresse and not (reseau and HOTE_IP.match(hote)):
             self._envoyer(403, {"erreur": "hôte refusé"})
             return False
-        if api and not secrets.compare_digest(self.headers.get("X-LexOS-Jeton", ""), JETON):
-            self._envoyer(403, {"erreur": "jeton manquant ou invalide"})
-            return False
-        return True
+        if not api:
+            return True
+        jeton = self.headers.get("X-LexOS-Jeton", "")
+        if not reseau and secrets.compare_digest(jeton, JETON):
+            self.telephone = False
+            return True
+        if reseau and etat_serveur["jeton_tel"] and secrets.compare_digest(jeton, etat_serveur["jeton_tel"]):
+            self.telephone = True
+            if urllib.parse.urlparse(self.path).path in INTERDIT_TELEPHONE:
+                self._envoyer(403, {"erreur": "pas permis depuis le téléphone"})
+                return False
+            return True
+        self._envoyer(403, {"erreur": "jeton manquant ou invalide", "jeton": True})
+        return False
 
     def _corps(self):
         n = int(self.headers.get("Content-Length") or 0)
@@ -236,6 +253,8 @@ class App(BaseHTTPRequestHandler):
         etat_serveur["dernier_signe"] = time.monotonic()
         q = urllib.parse.parse_qs(url.query)
         try:
+            if url.path == "/api/telephone":
+                return self._envoyer(200, etat_telephone())
             if url.path == "/api/etat":
                 return self._envoyer(200, {
                     "moteur": ia.ia_disponible(), "hote": ia.hote(), "dossier": etat_serveur["dossier"],
@@ -289,6 +308,7 @@ class App(BaseHTTPRequestHandler):
             "/api/telecharger-modele": self._telecharger, "/api/supprimer-modele": self._supprimer_modele,
             "/api/dossier": self._dossier, "/api/ouvrir": self._ouvrir,
             "/api/ping": lambda d: self._envoyer(200, {"ok": True}), "/api/quitter": self._quitter,
+            "/api/telephone": self._telephone,
         }.get(url.path)
         if route is None:
             return self._envoyer(404, {"erreur": "inconnu"})
@@ -380,12 +400,82 @@ class App(BaseHTTPRequestHandler):
             pass
         self._envoyer(200, {"ok": True})
 
+    def _telephone(self, d):
+        if d.get("actif"):
+            self._envoyer(200, activer_telephone(bool(d.get("nouveau"))))
+        else:
+            desactiver_telephone()
+            self._envoyer(200, etat_telephone())
+
     def _ouvrir(self, d):
         self._envoyer(200, {"ok": ouvrir(str(d.get("quoi", "")))})
 
     def _quitter(self, d):
         self._envoyer(200, {"ok": True})
         threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+
+# --------------------------------------------------------------------------
+# Mode téléphone : le téléphone (même Wi-Fi) ouvre l'interface CodexLocal
+# et travaille avec les IA et les projets de la clé branchée dans le PC.
+# --------------------------------------------------------------------------
+def ip_locale():
+    """Adresse du PC sur le Wi-Fi (rien n'est envoyé sur Internet)."""
+    for cible in ("10.255.255.255", "192.168.255.255", "8.8.8.8"):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect((cible, 1))
+                ip = s.getsockname()[0]
+                if not ip.startswith("127."):
+                    return ip
+        except OSError:
+            continue
+    return None
+
+
+def jeton_telephone(nouveau=False):
+    """Code secret du téléphone, gardé sur la clé (le raccourci du téléphone reste valide)."""
+    config = ia.charger_config()
+    if nouveau or not config.get("jeton_telephone"):
+        config["jeton_telephone"] = secrets.token_urlsafe(24)
+        ia.sauver_config(config)
+    return config["jeton_telephone"]
+
+
+def etat_telephone():
+    srv = etat_serveur["telephone"]
+    if not srv:
+        return {"actif": False, "ip": ip_locale()}
+    return {"actif": True, "ip": srv.ip, "port": srv.server_address[1],
+            "url": f"http://{srv.ip}:{srv.server_address[1]}/#t={etat_serveur['jeton_tel']}&m=tel"}
+
+
+def activer_telephone(nouveau=False):
+    etat_serveur["jeton_tel"] = jeton_telephone(nouveau)
+    if not etat_serveur["telephone"]:
+        ip = ip_locale()
+        if not ip:
+            raise ValueError("ce PC n'est connecté à aucun réseau Wi-Fi")
+        try:
+            srv = ThreadingHTTPServer(("0.0.0.0", PORT_TELEPHONE), App)
+        except OSError:
+            srv = ThreadingHTTPServer(("0.0.0.0", 0), App)
+        srv.daemon_threads = True
+        srv.reseau = True
+        srv.ip = ip
+        srv.adresse = f"{ip}:{srv.server_address[1]}"
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        etat_serveur["telephone"] = srv
+    return etat_telephone()
+
+
+def desactiver_telephone():
+    srv = etat_serveur["telephone"]
+    etat_serveur["telephone"] = None
+    etat_serveur["jeton_tel"] = None
+    if srv:
+        srv.shutdown()
+        srv.server_close()
 
 
 def surveiller(serveur):

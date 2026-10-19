@@ -29,7 +29,11 @@ Elle reprend la même interface que ti-lex v10, branchée sur les IA de la clé.
 - **STUDIO** affiche la conversation et le panneau **TRAVAIL** (tout le code des réponses) côte à côte. 🌙 passe du mode jour au mode nuit, et 🔔 montre les notifications.
 - Pour quitter, ferme la fenêtre ou choisis **⏻ Arrêter les IA**. Tout s'arrête et rien ne reste sur le PC.
 
-Sécurité : l'app n'écoute que sur ton PC (127.0.0.1) et chaque appel demande un jeton secret. Un site web ouvert dans ton navigateur ne peut donc ni parler aux IA ni lancer de commandes.
+**👥 Équipe IA** : l'Architecte planifie, le Codeur écrit, le Réviseur vérifie, puis le Codeur corrige jusqu'à l'approbation. Tu choisis le modèle de chaque rôle et le nombre de tours de révision.
+
+**📱 Sur ton téléphone (même Wi-Fi)** : menu → **📱 Téléphone**, puis scanne le code QR. Le téléphone ouvre **CodexLocal** avec les IA et les projets de la clé branchée dans le PC. Dans Chrome, **⋮ → Ajouter à l'écran d'accueil** le transforme en app. Le code reste valide d'une fois à l'autre ; « Nouveau code » bloque les anciens et « Couper l'accès téléphone » ferme tout. Si le téléphone ne se connecte pas et que le pare-feu est actif sur le PC : `sudo ufw allow 47801/tcp`. À utiliser sur ton Wi-Fi à la maison.
+
+Sécurité : sans le mode téléphone, l'app n'écoute que sur ton PC (127.0.0.1) et chaque appel demande un jeton secret. Un site web ouvert dans ton navigateur ne peut donc ni parler aux IA ni lancer de commandes.
 
 ## 1. Préparer la clé (une seule fois, sous Linux, avec Internet)
 

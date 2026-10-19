@@ -134,6 +134,46 @@ class TestApp(unittest.TestCase):
         self.assertNotIn("agent", conv["messages"][2])  # rôle inconnu ignoré
         self.assertTrue(conv["messages"][3]["ok"])
 
+    # ── Mode téléphone (Wi-Fi) ──
+    def test_mode_telephone(self):
+        if not app.ip_locale():
+            self.skipTest("pas de réseau dans cet environnement")
+        ancienne_config = app.ia.FICHIER_CONFIG
+        app.ia.FICHIER_CONFIG = Path(self.tmp) / "config.json"
+        self.addCleanup(setattr, app.ia, "FICHIER_CONFIG", ancienne_config)
+        self.addCleanup(app.desactiver_telephone)
+        code, e = self.json("POST", "/api/telephone", {"actif": True})
+        self.assertEqual(code, 200)
+        m = re.match(r"http://([\d.]+):(\d+)/#t=([\w-]+)&m=tel$", e["url"])
+        self.assertIsNotNone(m, e["url"])
+        ip, port, jeton = m.group(1), int(m.group(2)), m.group(3)
+
+        def tel(methode, chemin, jeton_=jeton, hote=None, corps=None):
+            c = http.client.HTTPConnection(ip, port, timeout=10)
+            c.request(methode, chemin, body=json.dumps(corps).encode() if corps is not None else None,
+                      headers={"Host": hote or f"{ip}:{port}", "X-LexOS-Jeton": jeton_, "Content-Type": "application/json"})
+            r = c.getresponse(); r.read(); c.close()
+            return r.status
+
+        self.assertEqual(tel("GET", "/api/modeles"), 200)                    # le téléphone voit les IA
+        self.assertEqual(tel("GET", "/api/conversations"), 200)              # et les projets
+        self.assertEqual(tel("POST", "/api/ouvrir", corps={"quoi": "terminal"}), 403)  # pas de fenêtres sur le PC
+        self.assertEqual(tel("POST", "/api/telephone", corps={"actif": True, "nouveau": True}), 403)
+        self.assertEqual(tel("GET", "/api/modeles", jeton_=app.JETON), 403)  # le jeton du PC ne sert pas au Wi-Fi
+        self.assertEqual(tel("GET", "/api/modeles", hote="pirate.example:80"), 403)
+        self.assertEqual(self.appel("GET", "/api/modeles", jeton=jeton)[0], 403)  # ni l'inverse
+        # le code reste le même d'une fois à l'autre (raccourci du téléphone)…
+        self.assertIn(jeton, self.json("GET", "/api/telephone")[1]["url"])
+        # … jusqu'à « Nouveau code », qui bloque l'ancien
+        nouveau = self.json("POST", "/api/telephone", {"actif": True, "nouveau": True})[1]["url"]
+        self.assertNotIn(jeton, nouveau)
+        self.assertEqual(tel("GET", "/api/modeles"), 403)
+        # couper l'accès ferme le port
+        self.assertFalse(self.json("POST", "/api/telephone", {"actif": False})[1]["actif"])
+        import socket
+        with socket.socket() as so:
+            self.assertNotEqual(so.connect_ex((ip, port)), 0)
+
     # ── Conversations sur la clé ──
     def test_conversations(self):
         code, d = self.json("POST", "/api/conversations", {"titre": "Essai", "mode": "codex", "messages": [

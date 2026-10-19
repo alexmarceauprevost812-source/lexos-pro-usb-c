@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TI-LEX-AL · LexOS IA</title>
 <link rel="icon" href="images/tilexal.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="images/tilexal.png">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 @font-face{font-family:"Space Grotesk";src:url(polices/space-grotesk.woff2) format("woff2");font-weight:300 700;font-display:swap}
 :root{
@@ -239,6 +244,20 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .progres{height:10px;border-radius:5px;background:#222;margin-top:12px;overflow:hidden}
 .progres div{height:100%;width:0;background:var(--orange);transition:width .3s}
 
+/* ── Téléphone ─────────────────────────────── */
+html.telephone .pc-seulement{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:none;place-items:center;padding:16px}
+.modal.vu{display:grid}
+.modal .boite{position:relative;background:var(--panneau);border:1.5px solid var(--orange);border-radius:22px;padding:22px;max-width:440px;width:100%;max-height:92vh;overflow:auto}
+.modal h3{font-size:21px;margin-bottom:14px;padding-right:30px}
+.modal .fermer{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--carte2)}
+.qr{background:#fff;border-radius:16px;padding:8px;width:min(280px,80vw);margin:0 auto 14px;aspect-ratio:1}
+.qr svg{width:100%;height:100%;display:block}
+.modal ol{margin:0 0 12px 20px;line-height:1.55;font-size:15px}
+.lien-tel{font-family:var(--mono);font-size:12px;color:var(--gris);word-break:break-all;background:var(--fond2);border-radius:10px;padding:8px 10px}
+.garde{color:var(--gris);font-size:13px;margin:12px 0;line-height:1.5}
+.actions-tel{display:flex;gap:8px;flex-wrap:wrap}
+
 /* ── Notifications ─────────────────────────── */
 #notifs{position:fixed;top:72px;right:12px;width:min(380px,92vw);max-height:60vh;overflow:auto;background:var(--panneau);border:1px solid var(--ligne);border-radius:18px;z-index:40;padding:10px;display:none;box-shadow:0 20px 50px rgba(0,0,0,.6)}
 #notifs.ouvert{display:block}
@@ -302,14 +321,15 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
   <button class="nav" data-vue="equipe"><span class="ico">👥</span>Équipe IA</button>
   <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
   <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
-  <div class="section">OUTILS</div>
-  <button class="nav" data-ouvrir="textes"><span class="ico">📝</span>LexOS Textes</button>
-  <button class="nav" data-ouvrir="terminal"><span class="ico">🖥️</span>Terminal IA</button>
-  <button class="nav" data-ouvrir="conversations"><span class="ico">📂</span>Mes fichiers</button>
+  <div class="section pc-seulement">OUTILS</div>
+  <button class="nav pc-seulement" id="btn-telephone"><span class="ico">📱</span>Téléphone</button>
+  <button class="nav pc-seulement" data-ouvrir="textes"><span class="ico">📝</span>LexOS Textes</button>
+  <button class="nav pc-seulement" data-ouvrir="terminal"><span class="ico">🖥️</span>Terminal IA</button>
+  <button class="nav pc-seulement" data-ouvrir="conversations"><span class="ico">📂</span>Mes fichiers</button>
   <div class="section">CONVERSATIONS</div>
   <div id="liste-convs"><div class="vide">Aucune conversation sauvegardée.</div></div>
   <div class="pied-tiroir">
-    <button class="btn-quitter" id="btn-quitter">⏻ Arrêter les IA</button>
+    <button class="btn-quitter pc-seulement" id="btn-quitter">⏻ Arrêter les IA</button>
     <div class="qc">⚜ Produit du Québec · IA 100 % locale sur ta clé</div>
   </div>
 </aside>
@@ -472,20 +492,41 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 </aside>
 <div id="notifs"></div>
 <div id="toast"></div>
+<div id="modal-tel" class="modal"><div class="boite">
+  <button class="fermer" id="fermer-tel">✕</button>
+  <h3>📱 Ouvrir sur ton téléphone</h3>
+  <div id="qr-tel" class="qr"></div>
+  <ol>
+    <li>Ton téléphone doit être sur le <b>même Wi-Fi</b> que ce PC.</li>
+    <li>Scanne le code avec l'appareil photo : <b>CodexLocal</b> s'ouvre avec les IA et les projets de la clé.</li>
+    <li>Dans Chrome : <b>⋮ → Ajouter à l'écran d'accueil</b> pour l'avoir comme une app.</li>
+  </ol>
+  <div class="lien-tel" id="lien-tel"></div>
+  <p class="garde">🔒 À utiliser sur ton Wi-Fi à la maison : avec ce code, on peut utiliser tes IA et CodexTerminal sur ce PC. « Nouveau code » bloque les anciens.</p>
+  <div class="actions-tel">
+    <button class="btn-petit" id="nouveau-code">🔄 Nouveau code</button>
+    <button class="btn-petit" id="couper-tel">⛔ Couper l'accès téléphone</button>
+  </div>
+</div></div>
 <div id="fin"><div><img class="logo-badge" src="images/tilexal.png" alt=""><h2 style="margin-top:18px">Les IA sont arrêtées.</h2><p style="color:var(--gris);margin-top:8px">Tu peux fermer cette fenêtre et retirer la clé.</p></div></div>
 <input type="file" id="choix-photo" accept="image/*" multiple hidden>
 <input type="file" id="choix-fichier" multiple hidden>
 
 <script src="vendor/highlight.min.js"></script>
+<script src="vendor/qrcode.js"></script>
 <script>
 "use strict";
 // ─── Jeton secret (dans l'adresse #t=…), jamais envoyé ailleurs ───
+// Sur le téléphone, l'adresse est celle du PC sur le Wi-Fi (pas 127.0.0.1).
+const TEL = !["127.0.0.1", "localhost"].includes(location.hostname);
 const JETON = (() => {
-  const m = location.hash.match(/t=([\w-]+)/);
-  try { if (m) sessionStorage.setItem("lexos-jeton", m[1]); } catch (e) {}
-  if (m) history.replaceState(null, "", location.pathname);
-  try { return m ? m[1] : sessionStorage.getItem("lexos-jeton") || ""; } catch (e) { return m ? m[1] : ""; }
+  const m = location.hash.match(/t=([\w-]+)/), cle = TEL ? "lexos-jeton-tel" : "lexos-jeton";
+  const coffre = () => TEL ? localStorage : sessionStorage;  // téléphone : survit à la fermeture (raccourci)
+  try { if (m) coffre().setItem(cle, m[1]); } catch (e) {}
+  if (location.hash) history.replaceState(null, "", location.pathname);
+  try { return m ? m[1] : coffre().getItem(cle) || ""; } catch (e) { return m ? m[1] : ""; }
 })();
+if (TEL) document.documentElement.classList.add("telephone");
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const S = {
@@ -503,7 +544,10 @@ async function api(chemin, corps) {
     body: corps === undefined ? undefined : JSON.stringify(corps),
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(d.erreur || ("erreur " + r.status)); e.donnees = d; e.statut = r.status; throw e; }
+  if (!r.ok) {
+    if (d.jeton && TEL) toast("Code expiré : rescanne le code QR sur le PC (menu → 📱 Téléphone)");
+    const e = new Error(d.erreur || ("erreur " + r.status)); e.donnees = d; e.statut = r.status; throw e;
+  }
   return d;
 }
 async function flux(chemin, corps, surLigne, signal) {
@@ -1065,12 +1109,32 @@ $("#btn-quitter").onclick = async () => {
   $("#fin").classList.add("vu");
 };
 
+// ─── Téléphone : code QR à scanner ───
+function montrerTelephone(e) {
+  $("#modal-tel").classList.add("vu");
+  if (!e.actif) { $("#qr-tel").innerHTML = ""; $("#lien-tel").textContent = "Accès téléphone coupé."; return; }
+  let svg = "";
+  try { const q = qrcode(0, "M"); q.addData(e.url); q.make(); svg = q.createSvgTag({ cellSize: 6, margin: 3 }); } catch (err) {}
+  $("#qr-tel").innerHTML = svg || "<p>Code QR indisponible : utilise le lien ci-dessous.</p>";
+  $("#lien-tel").textContent = e.url;
+}
+async function activerTelephone(nouveau) {
+  try { montrerTelephone(await api("/api/telephone", { actif: true, nouveau })); if (nouveau) toast("Nouveau code : les anciens raccourcis sont bloqués"); }
+  catch (e) { toast(e.message); }
+}
+$("#btn-telephone").onclick = () => { fermerTiroir(); activerTelephone(false); };
+$("#nouveau-code").onclick = () => activerTelephone(true);
+$("#couper-tel").onclick = async () => { try { montrerTelephone(await api("/api/telephone", { actif: false })); toast("Accès téléphone coupé"); } catch (e) { toast(e.message); } };
+$("#fermer-tel").onclick = () => $("#modal-tel").classList.remove("vu");
+$("#modal-tel").onclick = e => { if (e.target.id === "modal-tel") $("#modal-tel").classList.remove("vu"); };
+
 // ─── Démarrage ───
 async function demarrer() {
   const h = new Date().getHours();
   $("#bonjour").textContent = h < 5 ? "Bonne nuit" : h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
   if (innerWidth >= 1200) document.body.classList.add("tiroir-fixe");
-  if (!JETON) { $("#txt-moteur").textContent = "Lien incomplet : relance APP-IA depuis la clé."; $("#point-moteur").classList.add("rouge"); return; }
+  if (TEL) aller("codex");
+  if (!JETON) { $("#txt-moteur").textContent = TEL ? "Scanne le code QR affiché sur le PC (menu → 📱 Téléphone)." : "Lien incomplet : relance APP-IA depuis la clé."; $("#point-moteur").classList.add("rouge"); if (TEL) toast("Scanne le code QR du PC"); return; }
   try {
     const e = await api("/api/etat");
     S.sensibles = e.sensibles; S.langues = e.langues_shell; S.dossier = e.dossier; $("#dossier").value = e.dossier;
@@ -1087,7 +1151,7 @@ async function demarrer() {
   }
   listerConvs();
   ["chat", "codex", "terminal", "equipe"].forEach(majAccueil);
-  setInterval(() => api("/api/ping", {}).catch(() => {}), 20000);
+  setInterval(() => { api("/api/ping", {}).catch(() => {}); listerConvs(); }, 20000);  // PC et téléphone voient les mêmes conversations
 }
 demarrer();
 </script>
