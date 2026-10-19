@@ -475,11 +475,15 @@ class App(BaseHTTPRequestHandler):
             raise ValueError("nom de modèle invalide")
         self._flux_debut()
         try:
+            ia.verifier_place(nom)
             for obj in ia.flux("/api/pull", {"model": nom, "stream": True}, delai=7200):
                 self._ligne({k: obj.get(k) for k in ("status", "total", "completed") if k in obj})
             self._ligne({"fin": True})
         except ia.ErreurIA as e:
-            self._ligne({"erreur": str(e)})
+            texte = str(e)
+            if "newer version" in texte:
+                texte = "ce modèle demande un moteur IA plus récent : mets la clé à jour (installer-sur-cle.sh sans --sans-moteur)."
+            self._ligne({"erreur": texte})
         except (BrokenPipeError, ConnectionResetError):
             pass
 

@@ -14,6 +14,7 @@ import tempfile
 import time
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 from pathlib import Path
 
 USB = Path(__file__).resolve().parents[1]
@@ -76,6 +77,23 @@ class TestChoixModele(unittest.TestCase):
     def test_petit_pc(self):
         self.assertEqual(ia.choisir_modele("chat", self.INSTALLES, ram=8), "llama3.2:3b")
         self.assertEqual(ia.choisir_modele("codex", self.INSTALLES, ram=8), "qwen2.5-coder:1.5b")
+
+    def test_gros_pc_prend_le_gros_modele(self):
+        avec_gros = self.INSTALLES + ["gemma4:26b"]
+        self.assertEqual(ia.choisir_modele("chat", avec_gros, ram=32), "gemma4:26b")
+        self.assertEqual(ia.choisir_modele("chat", avec_gros, ram=16), "qwen3:8b")   # PC moyen : trop lourd
+        self.assertEqual(ia.choisir_modele("chat", avec_gros, {"chat": "qwen3:8b"}, ram=32), "qwen3:8b")  # choix gardé
+
+    def test_place_sur_la_cle(self):
+        self.assertEqual(ia.taille_prevue("gemma4:26b"), 18)
+        self.assertIsNone(ia.taille_prevue("inconnu:1b"))
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"OLLAMA_MODELS": d}):
+            with mock.patch.object(ia.shutil, "disk_usage", return_value=(0, 0, 5e9)):
+                with self.assertRaisesRegex(ia.ErreurIA, "il reste 5.0 Go"):
+                    ia.verifier_place("gemma4:26b")
+                ia.verifier_place("inconnu:1b")  # taille inconnue : on laisse Ollama essayer
+            with mock.patch.object(ia.shutil, "disk_usage", return_value=(0, 0, 40e9)):
+                ia.verifier_place("gemma4:26b")
 
     def test_config_et_latest(self):
         self.assertEqual(ia.choisir_modele("chat", ["mistral:latest", "qwen3:8b"], {"chat": "mistral"}), "mistral:latest")

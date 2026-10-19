@@ -13,6 +13,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -257,6 +258,10 @@ PREFERENCES = {
     "codex": ["qwen2.5-coder:7b", "qwen2.5-coder", "qwen3-coder", "deepseek-coder",
               "codellama", "codegemma"],
 }
+PREFERENCES_GROS_PC = {  # 28 Go de mémoire vive ou plus : le gros modèle (≈ 18 Go) passe en premier
+    "chat": ["gemma4:26b", "gemma4:31b", "qwen3:30b"],
+    "codex": ["qwen3-coder:30b"],
+}
 PREFERENCES_PETIT_PC = {  # moins de 12 Go de mémoire vive : on commence léger
     "chat": ["llama3.2", "qwen3:4b", "gemma3", "qwen3"],
     "codex": ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b", "qwen2.5-coder"],
@@ -304,6 +309,8 @@ def choisir_modele(role, installes, config=None, ram=None):
     ordre = list(PREFERENCES[role])
     if ram is not None and ram < 12:
         ordre = PREFERENCES_PETIT_PC[role] + ordre
+    elif ram is not None and ram >= 28:
+        ordre = PREFERENCES_GROS_PC[role] + ordre
     for prefixe in ordre:
         for nom in installes:
             if nom.startswith(prefixe):
@@ -744,9 +751,38 @@ def taille(octets):
     return f"{octets / 1e9:.1f} Go" if octets >= 1e9 else f"{octets / 1e6:.0f} Mo"
 
 
+def taille_prevue(nom):
+    """Taille en Go indiquée dans modeles.txt (None si le modèle n'y est pas)."""
+    for fichier in (ICI / "modeles.txt", ICI.parent / "modeles.txt"):
+        try:
+            for ligne in fichier.read_text(encoding="utf-8").splitlines():
+                morceaux = ligne.split()
+                if len(morceaux) >= 4 and not ligne.startswith("#") and morceaux[1] == nom:
+                    return float(morceaux[3].replace(",", "."))
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def verifier_place(nom):
+    """Lève ErreurIA s'il ne reste pas assez de place sur la clé pour ce modèle."""
+    besoin = taille_prevue(nom)
+    dossier = Path(os.environ.get("OLLAMA_MODELS") or ICI / "ia" / "modeles")
+    while not dossier.exists() and dossier != dossier.parent:
+        dossier = dossier.parent
+    try:
+        libre = shutil.disk_usage(dossier)[2] / 1e9   # place libre
+    except OSError:
+        return
+    if besoin and libre < besoin + 1:
+        raise ErreurIA(f"il faut ≈ {besoin:g} Go pour {nom}, il reste {libre:.1f} Go sur la clé. "
+                       "Supprime un modèle (🗑) pour faire de la place.")
+
+
 def telecharger_modele(nom):
     afficher(f"Téléchargement de {nom} sur la clé (Internet requis)…", GRIS)
     try:
+        verifier_place(nom)
         for obj in flux("/api/pull", {"model": nom, "stream": True}, delai=3600):
             total, fait = obj.get("total"), obj.get("completed")
             if total and fait:

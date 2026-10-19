@@ -4,6 +4,7 @@
 #   léger   ≈  3 Go  : marche sur presque tous les PC (8 Go de RAM)
 #   complet ≈ 16 Go  : meilleure qualité, 16 Go de RAM conseillés
 #   tout    ≈ 40 Go  : + raisonnement et gros Codex (32 Go de RAM conseillés)
+#   +       à la demande seulement :  --modele NOM  (ex. --modele gemma4:26b)
 #
 # Modifie librement : une ligne = un modèle (noms sur ollama.com/library).
 # Le rôle sert seulement d'indication ; on choisit le modèle du Chat et de
@@ -17,3 +18,4 @@
 2         gemma3:4b              images   3,3 Go   Comprend aussi les images
 3         deepseek-r1:8b         raison   5,2 Go   Raisonnement pas à pas
 3         qwen3-coder:30b        codex    19 Go    Gros Codex (PC puissant)
++         gemma4:26b             gros     18 Go    Gros modèle : images, outils, réflexion (32 Go de RAM)

@@ -283,6 +283,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .puces{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
 .puce{border:1px solid var(--ligne);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--gris)}
 .puce:hover{border-color:var(--orange);color:var(--orange)}
+.puce.gros{border-color:var(--orange);color:var(--orange);font-weight:600}
 
 /* ── Cerveau (modèles) ─────────────────────── */
 .cerveau{padding:22px 18px 40px}
@@ -678,6 +679,7 @@ html.telephone .pc-seulement{display:none!important}
           <button class="puce" data-sugg>llama3.2:3b</button><button class="puce" data-sugg>qwen3:8b</button>
           <button class="puce" data-sugg>qwen2.5-coder:7b</button><button class="puce" data-sugg>gemma3:4b</button>
           <button class="puce" data-sugg>deepseek-r1:8b</button>
+          <button class="puce gros" data-sugg="gemma4:26b" title="Images, outils et réflexion · 32 Go de RAM conseillés">🦣 gemma4:26b · 18 Go</button>
         </div>
         <div class="progres" hidden id="progres"><div></div></div>
         <div id="statut-telech" style="color:var(--gris);font-size:14px;margin-top:8px"></div>
@@ -1351,7 +1353,7 @@ function rendreCerveau() {
     try { await api("/api/supprimer-modele", { nom: b.dataset.suppr }); await chargerModeles(); toast("Supprimé"); } catch (e) { toast(e.message); }
   });
 }
-$$("[data-sugg]").forEach(b => b.onclick = () => $("#nom-modele").value = b.textContent);
+$$("[data-sugg]").forEach(b => b.onclick = () => $("#nom-modele").value = b.dataset.sugg || b.textContent);
 $("#btn-telecharger").onclick = async () => {
   const nom = $("#nom-modele").value.trim(); if (!nom) return;
   const barre = $("#progres"), statut = $("#statut-telech"); barre.hidden = false;

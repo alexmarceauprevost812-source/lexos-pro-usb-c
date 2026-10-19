@@ -19,6 +19,7 @@
 #    --sans-moteur    ne télécharge pas Ollama (mise à jour du code seulement)
 #    --sans-modeles   ne télécharge pas les modèles
 #    --sans-rea       n'ajoute pas REA (agent ti-lex, dépôt ti-lex-ia-REA-)
+#    --modele NOM     télécharge seulement ce modèle (répétable). Ex. : --modele gemma4:26b
 #    --forcer         continuer même sur une clé FAT32
 #
 #  Internet est requis pendant la préparation, plus après.
@@ -29,7 +30,7 @@ ORANGE=$'\033[38;2;224;96;32m'; VERT=$'\033[38;2;53;214;76m'; GRIS=$'\033[90m'; 
 etape() { echo; echo "${ORANGE}▸ $*${RAZ}"; }
 erreur() { echo "${ROUGE}✗ $*${RAZ}" >&2; exit 1; }
 
-CLE=""; PROFIL=2; WINDOWS=0; ARCH=amd64; MOTEUR=1; MODELES=1; FORCER=0; REA=1
+VOULUS=(); CLE=""; PROFIL=2; WINDOWS=0; ARCH=amd64; MOTEUR=1; MODELES=1; FORCER=0; REA=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --profil) PROFIL="${2:-}"; shift ;;
@@ -38,13 +39,15 @@ while [ $# -gt 0 ]; do
     --sans-moteur) MOTEUR=0 ;;
     --sans-modeles) MODELES=0 ;;
     --sans-rea) REA=0 ;;
+    --modele) [ -n "${2:-}" ] || erreur "--modele : indique un nom (ex. gemma4:26b)"; VOULUS+=("$2"); shift ;;
     --forcer) FORCER=1 ;;
-    -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     -*) erreur "option inconnue : $1" ;;
     *) CLE="$1" ;;
   esac
   shift
 done
+[ ${#VOULUS[@]} -eq 0 ] || MODELES=1   # --modele : on télécharge au moins celui-là
 [ -n "$CLE" ] || erreur "indique le dossier de la clé.  Ex. : bash usb/installer-sur-cle.sh /media/$USER/LEXOS"
 [ -d "$CLE" ] && [ -w "$CLE" ] || erreur "$CLE n'existe pas ou n'est pas accessible en écriture."
 case "$PROFIL" in 1|2|3) ;; *) erreur "--profil doit être 1, 2 ou 3" ;; esac
@@ -168,7 +171,7 @@ fi
 
 # ── 3. Modèles IA, téléchargés directement sur la clé ───────────────────────
 if [ "$MODELES" = 1 ]; then
-  etape "Modèles IA (profil $PROFIL)"
+  if [ ${#VOULUS[@]} -gt 0 ]; then etape "Modèles IA : ${VOULUS[*]}"; else etape "Modèles IA (profil $PROFIL)"; fi
   if [ -x "$LOCAL_LINUX/bin/ollama" ]; then
     OLLAMA="$LOCAL_LINUX/bin/ollama"
   elif [ -x "$IA/ollama-linux-$ARCH/bin/ollama" ]; then
@@ -186,13 +189,32 @@ if [ "$MODELES" = 1 ]; then
   for _ in $(seq 1 60); do (exec 3<>/dev/tcp/127.0.0.1/11439) 2>/dev/null && break; sleep 0.5; done
   (exec 3<>/dev/tcp/127.0.0.1/11439) 2>/dev/null || erreur "le moteur n'a pas démarré (voir $TMP/ollama-installation.log)."
 
+  # Liste à télécharger : les modèles demandés (--modele) ou ceux du profil.
+  A_TELECHARGER=()
+  if [ ${#VOULUS[@]} -gt 0 ]; then
+    A_TELECHARGER=("${VOULUS[@]}")
+  else
+    while read -r profil modele _; do
+      case "$profil" in ''|\#*) continue ;; esac
+      [ "$profil" -le "$PROFIL" ] 2>/dev/null && A_TELECHARGER+=("$modele")
+    done <"$DEPOT/modeles.txt"
+  fi
   ECHECS=()
-  while read -r profil modele _; do
-    case "$profil" in ''|\#*) continue ;; esac
-    [ "$profil" -le "$PROFIL" ] 2>/dev/null || continue
-    echo "${ORANGE}↓ $modele${RAZ}"
-    "$OLLAMA" pull "$modele" || ECHECS+=("$modele")
-  done <"$DEPOT/modeles.txt"
+  for modele in "${A_TELECHARGER[@]}"; do
+    # Assez de place sur la clé ? (taille indiquée dans modeles.txt, en Go)
+    besoin="$(awk -v m="$modele" '$2 == m { gsub(",", ".", $4); print $4; exit }' "$DEPOT/modeles.txt")"
+    libre="$(df -Pk "$CLE" | awk 'NR == 2 { printf "%.1f", $4 / 1024 / 1024 }')"
+    if [ -n "$besoin" ] && [ -n "$libre" ] && awk -v b="$besoin" -v l="$libre" 'BEGIN { exit !(l < b + 1) }'; then
+      echo "${ROUGE}✗ $modele : il faut ≈ $besoin Go, il reste $libre Go sur la clé.${RAZ}"
+      echo "${GRIS}  Libère de la place (Cerveau → 🗑 sur un modèle), puis relance.${RAZ}"
+      ECHECS+=("$modele"); continue
+    fi
+    echo "${ORANGE}↓ $modele${RAZ}${besoin:+ ${GRIS}(≈ $besoin Go · $libre Go libres sur la clé)${RAZ}}"
+    if ! "$OLLAMA" pull "$modele"; then
+      ECHECS+=("$modele")
+      echo "${GRIS}  Si le message parle de « newer version » : relance sans --sans-moteur (moteur à jour).${RAZ}"
+    fi
+  done
   kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; trap - EXIT
   echo
   [ ${#ECHECS[@]} -eq 0 ] || echo "${ROUGE}Non installés : ${ECHECS[*]}${RAZ}"

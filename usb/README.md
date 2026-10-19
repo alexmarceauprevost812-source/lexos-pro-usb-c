@@ -61,6 +61,7 @@ bash usb/installer-sur-cle.sh /media/$USER/NOM_DE_LA_CLE --windows
 | `--profil 3` | tout, environ 40 Go : ajoute le raisonnement et le gros Codex |
 | `--windows` | ajoute le moteur pour Windows (environ 1,5 Go de plus) |
 | `--sans-moteur --sans-modeles` | met à jour seulement le code de la clé |
+| `--modele gemma4:26b` | télécharge seulement ce modèle (vérifie d'abord la place libre sur la clé) |
 
 La liste des modèles se trouve dans [`modeles.txt`](modeles.txt), et tu peux la modifier :
 
@@ -73,6 +74,9 @@ La liste des modèles se trouve dans [`modeles.txt`](modeles.txt), et tu peux la
 | gemma3:4b | Comprend aussi les images | 2 |
 | deepseek-r1:8b | Raisonnement | 3 |
 | qwen3-coder:30b | Gros Codex (PC puissant) | 3 |
+| gemma4:26b | **Gros modèle** (≈ 18 Go) : images, outils, réflexion | à la demande (`--modele`) |
+
+Le gros modèle **gemma4:26b** demande 32 Go de mémoire vive. Sur un PC qui en a au moins 28 Go, le Chat le prend tout seul. Sur un PC plus petit, la clé reste sur qwen3:8b. Tu peux aussi le télécharger depuis l'app : **Cerveau → 🦣 gemma4:26b · 18 Go → Télécharger**.
 
 ## 2. Un clic pour activer les IA
 
