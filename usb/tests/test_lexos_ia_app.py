@@ -30,6 +30,7 @@ class TestApp(unittest.TestCase):
         os.environ["LEXOS_IA_HOTE"] = cls.faux.hote
         cls.tmp = tempfile.mkdtemp()
         app.DOSSIER_CONVS = Path(cls.tmp) / "convs"
+        app.DOSSIER_PROJETS = Path(cls.tmp) / "projets"
         app.etat_serveur["dossier"] = cls.tmp
         cls.serveur = ThreadingHTTPServer(("127.0.0.1", 0), app.App)
         cls.serveur.adresse = f"127.0.0.1:{cls.serveur.server_address[1]}"
@@ -173,6 +174,60 @@ class TestApp(unittest.TestCase):
         import socket
         with socket.socket() as so:
             self.assertNotEqual(so.connect_ex((ip, port)), 0)
+
+    # ── Projets ──
+    def test_projets_fichiers_et_chemins_pieges(self):
+        self.assertEqual(self.json("POST", "/api/projet/creer", {"nom": "meteo"})[0], 200)
+        self.assertEqual(self.json("POST", "/api/projet/creer", {"nom": "../evil"})[0], 400)
+        code, d = self.json("POST", "/api/projet/ecrire", {"nom": "meteo", "chemin": "src/app.py", "contenu": "print(1)"})
+        self.assertEqual((code, d["chemin"]), (200, "src/app.py"))
+        self.json("POST", "/api/projet/ecrire", {"nom": "meteo", "chemin": "src/app.py", "contenu": "print(2)"})
+        self.assertEqual(self.json("GET", "/api/projet/fichier?nom=meteo&chemin=src/app.py")[1]["contenu"], "print(2)")
+        hist = list((app.DOSSIER_PROJETS / "meteo" / ".lexos-historique").iterdir())
+        self.assertEqual(len(hist), 1)  # l'ancienne version est gardée
+        for mauvais in ("../../secret.txt", "/etc/passwd", ".git/config", "a/../../x", ".lexos-historique/x"):
+            self.assertEqual(self.json("POST", "/api/projet/ecrire", {"nom": "meteo", "chemin": mauvais, "contenu": "x"})[0], 400, mauvais)
+        self.assertEqual(self.json("GET", "/api/projet/fichier?nom=meteo&chemin=../../../etc/passwd")[0], 400)
+        fichiers = [f["chemin"] for f in self.json("GET", "/api/projet?nom=meteo")[1]["fichiers"]]
+        self.assertEqual(fichiers, ["README.md", "src/app.py"])
+        self.json("POST", "/api/projet/supprimer-fichier", {"nom": "meteo", "chemin": "src/app.py"})
+        self.assertFalse((app.DOSSIER_PROJETS / "meteo" / "src" / "app.py").exists())
+        self.assertIn("meteo", [p["nom"] for p in self.json("GET", "/api/projets")[1]["projets"]])
+
+    @unittest.skipUnless(shutil.which("git"), "git requis")
+    def test_github_envoyer_vers_un_depot(self):
+        import subprocess as sp
+        distant = Path(self.tmp) / "distant.git"
+        sp.run(["git", "init", "--bare", "-q", "-b", "main", str(distant)], check=True)
+        self.json("POST", "/api/projet/creer", {"nom": "envoi"})
+        self.assertEqual(self.json("POST", "/api/projet/github/lier", {"nom": "envoi", "url": "file:///x"})[0], 400)
+        code, d = self.json("POST", "/api/projet/github/lier", {"nom": "envoi", "url": "https://github.com/alex/envoi"})
+        self.assertEqual((code, d["url"]), (200, "https://github.com/alex/envoi"))
+        dossier = app.DOSSIER_PROJETS / "envoi"
+        sp.run(["git", "remote", "set-url", "origin", str(distant)], cwd=dossier, check=True)  # GitHub simulé
+        lignes = self.lignes("/api/projet/github/envoyer", {"nom": "envoi", "message": "Premier envoi"})
+        self.assertEqual(lignes[-1], {"fin": 0}, lignes)
+        journal = sp.run(["git", "log", "--format=%s %ae", "main"], cwd=distant, capture_output=True, text=True).stdout
+        self.assertIn("Premier envoi", journal)
+        self.assertEqual(self.json("POST", "/api/projet/github/cloner", {"url": "https://evil.com/x/y"})[0], 400)
+
+    # ── Studio ──
+    def test_apercu_isole(self):
+        self.json("POST", "/api/projet/creer", {"nom": "site"})
+        self.json("POST", "/api/projet/ecrire", {"nom": "site", "chemin": "index.html", "contenu": "<h1>Allo</h1>"})
+        code, d = self.json("POST", "/api/apercu", {"projet": "site"})
+        self.assertEqual(code, 200)
+        c = http.client.HTTPConnection(*self.serveur.server_address, timeout=10)
+        c.request("GET", d["url"], headers={"Host": self.serveur.adresse})
+        r = c.getresponse(); corps = r.read(); c.close()
+        self.assertEqual((r.status, corps), (200, b"<h1>Allo</h1>"))
+        self.assertIn("sandbox", r.getheader("Content-Security-Policy"))  # pas d'accès à l'app ni au jeton
+        base = d["url"].rsplit("/", 1)[0]
+        self.assertEqual(self.appel("GET", base + "/../../lexos_ia.py", jeton=False)[0], 404)
+        self.assertEqual(self.appel("GET", "/apercu/inconnu/index.html", jeton=False)[0], 404)
+        self.assertEqual(self.json("POST", "/api/apercu", {"html": "<p>x</p>"}, jeton=False)[0], 403)
+        code, d = self.json("POST", "/api/apercu", {"html": "<p>bloc</p>"})
+        self.assertEqual(self.appel("GET", d["url"], jeton=False), (200, b"<p>bloc</p>"))
 
     # ── Conversations sur la clé ──
     def test_conversations(self):

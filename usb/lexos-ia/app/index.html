@@ -173,6 +173,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 #travail .tete-travail{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ligne)}
 #travail .tete-travail h3{flex:1;letter-spacing:.12em;color:var(--orange)}
 #travail .contenu{flex:1;overflow:auto;padding:12px 14px}
+#travail .contenu[hidden]{display:none}
 
 /* ── Codex (style CodexLocal) ─────────────── */
 .barre-local{background:#111;color:var(--orange);font-size:15px;padding:9px 18px;border-bottom:1px solid #1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
@@ -199,6 +200,52 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .verdict{border-radius:14px;padding:12px 16px;font-weight:700;text-align:center}
 .verdict.ok{border:1.5px solid var(--vert);color:var(--vert)}
 .verdict.ko{border:1.5px solid var(--jaune);color:var(--jaune)}
+
+/* ── Projets ──────────────────────────────── */
+.projets{flex:1;display:flex;min-height:0}
+.p-gauche{width:300px;flex:none;border-right:1px solid var(--ligne);padding:12px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.p-ligne{display:flex;gap:8px}
+.p-ligne select{flex:1;min-width:0;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:8px 10px;font-weight:700}
+.p-titre{font-size:12px;letter-spacing:.14em;color:var(--gris);margin-top:6px}
+.p-github{border:1px solid var(--ligne);border-radius:14px;padding:10px 12px;font-size:13px;color:var(--gris);display:flex;flex-direction:column;gap:8px}
+.p-github .gh-url{color:var(--texte);font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.p-github .rang-gh{display:flex;gap:6px;flex-wrap:wrap}
+.p-fichiers{display:flex;flex-direction:column;gap:2px}
+.p-fichiers button{display:flex;align-items:center;gap:8px;text-align:left;padding:7px 10px;border-radius:10px;font-family:var(--mono);font-size:13px;color:var(--gris);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.p-fichiers button:hover{background:rgba(255,255,255,.04);color:var(--texte)}
+.p-fichiers button.actif{background:rgba(255,122,0,.14);color:var(--orange2)}
+.p-fichiers .pt{width:9px;height:9px;border-radius:50%;flex:none}
+.p-editeur{flex:1;display:flex;flex-direction:column;padding:12px;gap:10px;min-width:0}
+.p-tete{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p-nom{flex:1;font-family:var(--mono);color:var(--orange2);min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-nom.modifie::after{content:" ●";color:var(--jaune)}
+.editeur{position:relative;flex:1;min-height:280px;background:#0d0d0d;border:1px solid #2e2e2e;border-radius:14px;overflow:hidden}
+.editeur pre,.editeur textarea{position:absolute;inset:0;margin:0;padding:14px;font-family:var(--mono);font-size:14px;line-height:1.5;white-space:pre;tab-size:2;border:0;outline:0;letter-spacing:0;word-wrap:normal;overflow-wrap:normal}
+.editeur pre{overflow:hidden;pointer-events:none;color:#e9e9e9}
+.editeur pre code{background:none;padding:0;font:inherit}
+.editeur textarea{background:transparent;color:transparent;caret-color:#FF7A00;resize:none;overflow:auto}
+.editeur textarea::selection{background:rgba(255,122,0,.3)}
+.editeur textarea::placeholder{color:#555}
+.p-journal{font-family:var(--mono);font-size:12px;background:#0d0d0d;border:1px solid #2e2e2e;border-radius:10px;padding:10px;max-height:180px;overflow:auto;white-space:pre-wrap;color:#bdbdbd}
+.p-journal .astuce{color:var(--jaune)}
+@media (max-width:760px){
+  .projets{flex-direction:column;overflow:auto}
+  .p-gauche{width:auto;border-right:0;border-bottom:1px solid var(--ligne);overflow:visible}
+  .p-editeur .editeur{min-height:55vh;flex:none}
+}
+/* ── Studio (aperçu) ──────────────────────── */
+#travail .onglets{display:flex;gap:4px;background:var(--carte);border-radius:999px;padding:3px}
+#travail .onglets button{padding:6px 12px;border-radius:999px;font-size:13px;color:var(--gris)}
+#travail .onglets button.actif{background:var(--orange);color:#111;font-weight:700}
+.contenu-apercu{flex:1;display:flex;flex-direction:column;min-height:0}
+.contenu-apercu[hidden]{display:none}
+.barre-apercu{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ligne);font-size:13px}
+.barre-apercu span{flex:1;color:var(--gris);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.barre-apercu button{border:1px solid var(--ligne);border-radius:8px;padding:4px 9px}
+.cadre{flex:1;display:flex;justify-content:center;background:repeating-conic-gradient(#151515 0 25%,#101010 0 50%) 0 0/24px 24px;overflow:auto;padding:12px}
+.cadre iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.cadre.tel iframe{width:390px;max-width:100%;border-radius:28px;border:8px solid #222}
+.cadre .vide{align-self:center;text-align:center;max-width:300px}
 
 /* ── CodexTerminal ─────────────────────────── */
 .barre-term{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:var(--fond2);flex-wrap:wrap}
@@ -319,6 +366,7 @@ html.telephone .pc-seulement{display:none!important}
   <button class="nav actif" data-vue="chat"><span class="ico">💬</span>Chat</button>
   <button class="nav" data-vue="codex"><span class="ico">💻</span>Codex</button>
   <button class="nav" data-vue="equipe"><span class="ico">👥</span>Équipe IA</button>
+  <button class="nav" data-vue="projets"><span class="ico">📁</span>Projets</button>
   <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
   <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
   <div class="section pc-seulement">OUTILS</div>
@@ -462,6 +510,35 @@ html.telephone .pc-seulement{display:none!important}
   </section>
 
   <!-- ═══ CERVEAU ═══ -->
+  <!-- ═══ PROJETS ═══ -->
+  <section class="vue" id="vue-projets">
+    <div class="barre-local" id="barre-projets">Projets · sur la clé USB-C</div>
+    <div class="projets">
+      <div class="p-gauche">
+        <div class="p-ligne">
+          <select id="choix-projet" title="Projet actif"></select>
+          <button class="btn-petit" id="p-nouveau" title="Nouveau projet">＋</button>
+        </div>
+        <button class="btn-petit" id="p-cloner">⬇ Cloner depuis GitHub</button>
+        <div class="p-github" id="p-github"></div>
+        <div class="p-titre">FICHIERS</div>
+        <div class="p-fichiers" id="p-fichiers"><div class="vide">Crée ou choisis un projet.</div></div>
+        <button class="btn-petit" id="p-nouveau-fichier">＋ Nouveau fichier</button>
+      </div>
+      <div class="p-editeur">
+        <div class="p-tete">
+          <span class="p-nom" id="p-nom-fichier">Aucun fichier ouvert</span>
+          <button class="btn-petit" id="p-enregistrer" title="Ctrl+S">💾 Enregistrer</button>
+          <button class="btn-petit" id="p-apercu">👁 Aperçu</button>
+          <button class="btn-petit" id="p-codex">🤖 Codex</button>
+          <button class="btn-petit" id="p-suppr" title="Supprimer le fichier">🗑</button>
+        </div>
+        <div class="editeur"><pre aria-hidden="true"><code class="hljs" id="p-couleurs"></code></pre><textarea id="p-texte" spellcheck="false" placeholder="Ouvre un fichier à gauche…" disabled></textarea></div>
+        <div class="p-journal" id="p-journal" hidden></div>
+      </div>
+    </div>
+  </section>
+
   <section class="vue" id="vue-cerveau">
     <div class="defile"><div class="colonne cerveau">
       <h2>🧠 CERVEAU</h2>
@@ -488,8 +565,16 @@ html.telephone .pc-seulement{display:none!important}
 <button id="fab" title="Nouvelle conversation">💬</button>
 <button id="onglet-travail" title="Le code des réponses"><span class="dossier">🗂️</span>TRAVAIL</button>
 <aside id="travail">
-  <div class="tete-travail"><h3>🗂️ TRAVAIL</h3><button class="btn-petit" id="fermer-travail">✕</button></div>
+  <div class="tete-travail"><h3>⚡ STUDIO</h3>
+    <div class="onglets"><button data-onglet="apercu">👁 Aperçu</button><button data-onglet="code" class="actif">🗂️ Code</button></div>
+    <button class="btn-petit" id="fermer-travail">✕</button></div>
   <div class="contenu" id="contenu-travail"><div class="vide">Le code proposé par l'IA apparaîtra ici.</div></div>
+  <div class="contenu-apercu" id="contenu-apercu" hidden>
+    <div class="barre-apercu"><span id="titre-apercu">Aucun aperçu</span>
+      <button id="ap-tel" title="Format téléphone">📱</button><button id="ap-pc" title="Format ordinateur">💻</button>
+      <button id="ap-recharger" title="Recharger">⟳</button><button id="ap-fenetre" title="Ouvrir dans une fenêtre">↗</button></div>
+    <div class="cadre" id="cadre-apercu"><div class="vide" id="vide-apercu">Clique « 👁 Aperçu » sur un bloc de code HTML ou sur un fichier de projet : l'application créée s'affiche ici.</div></div>
+  </div>
 </aside>
 <div id="notifs"></div>
 <div id="toast"></div>
@@ -534,7 +619,7 @@ const S = {
   vue: "chat", modeles: [], defauts: {}, choix: {}, sensibles: [], langues: [], dossier: "",
   convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal"), equipe: nouvelle("equipe") },
   pieces: { chat: [], codex: [], terminal: [], equipe: [] }, enCours: null, notifs: [], nonLues: 0,
-  roles: {}, codeEquipe: "",
+  roles: {}, codeEquipe: "", projet: null, projetInfo: null, fichierOuvert: null, apercuUrl: null,
 };
 function nouvelle(mode) { return { id: null, mode, titre: "", messages: [] }; }
 
@@ -640,7 +725,9 @@ function md(t) {
     const c = colorer(m[2], langue || langueDuNom(nom));
     const lignes = m[2].replace(/\n$/, "").split("\n").length;
     html += `<div class="bloc-code"><div class="tete"><span class="pastille-lang" style="background:${COULEUR_LANG[c.langue] || "#666"}"></span><span class="nom">${echap(nom || langue || c.langue || "code")}</span>` +
-      `<button data-copier="${n}">Copier</button><button data-telecharger="${n}" data-nom="${echap(nom || ("code." + (EXT[langue] || EXT[c.langue] || "txt")))}">Télécharger</button></div>` +
+      `<button data-copier="${n}">Copier</button><button data-telecharger="${n}" data-nom="${echap(nom || ("code." + (EXT[langue] || EXT[c.langue] || "txt")))}">Télécharger</button>` +
+      `${S.projet ? `<button data-projet="${n}" data-chemin="${echap(nom)}" title="Enregistrer dans le projet ${echap(S.projet)}">💾 Projet</button>` : ""}` +
+      `${c.langue === "xml" || langue === "html" ? `<button data-apercu="${n}" title="Voir l'application dans le Studio">👁 Aperçu</button>` : ""}</div>` +
       `<div class="corps">${lignes > 1 ? `<div class="nums">${Array.from({ length: lignes }, (_, i) => i + 1).join("\n")}</div>` : ""}<pre><code class="hljs">${c.html}</code></pre></div></div>`;
     dernier = re.lastIndex; n++;
     if (m[0].length === 0) break;
@@ -648,10 +735,12 @@ function md(t) {
   return html + texteMd(t.slice(dernier));
 }
 document.addEventListener("click", e => {
-  const b = e.target.closest("[data-copier],[data-telecharger]");
+  const b = e.target.closest("[data-copier],[data-telecharger],[data-projet],[data-apercu]");
   if (!b) return;
   const code = b.closest(".bloc-code").querySelector("code").textContent;
   if (b.dataset.copier !== undefined) { navigator.clipboard.writeText(code).then(() => toast("Copié ✔"), () => toast("Copie impossible")); }
+  else if (b.dataset.projet !== undefined) enregistrerDansProjet(b.dataset.chemin, code);
+  else if (b.dataset.apercu !== undefined) apercuHtml(code);
   else telechargerTexte(b.dataset.nom, code);
 });
 
@@ -709,9 +798,11 @@ $$("select[data-modele]").forEach(sel => sel.addEventListener("change", async ()
   majBarreCodex(); toast(`${mode === "chat" ? "Agent AL" : "Codex"} utilise ${sel.value}`);
 }));
 function majBarreCodex() {
-  $("#barre-codex").textContent = `Local : ${modeleDe("codex") || "aucun modèle"} · sur la clé USB-C · hors ligne`;
+  const p = S.projet ? ` · 📁 ${S.projet}` : "";
+  $("#barre-codex").textContent = `Local : ${modeleDe("codex") || "aucun modèle"}${p} · sur la clé USB-C · hors ligne`;
   const noms = [...new Set(["architecte", "codeur", "reviseur"].map(modeleRole).filter(Boolean))];
-  $("#barre-equipe").textContent = `Local : Équipe · ${noms.join(" + ") || "aucun modèle"} · sur la clé USB-C · hors ligne`;
+  $("#barre-equipe").textContent = `Local : Équipe · ${noms.join(" + ") || "aucun modèle"}${p} · sur la clé USB-C · hors ligne`;
+  $("#barre-projets").textContent = `Projets${p} · sur la clé USB-C${S.projetInfo && S.projetInfo.lie ? " · relié à GitHub" : ""}`;
 }
 
 // ─── Pièces jointes : photos (Chat) et fichiers (Codex) ───
@@ -802,7 +893,7 @@ async function envoyer(mode) {
     const fichiers = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n");
     const affiche = (texte || "Améliore ces fichiers.") + (pieces.length ? "\n📄 " + pieces.map(p => p.nom).join(", ") : "");
     S.pieces.equipe = []; rendrePieces("equipe"); zone.value = ""; ajuster(zone);
-    return lancerEquipe((fichiers ? fichiers + "\n\n" : "") + (texte || "Améliore ces fichiers."), affiche);
+    return lancerEquipe(contexteProjet() + (fichiers ? fichiers + "\n\n" : "") + (texte || "Améliore ces fichiers."), affiche);
   }
   let modele = modeleDe(mode);
   if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
@@ -816,6 +907,7 @@ async function envoyer(mode) {
       modele = v.nom; notifier(`📷 Photo : Agent AL utilise ${v.nom}, qui voit les images.`); toast(`📷 ${v.nom} regarde ta photo`);
     }
   }
+  if (mode === "codex" && S.projet) msg.content = contexteProjet() + msg.content;
   if (mode === "codex" && pieces.length) {
     msg.content = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n") + "\n\n" + (texte || "Explique ce code.");
     msg.affiche = (texte || "Explique ce code.") + "\n📄 " + pieces.map(p => p.nom).join(", ");
@@ -857,8 +949,15 @@ function bulleAgent(role, modele) {
   fil("equipe").appendChild(el); majAccueil("equipe"); defiler("equipe");
   return el.querySelector(".corps-agent");
 }
-function verdict(texte, ok) {
+function verdict(texte, ok, blocs) {
   const el = document.createElement("div"); el.className = "verdict " + (ok ? "ok" : "ko"); el.textContent = texte;
+  const nommes = (blocs || []).filter(b => b.chemin);
+  if (S.projet && nommes.length) {
+    const b = document.createElement("button"); b.className = "btn-orange"; b.style.marginTop = "10px";
+    b.textContent = `💾 Enregistrer ${nommes.length} fichier${nommes.length > 1 ? "s" : ""} dans 📁 ${S.projet}`;
+    b.onclick = async () => { for (const f of nommes) await enregistrerDansProjet(f.chemin, f.code, true); toast(`✔ ${nommes.length} fichier(s) dans ${S.projet}`); b.disabled = true; };
+    el.appendChild(document.createElement("br")); el.appendChild(b);
+  }
   fil("equipe").appendChild(el); defiler("equipe");
 }
 function codeDe(messages) {
@@ -905,7 +1004,8 @@ async function lancerEquipe(demande, affiche) {
     }
     S.codeEquipe = codeDe(conv.messages);
     const v = ok ? "✔ Code approuvé par le Réviseur — il est dans TRAVAIL" : "⚠ Le Réviseur demande encore des corrections : relis-les ou redemande à l'équipe";
-    conv.messages.push({ role: "verdict", content: v, ok }); verdict(v, ok);
+    const derniers = conv.messages.filter(m => m.agent === "codeur");
+    conv.messages.push({ role: "verdict", content: v, ok }); verdict(v, ok, extraireBlocs(derniers.length ? derniers[derniers.length - 1].content : ""));
     notifier(ok ? "👥 Équipe IA : code approuvé" : "👥 Équipe IA : corrections à revoir");
   } catch (e) {
     if (e.name === "AbortError") toast("Équipe arrêtée");
@@ -987,12 +1087,47 @@ function majTravail() {
   $("#contenu-travail").innerHTML = blocs.length ? blocs.map(b => "```" + b.langue + "\n" + b.code + "```").map((t, i) => md((blocs[i].chemin ? "Fichier: " + blocs[i].chemin + "\n" : "") + t)).join("")
     : '<div class="vide">Le code proposé par l\'IA apparaîtra ici.</div>';
 }
-$("#onglet-travail").onclick = () => $("#travail").classList.add("ouvert");
+function ouvrirStudio(onglet) {
+  $("#travail").classList.add("ouvert");
+  if (innerWidth >= 1200) { document.body.classList.add("studio"); $("#btn-studio").classList.add("actif"); }
+  ongletStudio(onglet || "code");
+}
+function ongletStudio(o) {
+  $$("#travail [data-onglet]").forEach(b => b.classList.toggle("actif", b.dataset.onglet === o));
+  $("#contenu-travail").hidden = o !== "code"; $("#contenu-apercu").hidden = o !== "apercu";
+}
+$$("#travail [data-onglet]").forEach(b => b.onclick = () => ongletStudio(b.dataset.onglet));
+function montrerApercu(url, titre) {
+  S.apercuUrl = url;
+  $("#titre-apercu").textContent = titre;
+  const cadre = $("#cadre-apercu");
+  cadre.innerHTML = "";
+  const f = document.createElement("iframe");
+  f.setAttribute("sandbox", "allow-scripts allow-forms allow-modals allow-popups");
+  f.title = "Aperçu"; f.src = url;
+  cadre.appendChild(f);
+  ouvrirStudio("apercu");
+}
+async function apercuHtml(code) {
+  try { const d = await api("/api/apercu", { html: code }); montrerApercu(d.url, "Aperçu du code"); }
+  catch (e) { toast(e.message); }
+}
+async function apercuProjet(fichier) {
+  if (!S.projet) return toast("Choisis un projet");
+  try { const d = await api("/api/apercu", { projet: S.projet, fichier }); montrerApercu(d.url, `📁 ${S.projet}/${fichier}`); }
+  catch (e) { toast(e.message); }
+}
+$("#ap-tel").onclick = () => $("#cadre-apercu").classList.add("tel");
+$("#ap-pc").onclick = () => $("#cadre-apercu").classList.remove("tel");
+$("#ap-recharger").onclick = () => { if (S.apercuUrl) montrerApercu(S.apercuUrl, $("#titre-apercu").textContent); };
+$("#ap-fenetre").onclick = () => { if (S.apercuUrl) window.open(S.apercuUrl, "_blank", "noopener"); };
+$("#onglet-travail").onclick = () => ouvrirStudio("code");
 $("#fermer-travail").onclick = () => { $("#travail").classList.remove("ouvert"); document.body.classList.remove("studio"); $("#btn-studio").classList.remove("actif"); };
 $("#btn-studio").onclick = () => {
   const on = !document.body.classList.contains("studio");
   document.body.classList.toggle("studio", on); $("#btn-studio").classList.toggle("actif", on);
   $("#travail").classList.toggle("ouvert", on);
+  if (on) ongletStudio(S.apercuUrl ? "apercu" : "code");
   if (on && S.vue === "chat") aller("codex");
 };
 
@@ -1069,13 +1204,164 @@ $("#btn-telecharger").onclick = async () => {
   } catch (e) { statut.textContent = "Téléchargement arrêté : " + e.message; }
 };
 
+// ─── Projets : fichiers sur la clé + GitHub ───
+function contexteProjet() {
+  if (!S.projet || !S.projetInfo) return "";
+  const noms = S.projetInfo.fichiers.slice(0, 80).map(f => f.chemin).join(", ");
+  return `(Projet actif : ${S.projet}. Fichiers : ${noms || "aucun"}. Pour un fichier, écris « Fichier: chemin » avant son bloc de code.)\n\n`;
+}
+function journal(texte, vider) {
+  const j = $("#p-journal"); j.hidden = false;
+  if (vider) j.innerHTML = "";
+  const l = document.createElement("div"); l.textContent = texte;
+  if (/could not read Username|Authentication failed|terminal prompts disabled|Permission denied|403/i.test(texte)) {
+    l.className = "astuce";
+    l.textContent += "\n→ GitHub demande une connexion : dans un terminal, tape une fois  gh auth login  (ou configure un jeton), puis réessaie.";
+  }
+  j.appendChild(l); j.scrollTop = j.scrollHeight;
+}
+async function chargerProjets(choisir) {
+  let d;
+  try { d = await api("/api/projets"); } catch (e) { toast(e.message); return; }
+  S.git = d.git;
+  try { S.projet = choisir || S.projet || localStorage.getItem("lexos-projet"); } catch (e) {}
+  if (S.projet && !d.projets.some(p => p.nom === S.projet)) S.projet = null;
+  if (!S.projet && d.projets.length) S.projet = d.projets[0].nom;
+  $("#choix-projet").innerHTML = d.projets.map(p => `<option value="${echap(p.nom)}">📁 ${echap(p.nom)}</option>`).join("") || "<option value=''>Aucun projet</option>";
+  $("#choix-projet").value = S.projet || "";
+  await ouvrirProjet(S.projet);
+}
+async function ouvrirProjet(nom) {
+  S.projet = nom || null; S.projetInfo = null;
+  try { if (nom) localStorage.setItem("lexos-projet", nom); } catch (e) {}
+  if (nom) { try { S.projetInfo = await api("/api/projet?nom=" + encodeURIComponent(nom)); } catch (e) { toast(e.message); } }
+  rendreGithub(); rendreFichiers(); majBarreCodex();
+  if (!S.projetInfo || !S.projetInfo.fichiers.some(f => f.chemin === S.fichierOuvert)) fermerFichier();
+}
+function couleurFichier(chemin) { return COULEUR_LANG[EXT_LANG[chemin.split(".").pop().toLowerCase()]] || "#666"; }
+function rendreFichiers() {
+  const zone = $("#p-fichiers");
+  if (!S.projetInfo) { zone.innerHTML = '<div class="vide">Crée ou choisis un projet.</div>'; return; }
+  zone.innerHTML = S.projetInfo.fichiers.map(f => `<button data-f="${echap(f.chemin)}" class="${f.chemin === S.fichierOuvert ? "actif" : ""}"><span class="pt" style="background:${couleurFichier(f.chemin)}"></span>${echap(f.chemin)}</button>`).join("") || '<div class="vide">Aucun fichier.</div>';
+  zone.querySelectorAll("[data-f]").forEach(b => b.onclick = () => ouvrirFichier(b.dataset.f));
+}
+function rendreGithub() {
+  const z = $("#p-github"), i = S.projetInfo;
+  if (!i) { z.innerHTML = '<span>Aucun projet ouvert.</span>'; return; }
+  if (S.git === false) { z.innerHTML = '<span>Installe git pour relier GitHub : <code>sudo apt install git</code></span>'; return; }
+  if (!i.lie) {
+    z.innerHTML = '<span>○ Pas relié à GitHub</span><div class="rang-gh"><button class="btn-petit" id="gh-lier">🔗 Relier à un dépôt GitHub</button></div>';
+    $("#gh-lier").onclick = lierGithub; return;
+  }
+  z.innerHTML = `<span><span class="point"></span> Relié à GitHub · ${echap(i.branche || "")}${i.modifs ? ` · <b style="color:var(--jaune)">${i.modifs} modif${i.modifs > 1 ? "s" : ""}</b>` : " · à jour"}</span>
+    <span class="gh-url">${echap(i.url.replace("https://", ""))}</span>
+    <div class="rang-gh"><button class="btn-petit" id="gh-recuperer">⟳ Récupérer</button><button class="btn-petit" id="gh-envoyer">⬆ Envoyer</button></div>`;
+  $("#gh-recuperer").onclick = () => git("/api/projet/github/recuperer", { nom: S.projet }, "Récupération depuis GitHub…");
+  $("#gh-envoyer").onclick = () => {
+    const message = prompt("Message pour décrire tes changements :", "Mise à jour depuis LexOS IA");
+    if (message !== null) git("/api/projet/github/envoyer", { nom: S.projet, message }, "Envoi vers GitHub…");
+  };
+}
+async function git(chemin, corps, titre, apres) {
+  journal(titre, true);
+  let code = null;
+  try {
+    await flux(chemin, corps, o => { if (o.l) journal(o.l); if (o.erreur) journal("Erreur : " + o.erreur); if ("fin" in o) code = o.fin; });
+  } catch (e) { journal("Erreur : " + e.message); }
+  journal(code === 0 ? "✔ Terminé" : "✖ Échec (voir ci-dessus)");
+  if (code === 0) { toast("✔ " + titre.replace("…", "")); if (apres) await apres(); }
+  await ouvrirProjet(S.projet);
+  return code;
+}
+async function lierGithub() {
+  const url = prompt("Adresse du dépôt GitHub (crée-le d'abord sur github.com) :", "https://github.com/alexmarceauprevost812-source/" + S.projet);
+  if (!url) return;
+  try { await api("/api/projet/github/lier", { nom: S.projet, url }); toast("🔗 Relié à GitHub"); await ouvrirProjet(S.projet); }
+  catch (e) { toast(e.message); }
+}
+$("#choix-projet").onchange = e => ouvrirProjet(e.target.value);
+$("#p-nouveau").onclick = async () => {
+  const nom = prompt("Nom du nouveau projet (minuscules, chiffres, - ou _) :", "mon-projet");
+  if (!nom) return;
+  try { const d = await api("/api/projet/creer", { nom: nom.trim().toLowerCase() }); await chargerProjets(d.nom); toast("📁 Projet créé"); }
+  catch (e) { toast(e.message); }
+};
+$("#p-cloner").onclick = async () => {
+  const url = prompt("Adresse du dépôt GitHub à copier sur la clé :", "https://github.com/alexmarceauprevost812-source/");
+  if (!url) return;
+  const nom = url.trim().replace(/\/$/, "").split("/").pop().replace(/\.git$/, "").toLowerCase();
+  await git("/api/projet/github/cloner", { url: url.trim(), nom }, "Copie du dépôt sur la clé…", () => chargerProjets(nom));
+};
+$("#p-nouveau-fichier").onclick = async () => {
+  if (!S.projet) return toast("Crée d'abord un projet");
+  const chemin = prompt("Nom du fichier (ex. index.html, src/app.py) :");
+  if (!chemin) return;
+  try { await api("/api/projet/ecrire", { nom: S.projet, chemin, contenu: "" }); await ouvrirProjet(S.projet); ouvrirFichier(chemin.replace(/^\/+/, "")); }
+  catch (e) { toast(e.message); }
+};
+// Éditeur avec couleurs : le texte coloré est derrière une zone de saisie transparente
+const ZONE = $("#p-texte"), COULEURS = $("#p-couleurs");
+function colorerEditeur() {
+  const c = colorer(ZONE.value + (ZONE.value.endsWith("\n") ? " " : ""), langueDuNom(S.fichierOuvert || ""));
+  COULEURS.innerHTML = c.html;
+  COULEURS.parentElement.scrollTop = ZONE.scrollTop; COULEURS.parentElement.scrollLeft = ZONE.scrollLeft;
+}
+ZONE.addEventListener("input", () => { colorerEditeur(); $("#p-nom-fichier").classList.add("modifie"); });
+ZONE.addEventListener("scroll", () => { COULEURS.parentElement.scrollTop = ZONE.scrollTop; COULEURS.parentElement.scrollLeft = ZONE.scrollLeft; });
+ZONE.addEventListener("keydown", e => {
+  if (e.key === "Tab") { e.preventDefault(); document.execCommand("insertText", false, "  "); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); enregistrerFichier(); }
+});
+function fermerFichier() {
+  S.fichierOuvert = null; ZONE.value = ""; ZONE.disabled = true; COULEURS.innerHTML = "";
+  $("#p-nom-fichier").textContent = "Aucun fichier ouvert"; $("#p-nom-fichier").classList.remove("modifie");
+}
+async function ouvrirFichier(chemin) {
+  if ($("#p-nom-fichier").classList.contains("modifie") && !confirm("Le fichier ouvert a des changements non enregistrés. Continuer ?")) return;
+  try {
+    const d = await api(`/api/projet/fichier?nom=${encodeURIComponent(S.projet)}&chemin=${encodeURIComponent(chemin)}`);
+    S.fichierOuvert = chemin; ZONE.disabled = false; ZONE.value = d.contenu; ZONE.scrollTop = 0;
+    $("#p-nom-fichier").textContent = chemin; $("#p-nom-fichier").classList.remove("modifie");
+    colorerEditeur(); rendreFichiers();
+  } catch (e) { toast(e.message); }
+}
+async function enregistrerFichier() {
+  if (!S.fichierOuvert) return;
+  try { await api("/api/projet/ecrire", { nom: S.projet, chemin: S.fichierOuvert, contenu: ZONE.value }); $("#p-nom-fichier").classList.remove("modifie"); toast("💾 Enregistré sur la clé"); if (S.projetInfo && S.projetInfo.git) ouvrirProjet(S.projet); }
+  catch (e) { toast(e.message); }
+}
+async function enregistrerDansProjet(chemin, code, silencieux) {
+  if (!S.projet) return toast("Choisis d'abord un projet (menu → Projets)");
+  chemin = chemin || prompt(`Nom du fichier dans 📁 ${S.projet} :`, "nouveau.txt");
+  if (!chemin) return;
+  try {
+    await api("/api/projet/ecrire", { nom: S.projet, chemin, contenu: code });
+    if (!silencieux) toast(`💾 ${chemin} → 📁 ${S.projet}`);
+    if (S.projetInfo) S.projetInfo = await api("/api/projet?nom=" + encodeURIComponent(S.projet));
+    rendreFichiers(); rendreGithub();
+  } catch (e) { toast(e.message); }
+}
+$("#p-enregistrer").onclick = enregistrerFichier;
+$("#p-apercu").onclick = () => apercuProjet(S.fichierOuvert && /\.html?$/i.test(S.fichierOuvert) ? S.fichierOuvert : "index.html");
+$("#p-codex").onclick = () => {
+  if (!S.fichierOuvert) return toast("Ouvre d'abord un fichier");
+  S.pieces.codex.push({ type: "fichier", nom: S.fichierOuvert, donnees: ZONE.value });
+  aller("codex"); rendrePieces("codex"); toast("Fichier joint à Codex : écris ta demande");
+};
+$("#p-suppr").onclick = async () => {
+  if (!S.fichierOuvert || !confirm(`Supprimer ${S.fichierOuvert} ? (une copie est gardée)`)) return;
+  try { await api("/api/projet/supprimer-fichier", { nom: S.projet, chemin: S.fichierOuvert }); fermerFichier(); await ouvrirProjet(S.projet); toast("🗑 Supprimé"); }
+  catch (e) { toast(e.message); }
+};
+
 // ─── Navigation, tiroir, thème, notifications ───
 function aller(vue) {
   S.vue = vue;
   $$(".vue").forEach(v => v.classList.toggle("active", v.id === "vue-" + vue));
   $$(".nav[data-vue]").forEach(n => n.classList.toggle("actif", n.dataset.vue === vue));
-  $("#fab").style.display = vue === "cerveau" ? "none" : "";
+  $("#fab").style.display = vue === "cerveau" || vue === "projets" ? "none" : "";
   if (vue === "cerveau") chargerModeles().catch(() => {});
+  if (vue === "projets") chargerProjets();
   const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
   if (innerWidth < 1200) fermerTiroir();
 }
@@ -1155,6 +1441,7 @@ async function demarrer() {
     $("#txt-moteur").textContent = "Moteur IA inaccessible : " + e.message; $("#point-moteur").classList.add("rouge");
   }
   listerConvs();
+  chargerProjets().catch(() => {});
   ["chat", "codex", "terminal", "equipe"].forEach(majAccueil);
   setInterval(() => { api("/api/ping", {}).catch(() => {}); listerConvs(); }, 20000);  // PC et téléphone voient les mêmes conversations
 }

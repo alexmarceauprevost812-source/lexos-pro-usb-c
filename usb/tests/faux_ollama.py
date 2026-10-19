@@ -46,6 +46,15 @@ def reponse_auto(messages):
             return ("Je crée le fichier puis j'affiche son contenu.\n```bash\n"
                     "echo \"Bonjour de LexOS\" > bonjour.txt && cat bonjour.txt\n```")
         return "FINI: bonjour.txt est créé et contient « Bonjour de LexOS »."
+    if "Codex de LexOS" in systeme and "html" in dernier.lower():
+        return ("Voici ta page météo :\n\nFichier: index.html\n```html\n<!doctype html>\n<html lang=\"fr-CA\">\n"
+                "<head><meta charset=\"utf-8\"><title>Météo</title>\n<style>\n"
+                "  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0A0A0A;color:#fff;font-family:sans-serif}\n"
+                "  .carte{padding:32px 40px;border:2px solid #FF7A00;border-radius:24px;text-align:center}\n"
+                "  h1{color:#FF7A00;margin:0}\n  .temp{font-size:64px;font-weight:800}\n</style></head>\n<body>\n"
+                "  <div class=\"carte\"><h1>Normandin</h1><div class=\"temp\" id=\"t\">-12 °C</div><p>Neige légère ❄</p>"
+                "<button onclick=\"document.getElementById('t').textContent='-15 °C'\">Actualiser</button></div>\n"
+                "</body>\n</html>\n```")
     if "Codex de LexOS" in systeme:
         return ("Voici un petit programme qui salue en orange :\n\nFichier: bonjour.py\n```python\n"
                 "ORANGE = \"\\033[38;2;255;122;0m\"\n\ndef main():\n    print(ORANGE + \"Bonjour de LexOS !\")\n\n"

@@ -25,6 +25,10 @@ Elle reprend la même interface que ti-lex v10, branchée sur les IA de la clé.
 - **Chat · Agent AL** : « + » ajoute une **photo**. Tu peux aussi coller une image ou la glisser dans la fenêtre. Si le modèle choisi ne voit pas les images, l'app passe toute seule à un modèle qui les voit (gemma3:4b).
 - **Codex** (style CodexLocal) : « + » ajoute un fichier de code. Chaque bloc de code a ses boutons Copier et Télécharger.
 - **CodexTerminal** : l'IA propose une commande dans une carte orange, avec les boutons Exécuter, Modifier, Refuser et Arrêter. Pour une commande sensible, il faut taper **OUI**.
+- **Équipe IA** : l'Architecte planifie, le Codeur écrit et le Réviseur vérifie. Le Codeur corrige jusqu'à ce que le Réviseur approuve.
+- **Projets** : tes projets vivent sur la clé (`lexos-ia/projets/`), un dossier par projet avec tous ses fichiers. L'éditeur colore le code, et Ctrl+S enregistre. Le bouton **💾 Projet** sur le code de l'IA l'enregistre directement dans le projet actif, et l'Équipe peut enregistrer tout le code approuvé en un clic.
+  - **GitHub** : « Cloner depuis GitHub » copie un dépôt sur la clé. « Relier à un dépôt » relie un projet à ton GitHub. **⟳ Récupérer** et **⬆ Envoyer** synchronisent tes fichiers. La première fois, il faut te connecter à GitHub dans un terminal avec `gh auth login`.
+- **Studio** : **👁 Aperçu** affiche en direct l'application créée (page HTML d'un bloc de code ou d'un projet), en format 📱 téléphone ou 💻 ordinateur. L'aperçu est isolé et ne peut toucher ni à l'app ni aux IA.
 - **Cerveau** : les modèles de la clé. Tu choisis celui du Chat et celui de Codex, tu en télécharges ou en supprimes.
 - **STUDIO** affiche la conversation et le panneau **TRAVAIL** (tout le code des réponses) côte à côte. 🌙 passe du mode jour au mode nuit, et 🔔 montre les notifications.
 - Pour quitter, ferme la fenêtre ou choisis **⏻ Arrêter les IA**. Tout s'arrête et rien ne reste sur le PC.

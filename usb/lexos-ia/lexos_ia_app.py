@@ -30,6 +30,10 @@ import lexos_ia as ia
 ICI = Path(__file__).resolve().parent
 DOSSIER_APP = ICI / "app"
 DOSSIER_CONVS = ICI / "conversations" / "app"
+DOSSIER_PROJETS = ICI / "projets"     # un dossier par projet, sur la clé
+NOM_PROJET = re.compile(r"^[a-z0-9][a-z0-9._\-]{0,62}$")
+URL_GITHUB = re.compile(r"^https://github\.com/[\w.\-]{1,100}/[\w.\-]{1,100}?(\.git)?/?$")
+APERCUS = {}                          # id secret → dossier ou HTML à afficher dans le Studio
 JETON = secrets.token_urlsafe(24)
 INACTIVITE_MAX = 180          # secondes sans signe de la fenêtre → on arrête
 PORT_DEFAUT = 47800           # fixe : le navigateur se souvient du thème jour/nuit
@@ -248,6 +252,8 @@ class App(BaseHTTPRequestHandler):
         api = url.path.startswith("/api/")
         if not self._autorise(api):
             return
+        if url.path.startswith("/apercu/"):
+            return self._apercu(url.path)
         if not api:
             return self._fichier(url.path)
         etat_serveur["dernier_signe"] = time.monotonic()
@@ -264,6 +270,22 @@ class App(BaseHTTPRequestHandler):
                 return self._envoyer(200, liste_modeles())
             if url.path == "/api/conversations":
                 return self._envoyer(200, lister_conversations())
+            if url.path == "/api/projets":
+                return self._envoyer(200, {"projets": lister_projets(), "git": bool(shutil.which("git")),
+                                           "dossier": str(DOSSIER_PROJETS)})
+            if url.path == "/api/projet":
+                d = dossier_projet((q.get("nom") or [""])[0])
+                if not d.is_dir():
+                    raise ValueError("projet introuvable")
+                return self._envoyer(200, {"nom": d.name, "fichiers": fichiers_du_projet(d), **infos_github(d)})
+            if url.path == "/api/projet/fichier":
+                f = fichier_projet((q.get("nom") or [""])[0], (q.get("chemin") or [""])[0])
+                if f.stat().st_size > 2_000_000:
+                    raise ValueError("fichier trop gros pour l'éditeur (2 Mo max)")
+                donnees = f.read_bytes()
+                if b"\0" in donnees[:8000]:
+                    raise ValueError("fichier binaire : pas modifiable ici")
+                return self._envoyer(200, {"contenu": donnees.decode("utf-8", "replace")})
             if url.path == "/api/conversation":
                 chemin = chemin_conv((q.get("id") or [""])[0])
                 return self._envoyer(200, json.loads(chemin.read_text(encoding="utf-8")))
@@ -307,6 +329,11 @@ class App(BaseHTTPRequestHandler):
             "/api/conversations": self._sauver_conv, "/api/supprimer-conversation": self._supprimer_conv,
             "/api/telecharger-modele": self._telecharger, "/api/supprimer-modele": self._supprimer_modele,
             "/api/dossier": self._dossier, "/api/ouvrir": self._ouvrir,
+            "/api/projet/creer": self._projet_creer, "/api/projet/ecrire": self._projet_ecrire,
+            "/api/projet/supprimer-fichier": self._projet_supprimer_fichier,
+            "/api/projet/github/cloner": self._github_cloner, "/api/projet/github/recuperer": self._github_recuperer,
+            "/api/projet/github/envoyer": self._github_envoyer, "/api/projet/github/lier": self._github_lier,
+            "/api/apercu": self._apercu_creer,
             "/api/ping": lambda d: self._envoyer(200, {"ok": True}), "/api/quitter": self._quitter,
             "/api/telephone": self._telephone,
         }.get(url.path)
@@ -410,6 +437,153 @@ class App(BaseHTTPRequestHandler):
     def _ouvrir(self, d):
         self._envoyer(200, {"ok": ouvrir(str(d.get("quoi", "")))})
 
+    # -- Projets --
+    def _commande_en_flux(self, etapes, dossier):
+        """Exécute des commandes git et envoie chaque ligne : {"l": …} puis {"fin": code}."""
+        self._flux_debut()
+        code = 0
+        try:
+            for cmd in etapes:
+                self._ligne({"l": "$ " + " ".join(cmd)})
+                p = subprocess.Popen(cmd, cwd=dossier, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                     stdin=subprocess.DEVNULL, text=True, errors="replace",
+                                     env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+                for ligne in p.stdout:
+                    if ligne.strip():
+                        self._ligne({"l": ligne.rstrip()[:400]})
+                p.stdout.close()
+                code = p.wait()
+                if code != 0:
+                    break
+            self._ligne({"fin": code})
+        except OSError as e:
+            self._ligne({"erreur": str(e)})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def _projet_creer(self, d):
+        dossier = dossier_projet(str(d.get("nom", "")).strip().lower())
+        if dossier.exists():
+            raise ValueError("ce projet existe déjà")
+        dossier.mkdir(parents=True)
+        (dossier / "README.md").write_text(f"# {dossier.name}\n\nProjet créé avec LexOS IA.\n", encoding="utf-8")
+        self._envoyer(200, {"nom": dossier.name})
+
+    def _projet_ecrire(self, d):
+        nom = str(d.get("nom", ""))
+        cible = fichier_projet(nom, d.get("chemin"))
+        if not dossier_projet(nom).is_dir():
+            raise ValueError("projet introuvable")
+        contenu = str(d.get("contenu", ""))
+        if len(contenu) > 2_000_000:
+            raise ValueError("fichier trop gros (2 Mo max)")
+        garder_historique(nom, cible)
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.write_text(contenu, encoding="utf-8")
+        self._envoyer(200, {"ok": True, "chemin": cible.relative_to(dossier_projet(nom).resolve()).as_posix()})
+
+    def _projet_supprimer_fichier(self, d):
+        nom = str(d.get("nom", ""))
+        cible = fichier_projet(nom, d.get("chemin"))
+        if cible.is_file():
+            garder_historique(nom, cible)
+            cible.unlink()
+        self._envoyer(200, {"ok": True})
+
+    def _verifier_git(self):
+        if not shutil.which("git"):
+            raise ValueError("git n'est pas installé sur ce PC (sudo apt install git)")
+
+    def _github_cloner(self, d):
+        self._verifier_git()
+        url = str(d.get("url", "")).strip()
+        if not URL_GITHUB.match(url):
+            raise ValueError("adresse GitHub invalide (ex. https://github.com/moi/mon-projet)")
+        nom = str(d.get("nom") or url.rstrip("/").split("/")[-1].removesuffix(".git")).strip().lower()
+        dossier = dossier_projet(nom)
+        if dossier.exists():
+            raise ValueError("un projet porte déjà ce nom")
+        DOSSIER_PROJETS.mkdir(parents=True, exist_ok=True)
+        self._commande_en_flux([["git", "clone", "--", url, str(dossier)]], DOSSIER_PROJETS)
+
+    def _github_recuperer(self, d):
+        self._verifier_git()
+        dossier = dossier_projet(str(d.get("nom", "")))
+        self._commande_en_flux([["git", "pull", "--ff-only"]], dossier)
+
+    def _github_envoyer(self, d):
+        self._verifier_git()
+        dossier = dossier_projet(str(d.get("nom", "")))
+        if not (dossier / ".git").exists():
+            raise ValueError("ce projet n'est pas relié à GitHub")
+        message = str(d.get("message") or "Mise à jour depuis LexOS IA").strip()[:200]
+        identite = []
+        if git(dossier, "config", "user.email")[0] != 0:  # pas d'identité git : celle du dépôt GitHub
+            _, url = git(dossier, "remote", "get-url", "origin")
+            proprio = url.rstrip("/").split("/")[-2] if url.count("/") >= 4 else "lexos"
+            identite = ["-c", f"user.name={proprio}", "-c", f"user.email={proprio}@users.noreply.github.com"]
+        etapes = [["git", "add", "-A"]]
+        if git(dossier, "status", "--porcelain")[1].strip():
+            etapes.append(["git", *identite, "commit", "-m", message])
+        etapes.append(["git", "push", "-u", "origin", "HEAD"])
+        self._commande_en_flux(etapes, dossier)
+
+    def _github_lier(self, d):
+        self._verifier_git()
+        dossier = dossier_projet(str(d.get("nom", "")))
+        url = str(d.get("url", "")).strip()
+        if not URL_GITHUB.match(url):
+            raise ValueError("adresse GitHub invalide")
+        if not (dossier / ".git").exists():
+            git(dossier, "init", "-b", "main")
+        if git(dossier, "remote", "get-url", "origin")[0] == 0:
+            git(dossier, "remote", "set-url", "origin", url)
+        else:
+            git(dossier, "remote", "add", "origin", url)
+        self._envoyer(200, infos_github(dossier))
+
+    # -- Studio : aperçu isolé des applications créées --
+    def _apercu_creer(self, d):
+        if d.get("projet"):
+            cible = dossier_projet(str(d["projet"]))
+            if not cible.is_dir():
+                raise ValueError("projet introuvable")
+            entree = str(d.get("fichier") or "index.html")
+            fichier_projet(cible.name, entree)
+        else:
+            cible, entree = str(d.get("html", ""))[:2_000_000], "index.html"
+        self._envoyer(200, {"url": f"/apercu/{creer_apercu(cible)}/{entree}"})
+
+    def _apercu(self, chemin):
+        """Sert un aperçu dans une « boîte à sable » : la page ne peut pas toucher à l'app ni aux IA."""
+        morceaux = chemin.split("/", 3)  # ['', 'apercu', id, reste]
+        cible = APERCUS.get(morceaux[2] if len(morceaux) > 2 else "")
+        if cible is None:
+            return self._envoyer(404, b"apercu introuvable", "text/plain; charset=utf-8")
+        reste = urllib.parse.unquote(morceaux[3] if len(morceaux) > 3 else "") or "index.html"
+        try:
+            if isinstance(cible, str):
+                if reste != "index.html":
+                    raise ValueError
+                corps, type_ = cible.encode(), TYPES[".html"]
+            else:
+                f = fichier_projet(cible.name, reste)
+                if f.is_dir():
+                    f = f / "index.html"
+                corps = f.read_bytes()
+                type_ = TYPES.get(f.suffix.lower(), "application/octet-stream")
+        except (ValueError, OSError):
+            return self._envoyer(404, b"fichier introuvable", "text/plain; charset=utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", type_)
+        self.send_header("Content-Length", str(len(corps)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy",
+                         "sandbox allow-scripts allow-forms allow-modals allow-popups; "
+                         "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'")
+        self.end_headers()
+        self.wfile.write(corps)
+
     def _quitter(self, d):
         self._envoyer(200, {"ok": True})
         threading.Thread(target=self.server.shutdown, daemon=True).start()
@@ -477,6 +651,89 @@ def desactiver_telephone():
         srv.shutdown()
         srv.server_close()
 
+
+# --------------------------------------------------------------------------
+# Projets : des dossiers de fichiers sur la clé, reliés à GitHub si voulu
+# --------------------------------------------------------------------------
+IGNORES_PROJET = {".git", "node_modules", "__pycache__", ".venv", "venv", ".lexos-historique"}
+
+
+def dossier_projet(nom):
+    if not NOM_PROJET.match(nom or ""):
+        raise ValueError("nom de projet invalide : lettres minuscules, chiffres, - . _")
+    return DOSSIER_PROJETS / nom
+
+
+def fichier_projet(nom, chemin):
+    """Chemin d'un fichier DANS le projet (refuse ../, .git, chemins absolus)."""
+    racine = dossier_projet(nom).resolve()
+    chemin = str(chemin or "").strip().replace("\\", "/")
+    if chemin.startswith("/") or re.match(r"^[A-Za-z]:", chemin):
+        raise ValueError("chemin absolu refusé : donne un chemin dans le projet (ex. src/app.py)")
+    if not chemin or any(p in ("..", ".git") or p in IGNORES_PROJET for p in chemin.split("/")):
+        raise ValueError("chemin de fichier invalide")
+    cible = (racine / chemin).resolve()
+    if not str(cible).startswith(str(racine) + os.sep):
+        raise ValueError("chemin hors du projet")
+    return cible
+
+
+def git(dossier, *args, timeout=120):
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    r = subprocess.run(["git", *args], cwd=dossier, capture_output=True, text=True, errors="replace",
+                       timeout=timeout, env=env, stdin=subprocess.DEVNULL)
+    return r.returncode, (r.stdout + r.stderr).strip()
+
+
+def infos_github(dossier):
+    if not (dossier / ".git").exists() or not shutil.which("git"):
+        return {"lie": False}
+    _, url = git(dossier, "remote", "get-url", "origin")
+    _, branche = git(dossier, "branch", "--show-current")
+    _, modifs = git(dossier, "status", "--porcelain")
+    return {"lie": url.startswith("https://github.com/"), "url": url if url.startswith("https://") else "",
+            "branche": branche, "modifs": len([l for l in modifs.splitlines() if l.strip()]), "git": True}
+
+
+def lister_projets():
+    if not DOSSIER_PROJETS.is_dir():
+        return []
+    res = []
+    for d in sorted(DOSSIER_PROJETS.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        if d.is_dir() and NOM_PROJET.match(d.name):
+            gh = infos_github(d)
+            res.append({"nom": d.name, "github": gh.get("url", ""), "date": d.stat().st_mtime})
+    return res
+
+
+def fichiers_du_projet(dossier, limite=2000):
+    res = []
+    for racine, dossiers, fichiers in os.walk(dossier):
+        dossiers[:] = sorted(x for x in dossiers if x not in IGNORES_PROJET)
+        for f in sorted(fichiers):
+            p = Path(racine) / f
+            res.append({"chemin": p.relative_to(dossier).as_posix(), "taille": p.stat().st_size})
+            if len(res) >= limite:
+                return res
+    return res
+
+
+def garder_historique(nom, cible):
+    """Garde l'ancienne version d'un fichier (projets sans GitHub)."""
+    if cible.exists() and not (dossier_projet(nom) / ".git").exists():
+        hist = dossier_projet(nom) / ".lexos-historique"
+        hist.mkdir(exist_ok=True)
+        rel = cible.relative_to(dossier_projet(nom).resolve()).as_posix().replace("/", "__")
+        shutil.copy2(cible, hist / f"{rel}.{time.strftime('%Y%m%d-%H%M%S')}")
+
+
+def creer_apercu(cible):
+    """Donne une adresse secrète pour afficher un projet ou un HTML dans le Studio."""
+    ident = secrets.token_urlsafe(18)
+    if len(APERCUS) > 50:
+        APERCUS.pop(next(iter(APERCUS)))
+    APERCUS[ident] = cible
+    return ident
 
 def surveiller(serveur):
     """Arrête l'app si la fenêtre est fermée depuis un moment."""
