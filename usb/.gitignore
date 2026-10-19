@@ -3,3 +3,5 @@ __pycache__/
 lexos-ia/config.json
 lexos-ia/conversations/
 lexos-ia/ia/
+lexos-ia/memoire/
+lexos-ia/projets/

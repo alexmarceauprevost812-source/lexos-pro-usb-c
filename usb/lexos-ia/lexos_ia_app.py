@@ -274,6 +274,10 @@ class App(BaseHTTPRequestHandler):
                 return self._envoyer(200, liste_modeles())
             if url.path == "/api/conversations":
                 return self._envoyer(200, lister_conversations())
+            if url.path == "/api/memoire":
+                d = charger_memoire()
+                return self._envoyer(200, {"apprendre": d.get("apprendre", True), "entrees": d["entrees"],
+                                           "types": TYPES_MEMOIRE})
             if url.path == "/api/projets":
                 return self._envoyer(200, {"projets": lister_projets(), "git": bool(shutil.which("git")),
                                            "dossier": str(DOSSIER_PROJETS)})
@@ -330,6 +334,8 @@ class App(BaseHTTPRequestHandler):
             return self._envoyer(400, {"erreur": str(e)})
         route = {
             "/api/chat": self._chat, "/api/exec": self._exec, "/api/config": self._config,
+            "/api/memoire/ajouter": self._memoire_ajouter, "/api/memoire/supprimer": self._memoire_supprimer,
+            "/api/memoire/apprendre": self._memoire_apprendre, "/api/memoire/reglage": self._memoire_reglage,
             "/api/conversations": self._sauver_conv, "/api/supprimer-conversation": self._supprimer_conv,
             "/api/telecharger-modele": self._telecharger, "/api/supprimer-modele": self._supprimer_modele,
             "/api/dossier": self._dossier, "/api/ouvrir": self._ouvrir,
@@ -355,6 +361,9 @@ class App(BaseHTTPRequestHandler):
         messages = nettoyer_messages(d.get("messages", []))
         if not messages or messages[0]["role"] != "system":
             messages.insert(0, {"role": "system", "content": systeme(mode, etat_serveur["dossier"])})
+        souvenirs = memoire_pour(messages, mode)  # rappelle les leçons apprises
+        if souvenirs:
+            messages[0] = {"role": "system", "content": messages[0]["content"] + "\n\n" + souvenirs}
         self._flux_debut()
         filtre = ia.FiltreReflexion()
         reflexion = False
@@ -639,6 +648,38 @@ class App(BaseHTTPRequestHandler):
                 mp4 = base64.b64encode(f.read()).decode()
         self._envoyer(200, {"mp4": mp4})
 
+    # -- Mémoire --
+    def _memoire_ajouter(self, d):
+        e, nouveau = ajouter_memoire(d.get("texte", ""), d.get("type", "fait"), d.get("source", "manuel"))
+        self._envoyer(200, {"entree": e, "nouveau": nouveau})
+
+    def _memoire_supprimer(self, d):
+        with _verrou_memoire:
+            m = charger_memoire()
+            if d.get("tout"):
+                m["entrees"] = []
+            else:
+                m["entrees"] = [e for e in m["entrees"] if e["id"] != d.get("id")]
+            sauver_memoire(m)
+        self._envoyer(200, {"ok": True})
+
+    def _memoire_reglage(self, d):
+        with _verrou_memoire:
+            m = charger_memoire()
+            m["apprendre"] = bool(d.get("apprendre"))
+            sauver_memoire(m)
+        self._envoyer(200, {"apprendre": m["apprendre"]})
+
+    def _memoire_apprendre(self, d):
+        """L'IA tire elle-même une leçon de ce qui vient de se passer (erreur puis solution)."""
+        if not charger_memoire().get("apprendre", True):
+            return self._envoyer(200, {"lecon": None, "raison": "apprentissage désactivé"})
+        lecon = tirer_lecon(str(d.get("modele", "")), d.get("contexte", ""))
+        if not lecon:
+            return self._envoyer(200, {"lecon": None})
+        e, nouveau = ajouter_memoire(lecon, "lecon", d.get("source", "auto"))
+        self._envoyer(200, {"lecon": e["texte"], "nouveau": nouveau})
+
     def _quitter(self, d):
         self._envoyer(200, {"ok": True})
         threading.Thread(target=self.server.shutdown, daemon=True).start()
@@ -781,6 +822,113 @@ def garder_historique(nom, cible):
         rel = cible.relative_to(dossier_projet(nom).resolve()).as_posix().replace("/", "__")
         shutil.copy2(cible, hist / f"{rel}.{time.strftime('%Y%m%d-%H%M%S')}")
 
+
+# --------------------------------------------------------------------------
+# Mémoire : les IA apprennent de leurs erreurs (tout reste sur la clé)
+# --------------------------------------------------------------------------
+FICHIER_MEMOIRE = ICI / "memoire" / "memoire.json"
+TYPES_MEMOIRE = {"lecon": "🧩", "correction": "✋", "fait": "📌", "preference": "⭐"}
+MOTS_VIDES = set("avec dans pour sans plus moins mais donc alors cette cela ceci comme quoi quel quelle elle elles "
+                 "ils nous vous leur leurs être avoir fait faire peut tout tous toute toutes très bien aussi encore "
+                 "entre vers chez sous sur une des les est sont the and for with that this from".split())
+_verrou_memoire = threading.Lock()
+
+
+def charger_memoire():
+    try:
+        d = json.loads(FICHIER_MEMOIRE.read_text(encoding="utf-8"))
+        if isinstance(d, dict) and isinstance(d.get("entrees"), list):
+            return d
+    except (OSError, ValueError):
+        pass
+    return {"apprendre": True, "entrees": []}
+
+
+def sauver_memoire(d):
+    FICHIER_MEMOIRE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = FICHIER_MEMOIRE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(FICHIER_MEMOIRE)
+
+
+def mots(texte):
+    return {m for m in re.findall(r"[a-zà-ÿ0-9_.\-]{4,}", str(texte).lower()) if m not in MOTS_VIDES}
+
+
+def ajouter_memoire(texte, type_="lecon", source="manuel"):
+    texte = re.sub(r"\s+", " ", str(texte)).strip()[:400]
+    if len(texte) < 6:
+        raise ValueError("souvenir trop court")
+    type_ = type_ if type_ in TYPES_MEMOIRE else "lecon"
+    with _verrou_memoire:
+        d = charger_memoire()
+        for e in d["entrees"]:  # pas de doublon
+            if e["texte"].lower() == texte.lower():
+                e["date"] = time.time()
+                sauver_memoire(d)
+                return e, False
+        e = {"id": secrets.token_hex(6), "type": type_, "texte": texte, "source": str(source)[:30],
+             "date": time.time(), "utilisations": 0}
+        d["entrees"].insert(0, e)
+        d["entrees"] = d["entrees"][:500]
+        sauver_memoire(d)
+        return e, True
+
+
+def memoire_pour(messages, mode):
+    """Les souvenirs utiles pour cette demande, à ajouter aux consignes de l'IA."""
+    d = charger_memoire()
+    if not d["entrees"]:
+        return ""
+    demande = " ".join(m["content"] for m in messages[-3:] if m["role"] == "user")
+    cles = mots(demande)
+    choisis = []
+    for e in d["entrees"]:
+        commun = len(cles & mots(e["texte"]))
+        if e["type"] in ("preference", "fait"):
+            score = 5 + commun
+        elif commun or e.get("source") == mode:
+            score = 2 * commun + (1 if e.get("source") == mode else 0)
+        else:
+            continue
+        choisis.append((score, e["date"], e))
+    choisis.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    lignes, taille_ = [], 0
+    for _, _, e in choisis[:12]:
+        ligne = f"- {e['texte']}"
+        if taille_ + len(ligne) > 1500:
+            break
+        lignes.append(ligne)
+        taille_ += len(ligne)
+        e["utilisations"] = e.get("utilisations", 0) + 1
+    if not lignes:
+        return ""
+    with _verrou_memoire:
+        sauver_memoire(d)
+    return ("MÉMOIRE — ce que tu as appris sur ce PC et avec cet utilisateur (applique-le sans le répéter) :\n"
+            + "\n".join(lignes))
+
+
+CONSIGNE_LECON = ("Tu aides une IA locale à apprendre de ses erreurs. À partir de ce qui s'est passé, écris UNE "
+                  "seule leçon courte, générale et réutilisable (25 mots maximum), en français, qui commence par "
+                  "un verbe à l'infinitif (ex. « Utiliser python3 au lieu de python sur ce PC. »). Si rien d'utile "
+                  "n'est à retenir, réponds exactement AUCUNE.")
+
+
+def tirer_lecon(modele, contexte):
+    filtre, texte = ia.FiltreReflexion(), ""
+    for obj in ia.flux("/api/chat", {"model": modele, "stream": True, "messages": [
+            {"role": "system", "content": CONSIGNE_LECON}, {"role": "user", "content": str(contexte)[:6000]}]},
+                       delai=300):
+        texte += filtre.nourrir((obj.get("message") or {}).get("content") or "")
+        if obj.get("done"):
+            break
+    texte += filtre.fin()
+    lignes = [l.strip(" -*•\"«»") for l in texte.strip().splitlines() if l.strip()]
+    lecon = re.sub(r"^(leçon|lecon)\s*:\s*", "", lignes[0], flags=re.I).strip() if lignes else ""
+    if not lecon or lecon.upper().startswith("AUCUNE") or not 8 <= len(lecon) <= 300:
+        return None
+    return lecon
 
 def creer_apercu(cible):
     """Donne une adresse secrète pour afficher un projet ou un HTML dans le Studio."""

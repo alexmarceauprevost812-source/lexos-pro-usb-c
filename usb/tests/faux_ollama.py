@@ -27,6 +27,16 @@ def reponse_auto(messages):
     """Réponses réalistes selon le mode (pour les démos et captures)."""
     systeme = messages[0]["content"] if messages and messages[0]["role"] == "system" else ""
     dernier = messages[-1]["content"] if messages else ""
+    if "apprendre de ses erreurs" in systeme:
+        if "pyhton" in dernier:
+            return "Utiliser python3 (et vérifier l'orthographe) : pyhton n'existe pas sur ce PC."
+        return "AUCUNE"
+    if "CodexTerminal" in systeme and "python" in " ".join(m["content"] for m in messages).lower():
+        if dernier.startswith("TÂCHE"):
+            return "Je vérifie la version de Python.\n```bash\npyhton --version\n```"
+        if "pyhton --version" in dernier and "Code de sortie : 0" not in dernier:
+            return "Oups, faute de frappe. J'essaie avec python3.\n```bash\npython3 --version\n```"
+        return "FINI: Python 3 est installé."
     if "l'Architecte d'une équipe" in systeme:
         return ("**Plan**\n1. Créer `compteur.py` avec une fonction `moyenne(notes)`.\n"
                 "2. Afficher la moyenne des notes.\n3. Piège : une liste vide ferait une division par zéro.")

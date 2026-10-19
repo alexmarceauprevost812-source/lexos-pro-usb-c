@@ -319,6 +319,25 @@ html.telephone .pc-seulement{display:none!important}
 .garde{color:var(--gris);font-size:13px;margin:12px 0;line-height:1.5}
 .actions-tel{display:flex;gap:8px;flex-wrap:wrap}
 
+/* ── Mémoire ───────────────────────────────── */
+.memo-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.memo-compte{flex:1;color:var(--gris);font-size:14px}
+.memo-ajout{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.memo-ajout select,.memo-ajout input{background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:10px 12px}
+.memo-ajout input{flex:1;min-width:200px}
+.souvenir{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--ligne);border-radius:14px;padding:12px 14px;background:var(--carte);margin-bottom:8px}
+.souvenir .ico{font-size:20px;line-height:1.3}
+.souvenir .txt{flex:1;line-height:1.45}
+.souvenir .meta{color:var(--gris2);font-size:12px;margin-top:4px}
+.souvenir button{opacity:.55}.souvenir button:hover{opacity:1;color:var(--rouge)}
+.col-ia{display:flex;flex-direction:column;min-width:0;max-width:min(720px,88%)}
+.col-ia .bulle{max-width:100%}
+.avis{display:flex;gap:6px;margin-top:4px;opacity:0;transition:opacity .2s}
+.msg.ia:hover .avis,.avis:focus-within{opacity:1}
+.avis button{font-size:12px;color:var(--gris);border:1px solid var(--ligne);border-radius:999px;padding:3px 10px}
+.avis button:hover{color:var(--orange);border-color:var(--orange)}
+@media (hover:none){.avis{opacity:.8}}
+
 /* ── Notifications ─────────────────────────── */
 #notifs{position:fixed;top:72px;right:12px;width:min(380px,92vw);max-height:60vh;overflow:auto;background:var(--panneau);border:1px solid var(--ligne);border-radius:18px;z-index:40;padding:10px;display:none;box-shadow:0 20px 50px rgba(0,0,0,.6)}
 #notifs.ouvert{display:block}
@@ -559,6 +578,19 @@ html.telephone .pc-seulement{display:none!important}
       <h2>🧠 CERVEAU</h2>
       <div class="info" id="info-cerveau">Les modèles IA installés sur ta clé.</div>
       <div class="grille" id="grille-modeles"></div>
+      <h2 style="margin-top:34px">🧠 MÉMOIRE</h2>
+      <div class="info">Ce que tes IA ont appris de leurs erreurs et de tes corrections. C'est rappelé à l'IA quand ça concerne ta demande. Tout reste sur la clé.</div>
+      <div class="memo-barre">
+        <label class="interrupteur"><input type="checkbox" id="memo-auto" checked> Apprendre automatiquement de leurs erreurs</label>
+        <span id="memo-compte" class="memo-compte"></span>
+        <button class="btn-petit" id="memo-vider">Tout effacer</button>
+      </div>
+      <div class="memo-ajout">
+        <select id="memo-type"><option value="fait">📌 Fait</option><option value="preference">⭐ Préférence</option><option value="lecon">🧩 Leçon</option></select>
+        <input id="memo-texte" placeholder="Ex. : Mon PC roule Kali Linux · Réponds-moi en joual · Mes projets sont en Python">
+        <button class="btn-orange" id="memo-ajouter">Retenir</button>
+      </div>
+      <div id="memo-liste"></div>
       <div class="telecharger">
         <strong>Ajouter un modèle sur la clé</strong> <span style="color:var(--gris)">(Internet requis)</span>
         <div class="rang">
@@ -778,7 +810,8 @@ function bulleToi(mode, texte, images) {
 }
 function bulleIA(mode, html) {
   const el = document.createElement("div"); el.className = "msg ia";
-  el.innerHTML = `<img class="avatar logo-badge" src="images/${mode === "codex" ? "marceau" : "tilexal"}.png" alt=""><div class="bulle">${html || ""}</div>`;
+  el.innerHTML = `<img class="avatar logo-badge" src="images/${mode === "codex" ? "marceau" : "tilexal"}.png" alt=""><div class="col-ia"><div class="bulle">${html || ""}</div>` +
+    `<div class="avis"><button data-avis="${mode}" title="Dis à l'IA ce qui n'allait pas : elle s'en souviendra">👎 Erreur</button></div></div>`;
   fil(mode).appendChild(el); majAccueil(mode); defiler(mode); return el.querySelector(".bulle");
 }
 function rendreConversation(mode) {
@@ -909,6 +942,13 @@ async function envoyer(mode) {
   const texte = zone.value.trim(), pieces = S.pieces[mode];
   if (!texte && !pieces.length) return;
   if (mode === "terminal") { zone.value = ""; ajuster(zone); return tache(texte); }
+  const aRetenir = texte.match(/^\/retiens\s+(.+)/is) || texte.match(/^(?:retiens|souviens-toi)\s+(?:que\s+|bien\s+que\s+)?(.+)/is);
+  if (aRetenir && (mode === "chat" || mode === "codex")) {
+    zone.value = ""; ajuster(zone); bulleToi(mode, texte);
+    const e = await retenir(aRetenir[1], /^(réponds|parle|écris|appelle|utilise toujours|préf)/i.test(aRetenir[1]) ? "preference" : "fait", mode);
+    bulleIA(mode, e ? `<p>🧠 C'est noté, je vais m'en souvenir :</p><p><strong>${echap(e.texte)}</strong></p><p style="color:var(--gris);font-size:14px">Cerveau → Mémoire pour voir ou effacer mes souvenirs.</p>` : "<p>Je n'ai pas pu le retenir.</p>");
+    return;
+  }
   if (mode === "equipe") {
     const fichiers = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n");
     const affiche = (texte || "Améliore ces fichiers.") + (pieces.length ? "\n📄 " + pieces.map(p => p.nom).join(", ") : "");
@@ -1015,10 +1055,11 @@ async function lancerEquipe(demande, affiche) {
   try {
     const plan = await agent("architecte", `DEMANDE :\n${demande}${avant}`, ctrl);
     let code = await agent("codeur", `DEMANDE :\n${demande}\n\nPLAN DE L'ARCHITECTE :\n${plan}${avant}`, ctrl);
-    const tours = +$("#tours").value; let ok = false;
+    const tours = +$("#tours").value; let ok = false; const corrections = [];
     for (let t = 0; t <= tours; t++) {
       const revue = await agent("reviseur", `DEMANDE :\n${demande}\n\nCODE DU CODEUR :\n${code}`, ctrl);
       if (/^[\s*#>_]*APPROUV/i.test(revue)) { ok = true; break; }
+      corrections.push(revue);
       if (t === tours) break;
       code = await agent("codeur", `DEMANDE :\n${demande}\n\nTON CODE PRÉCÉDENT :\n${code}\n\nCORRECTIONS DEMANDÉES PAR LE RÉVISEUR :\n${revue}\n\nRéécris le code complet corrigé.`, ctrl);
     }
@@ -1027,6 +1068,8 @@ async function lancerEquipe(demande, affiche) {
     const derniers = conv.messages.filter(m => m.agent === "codeur");
     conv.messages.push({ role: "verdict", content: v, ok }); verdict(v, ok, extraireBlocs(derniers.length ? derniers[derniers.length - 1].content : ""));
     notifier(ok ? "👥 Équipe IA : code approuvé" : "👥 Équipe IA : corrections à revoir");
+    if (ok && corrections.length) apprendre("equipe", modeleRole("reviseur"),
+      `DEMANDE : ${demande.slice(0, 600)}\nERREURS TROUVÉES PAR LE RÉVISEUR (puis corrigées) :\n${corrections.join("\n---\n").slice(0, 2500)}`);
   } catch (e) {
     if (e.name === "AbortError") toast("Équipe arrêtée");
     else { verdict("Erreur IA : " + e.message, false); notifier("Erreur Équipe IA : " + e.message); }
@@ -1070,11 +1113,17 @@ async function tache(texte) {
   if (!conv.titre) conv.titre = texte.slice(0, 60);
   conv.messages.push({ role: "user", content: "TÂCHE : " + texte, affiche: texte });
   bulleToi("terminal", texte);
+  const echecs = [], reussites = [];
   for (let etape = 1; etape <= 15; etape++) {
     const rep = await reponseIA("terminal", modele);
     if (!rep || rep.endsWith("[coupé]")) return;
     const cmd = extraireCommande(rep);
-    if (!cmd) { toast("✔ Tâche terminée"); notifier("CodexTerminal : tâche terminée — " + texte.slice(0, 50)); return; }
+    if (!cmd) {
+      toast("✔ Tâche terminée"); notifier("CodexTerminal : tâche terminée — " + texte.slice(0, 50));
+      if (echecs.length && reussites.length) apprendre("terminal", modele,
+        `TÂCHE : ${texte}\nCOMMANDES QUI ONT ÉCHOUÉ :\n${echecs.map(e => `$ ${e.commande}\n${e.sortie}`).join("\n")}\nCE QUI A FONCTIONNÉ ENSUITE :\n${reussites.map(c => "$ " + c).join("\n")}`);
+      return;
+    }
     const d = await carteCommande(cmd);
     if (d.action === "q") { conv.messages.push({ role: "user", content: "L'utilisateur a arrêté la tâche.", cache: true }); d.carte.classList.add("fini"); return; }
     if (d.action === "n") {
@@ -1085,6 +1134,8 @@ async function tache(texte) {
     try { res = await api("/api/exec", { commande: d.commande, confirme: d.confirme }); }
     catch (e) { res = { code: 1, sortie: "Refusé : " + e.message, dossier: S.dossier }; }
     S.dossier = res.dossier; $("#dossier").value = res.dossier;
+    if (res.code !== 0) echecs.push({ commande: d.commande, sortie: (res.sortie || "").slice(-400) });
+    else if (echecs.length) reussites.push(d.commande);
     const sortie = document.createElement("div");
     sortie.innerHTML = `<div class="sortie">${echap(res.sortie || "(aucune sortie)")}</div><div class="code-sortie ${res.code === 0 ? "ok" : "ko"}">code de sortie : ${res.code}</div>`;
     d.carte.appendChild(sortie); d.carte.classList.add("fini"); defiler("terminal");
@@ -1425,7 +1476,10 @@ async function rendreSchemas(racine) {
       let aDessiner = code;
       if (!(await mm.parse(code, { suppressErrors: true }))) {
         aDessiner = reparerMermaid(code);
-        if (await mm.parse(aDessiner, { suppressErrors: true })) b.dataset.mermaid = encodeURIComponent(aDessiner);
+        if (await mm.parse(aDessiner, { suppressErrors: true })) {
+          b.dataset.mermaid = encodeURIComponent(aDessiner);
+          if (!S.leconSchema) { S.leconSchema = true; retenir("Dans les schémas mermaid, mettre chaque étiquette entre guillemets, ex. A[\"Texte (détail)\"].", "lecon", "chat", true); }
+        }
       }
       const { svg } = await mm.render(id, aDessiner);
       zone.innerHTML = svg;
@@ -1623,13 +1677,59 @@ function schemaDuProjet() {
 }
 $("#p-schema").onclick = () => { const c = schemaDuProjet(); if (c) montrerContenu(blocSchema(c, "schemas/projet.mmd"), `🗺 Schéma de ${S.projet}`); };
 
+// ─── Mémoire : les IA apprennent de leurs erreurs ───
+async function retenir(texte, type, source, silencieux) {
+  try {
+    const d = await api("/api/memoire/ajouter", { texte, type, source });
+    if (!silencieux) notifier(`🧠 Retenu : ${d.entree.texte}`);
+    if (S.vue === "cerveau") chargerMemoire();
+    return d.entree;
+  } catch (e) { if (!silencieux) toast(e.message); return null; }
+}
+async function apprendre(source, modele, contexte) {
+  try {
+    const d = await api("/api/memoire/apprendre", { source, modele, contexte });
+    if (d.lecon && d.nouveau) { toast("🧠 Leçon apprise : " + d.lecon); notifier("🧠 Leçon apprise : " + d.lecon); }
+  } catch (e) {}
+}
+async function chargerMemoire() {
+  let d;
+  try { d = await api("/api/memoire"); } catch (e) { return; }
+  $("#memo-auto").checked = d.apprendre !== false;
+  const n = d.entrees.length;
+  $("#memo-compte").textContent = n ? `${n} souvenir${n > 1 ? "s" : ""}` : "";
+  const source = { terminal: "CodexTerminal", equipe: "Équipe IA", chat: "Chat", codex: "Codex", manuel: "toi" };
+  $("#memo-liste").innerHTML = n ? d.entrees.map(e => `
+    <div class="souvenir"><span class="ico">${d.types[e.type] || "🧩"}</span>
+      <div class="txt">${echap(e.texte)}<div class="meta">${{ lecon: "Leçon", correction: "Ta correction", fait: "Fait", preference: "Préférence" }[e.type] || ""} · appris par ${echap(source[e.source] || e.source)} · ${new Date(e.date * 1000).toLocaleDateString("fr-CA")}${e.utilisations ? ` · rappelé ${e.utilisations} fois` : ""}</div></div>
+      <button data-oublier="${e.id}" title="Oublier">✕</button></div>`).join("")
+    : '<div class="vide">Aucun souvenir pour l\'instant. Tes IA apprendront de leurs erreurs, et tu peux leur dire « /retiens … » dans le Chat.</div>';
+  $$("#memo-liste [data-oublier]").forEach(b => b.onclick = async () => { await api("/api/memoire/supprimer", { id: b.dataset.oublier }); chargerMemoire(); });
+}
+$("#memo-ajouter").onclick = async () => {
+  const t = $("#memo-texte").value.trim(); if (!t) return;
+  if (await retenir(t, $("#memo-type").value, "manuel", true)) { $("#memo-texte").value = ""; toast("🧠 Retenu"); chargerMemoire(); }
+};
+$("#memo-texte").addEventListener("keydown", e => { if (e.key === "Enter") $("#memo-ajouter").click(); });
+$("#memo-auto").onchange = e => api("/api/memoire/reglage", { apprendre: e.target.checked }).then(() => toast(e.target.checked ? "Apprentissage automatique activé" : "Apprentissage automatique désactivé"));
+$("#memo-vider").onclick = async () => { if (confirm("Effacer TOUTE la mémoire des IA ?")) { await api("/api/memoire/supprimer", { tout: true }); chargerMemoire(); toast("Mémoire effacée"); } };
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-avis]"); if (!b) return;
+  let question = "", m = b.closest(".msg");
+  while ((m = m.previousElementSibling)) if (m.classList.contains("toi")) { question = m.textContent.trim(); break; }
+  const quoi = prompt("Qu'est-ce qui n'allait pas dans cette réponse ? L'IA va s'en souvenir pour la prochaine fois :");
+  if (!quoi || !quoi.trim()) return;
+  const ent = await retenir(`À éviter : ${quoi.trim()}${question ? ` (à propos de « ${question.slice(0, 80)} »)` : ""}`, "correction", b.dataset.avis);
+  if (ent) { b.textContent = "🧠 Retenu"; b.disabled = true; toast("🧠 Merci, je m'en souviendrai"); }
+});
+
 // ─── Navigation, tiroir, thème, notifications ───
 function aller(vue) {
   S.vue = vue;
   $$(".vue").forEach(v => v.classList.toggle("active", v.id === "vue-" + vue));
   $$(".nav[data-vue]").forEach(n => n.classList.toggle("actif", n.dataset.vue === vue));
   $("#fab").style.display = vue === "cerveau" || vue === "projets" ? "none" : "";
-  if (vue === "cerveau") chargerModeles().catch(() => {});
+  if (vue === "cerveau") { chargerModeles().catch(() => {}); chargerMemoire(); }
   if (vue === "projets") chargerProjets();
   const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
   if (innerWidth < 1200) fermerTiroir();

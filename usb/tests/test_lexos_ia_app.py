@@ -31,6 +31,7 @@ class TestApp(unittest.TestCase):
         cls.tmp = tempfile.mkdtemp()
         app.DOSSIER_CONVS = Path(cls.tmp) / "convs"
         app.DOSSIER_PROJETS = Path(cls.tmp) / "projets"
+        app.FICHIER_MEMOIRE = Path(cls.tmp) / "memoire" / "memoire.json"
         app.etat_serveur["dossier"] = cls.tmp
         cls.serveur = ThreadingHTTPServer(("127.0.0.1", 0), app.App)
         cls.serveur.adresse = f"127.0.0.1:{cls.serveur.server_address[1]}"
@@ -251,6 +252,38 @@ class TestApp(unittest.TestCase):
                        capture_output=True, text=True).stdout.strip()
         self.assertAlmostEqual(float(duree), 1.0, delta=0.1)  # 24 images à 24 i/s = 1 seconde
         self.assertEqual(self.json("POST", "/api/video-images", {"images": ["iVBORw0KGgo="]})[0], 400)  # pas un JPEG
+
+    # ── Mémoire ──
+    def test_memoire_retenir_rappeler_oublier(self):
+        self.json("POST", "/api/memoire/supprimer", {"tout": True})
+        code, d = self.json("POST", "/api/memoire/ajouter", {"texte": "Utiliser python3 au lieu de python sur ce PC.", "type": "lecon", "source": "terminal"})
+        self.assertTrue(d["nouveau"])
+        self.assertFalse(self.json("POST", "/api/memoire/ajouter", {"texte": "utiliser python3 au lieu de python sur ce PC."})[1]["nouveau"])  # pas de doublon
+        self.json("POST", "/api/memoire/ajouter", {"texte": "Réponds-moi en joual.", "type": "preference"})
+        self.json("POST", "/api/memoire/ajouter", {"texte": "Le serveur Apache est sur le port 8080.", "type": "lecon", "source": "codex"})
+        self.lignes("/api/chat", {"mode": "chat", "modele": "llama3.2:3b", "messages": [{"role": "user", "content": "comment lancer mon script avec python3 ?"}]})
+        consignes = self.faux.requetes[-1][1]["messages"][0]["content"]
+        self.assertIn("MÉMOIRE", consignes)
+        self.assertIn("python3 au lieu de python", consignes)   # leçon liée à la demande
+        self.assertIn("joual", consignes)                       # préférence toujours rappelée
+        self.assertNotIn("Apache", consignes)                   # leçon sans rapport : pas rappelée
+        entrees = self.json("GET", "/api/memoire")[1]["entrees"]
+        self.assertEqual(next(e for e in entrees if "python3" in e["texte"])["utilisations"], 1)
+        ident = entrees[0]["id"]
+        self.json("POST", "/api/memoire/supprimer", {"id": ident})
+        self.assertNotIn(ident, [e["id"] for e in self.json("GET", "/api/memoire")[1]["entrees"]])
+        self.assertEqual(self.json("POST", "/api/memoire/ajouter", {"texte": "x"})[0], 400)
+
+    def test_memoire_apprendre_d_une_erreur(self):
+        self.json("POST", "/api/memoire/supprimer", {"tout": True})
+        contexte = "TÂCHE : version de python\nCOMMANDES QUI ONT ÉCHOUÉ :\n$ pyhton --version\nnot found\nCE QUI A FONCTIONNÉ ENSUITE :\n$ python3 --version"
+        d = self.json("POST", "/api/memoire/apprendre", {"source": "terminal", "modele": "qwen2.5-coder:7b", "contexte": contexte})[1]
+        self.assertIn("python3", d["lecon"])
+        self.assertIsNone(self.json("POST", "/api/memoire/apprendre", {"modele": "m", "contexte": "tout va bien"})[1]["lecon"])
+        self.json("POST", "/api/memoire/reglage", {"apprendre": False})
+        self.assertIsNone(self.json("POST", "/api/memoire/apprendre", {"modele": "m", "contexte": contexte})[1]["lecon"])
+        self.json("POST", "/api/memoire/reglage", {"apprendre": True})
+        self.assertEqual(len(self.json("GET", "/api/memoire")[1]["entrees"]), 1)
 
     # ── Conversations sur la clé ──
     def test_conversations(self):
