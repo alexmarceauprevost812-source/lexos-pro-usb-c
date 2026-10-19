@@ -124,6 +124,11 @@ def sauver_conversation(d):
     messages = []
     for m in d.get("messages", []):
         m2 = {"role": m.get("role"), "content": m.get("content", "")}
+        if m.get("agent") in ("architecte", "codeur", "reviseur"):  # Équipe IA
+            m2["agent"] = m["agent"]
+            m2["modele"] = str(m.get("modele") or "")[:100]
+        if m.get("role") == "verdict":
+            m2["ok"] = bool(m.get("ok"))
         if m.get("images"):
             m2["photos"] = len(m["images"])  # les photos ne sont pas recopiées sur la clé
         messages.append(m2)

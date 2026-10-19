@@ -116,6 +116,24 @@ class TestApp(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "x")))
 
+    # ── Équipe IA ──
+    def test_equipe_roles_et_sauvegarde(self):
+        sys_rev = "Tu es le Réviseur d'une équipe de développeurs IA (LexOS)."
+        lignes = self.lignes("/api/chat", {"mode": "equipe", "modele": "llama3.2:3b", "messages": [
+            {"role": "system", "content": sys_rev}, {"role": "user", "content": "CODE DU CODEUR : x"}]})
+        self.assertTrue("".join(l.get("t", "") for l in lignes).startswith("CORRECTIONS"))
+        envoye = self.faux.requetes[-1][1]["messages"]
+        self.assertEqual(envoye[0]["content"], sys_rev)  # l'invite du rôle est gardée telle quelle
+        code, d = self.json("POST", "/api/conversations", {"titre": "Équipe", "mode": "equipe", "messages": [
+            {"role": "user", "content": "fais une moyenne"},
+            {"role": "assistant", "content": "plan", "agent": "architecte", "modele": "qwen3:8b"},
+            {"role": "assistant", "content": "x", "agent": "pirate"},
+            {"role": "verdict", "content": "✔ approuvé", "ok": True}]})
+        conv = self.json("GET", f"/api/conversation?id={d['id']}")[1]
+        self.assertEqual(conv["messages"][1]["agent"], "architecte")
+        self.assertNotIn("agent", conv["messages"][2])  # rôle inconnu ignoré
+        self.assertTrue(conv["messages"][3]["ok"])
+
     # ── Conversations sur la clé ──
     def test_conversations(self):
         code, d = self.json("POST", "/api/conversations", {"titre": "Essai", "mode": "codex", "messages": [

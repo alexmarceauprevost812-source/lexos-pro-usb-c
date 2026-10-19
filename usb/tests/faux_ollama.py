@@ -27,6 +27,20 @@ def reponse_auto(messages):
     """Réponses réalistes selon le mode (pour les démos et captures)."""
     systeme = messages[0]["content"] if messages and messages[0]["role"] == "system" else ""
     dernier = messages[-1]["content"] if messages else ""
+    if "l'Architecte d'une équipe" in systeme:
+        return ("**Plan**\n1. Créer `compteur.py` avec une fonction `moyenne(notes)`.\n"
+                "2. Afficher la moyenne des notes.\n3. Piège : une liste vide ferait une division par zéro.")
+    if "le Codeur d'une équipe" in systeme:
+        if "CORRECTIONS DEMANDÉES" in dernier:
+            return ("Version corrigée :\n\nFichier: compteur.py\n```python\ndef moyenne(notes):\n"
+                    "    # corrigé : liste vide gérée\n    if not notes:\n        return 0.0\n"
+                    "    return sum(notes) / len(notes)\n\nprint(moyenne([82, 91, 77]))\n```")
+        return ("Fichier: compteur.py\n```python\ndef moyenne(notes):\n    return sum(notes) / len(notes)\n\n"
+                "print(moyenne([82, 91, 77]))\n```")
+    if "le Réviseur d'une équipe" in systeme:
+        if "corrigé" in dernier:
+            return "APPROUVÉ : la liste vide est gérée et le code est correct."
+        return "CORRECTIONS :\n1. `moyenne([])` plante (division par zéro) : retourne 0.0 si la liste est vide."
     if "CodexTerminal" in systeme:
         if dernier.startswith("TÂCHE"):
             return ("Je crée le fichier puis j'affiche son contenu.\n```bash\n"

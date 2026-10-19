@@ -182,6 +182,19 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .btn-code{width:74px;height:74px;border-radius:50%;background:var(--orange);color:#111;font-size:28px;font-weight:900;font-family:var(--mono);flex:none}
 .btn-code.arreter{background:var(--rouge);color:#fff}
 
+/* ── Équipe IA ─────────────────────────────── */
+.barre-equipe{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:var(--fond2)}
+.role{display:flex;align-items:center;gap:6px;border:1.5px solid var(--c);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:700;color:var(--c);white-space:nowrap}
+.role select{background:var(--carte);border:0;border-radius:999px;color:var(--texte);padding:5px 8px;font-size:12.5px;max-width:150px;outline:0}
+.trio{display:flex;justify-content:center;gap:14px}
+.trio span{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;font-size:36px;border:2px solid var(--c);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}
+.avatar-agent{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:20px;border:2px solid var(--c);margin-top:2px}
+.qui{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--c);margin-bottom:4px}
+.qui span{color:var(--gris2);font-weight:400;letter-spacing:0;margin-left:6px}
+.verdict{border-radius:14px;padding:12px 16px;font-weight:700;text-align:center}
+.verdict.ok{border:1.5px solid var(--vert);color:var(--vert)}
+.verdict.ko{border:1.5px solid var(--jaune);color:var(--jaune)}
+
 /* ── CodexTerminal ─────────────────────────── */
 .barre-term{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:var(--fond2);flex-wrap:wrap}
 .barre-term input{flex:1;min-width:180px;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:8px 12px;font-family:var(--mono);font-size:14px}
@@ -259,6 +272,9 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
   #fab{width:64px;height:64px;font-size:28px;bottom:190px;right:16px}
   .tiroir-titre{font-size:36px}
   .nav{font-size:19px}
+  .barre-equipe{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .barre-equipe::-webkit-scrollbar{display:none}
+  .role{flex:none}
   #onglet-travail{font-size:12px;padding:10px 4px;gap:6px;opacity:.92}
   #onglet-travail .dossier{font-size:16px}
   .pilule{font-size:15px;height:46px;padding:0 30px 0 14px}
@@ -283,6 +299,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
   <div class="section">NAVIGATION</div>
   <button class="nav actif" data-vue="chat"><span class="ico">💬</span>Chat</button>
   <button class="nav" data-vue="codex"><span class="ico">💻</span>Codex</button>
+  <button class="nav" data-vue="equipe"><span class="ico">👥</span>Équipe IA</button>
   <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
   <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
   <div class="section">OUTILS</div>
@@ -356,6 +373,34 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
       </div>
       <div style="max-width:880px;margin:8px auto 0;display:flex;justify-content:flex-end">
         <label class="pilule" style="height:40px;font-size:14px">Codex ·&nbsp;<select data-modele="codex"></select></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ÉQUIPE IA ═══ -->
+  <section class="vue" id="vue-equipe" data-mode="equipe">
+    <div class="barre-equipe">
+      <label class="role" style="--c:#4FC3F7">🧭 Architecte <select data-role="architecte"></select></label>
+      <label class="role" style="--c:#FF7A00">💻 Codeur <select data-role="codeur"></select></label>
+      <label class="role" style="--c:#35D64C">🔍 Réviseur <select data-role="reviseur"></select></label>
+      <label class="role" style="--c:#C792EA">🔁 Révisions <select id="tours"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></label>
+    </div>
+    <div class="defile"><div class="colonne">
+      <div class="accueil" data-accueil>
+        <div class="trio"><span style="--c:#4FC3F7">🧭</span><span style="--c:#FF7A00">💻</span><span style="--c:#35D64C">🔍</span></div>
+        <h1 style="font-size:42px">Équipe IA</h1>
+        <p>Les IA de la clé travaillent ensemble sur ton code.</p>
+        <p style="margin-top:6px"><b style="color:#4FC3F7">L'Architecte</b> planifie · <b style="color:#FF7A00">le Codeur</b> écrit · <b style="color:#35D64C">le Réviseur</b> vérifie, puis le Codeur corrige jusqu'à l'approbation.</p>
+        <p class="aide">« + » ajoute tes fichiers · le même modèle pour les 3 rôles va plus vite</p>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="pieces colonne" data-pieces style="max-width:880px;margin:0 auto 8px"></div>
+      <div class="compo-codex">
+        <button class="plus" data-plus title="Ajouter un fichier">+</button>
+        <textarea rows="1" data-saisie placeholder="Donne un projet à l'équipe…"></textarea>
+        <button class="btn-code" data-envoyer title="Lancer l'équipe">👥</button>
       </div>
     </div>
   </section>
@@ -445,8 +490,9 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const S = {
   vue: "chat", modeles: [], defauts: {}, choix: {}, sensibles: [], langues: [], dossier: "",
-  convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal") },
-  pieces: { chat: [], codex: [], terminal: [] }, enCours: null, notifs: [], nonLues: 0,
+  convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal"), equipe: nouvelle("equipe") },
+  pieces: { chat: [], codex: [], terminal: [], equipe: [] }, enCours: null, notifs: [], nonLues: 0,
+  roles: {}, codeEquipe: "",
 };
 function nouvelle(mode) { return { id: null, mode, titre: "", messages: [] }; }
 
@@ -586,6 +632,8 @@ function rendreConversation(mode) {
   for (const m of S.convs[mode].messages) {
     if (m.cache) continue;
     if (m.role === "user") bulleToi(mode, m.affiche || m.content, m.images);
+    else if (m.role === "assistant" && m.agent && ROLES[m.agent]) bulleAgent(m.agent, m.modele).innerHTML += md(m.content);
+    else if (m.role === "verdict") verdict(m.content, m.ok);
     else if (m.role === "assistant") bulleIA(mode, md(mode === "terminal" ? pourTerminal(m.content) : m.content));
   }
   majAccueil(mode); majTravail();
@@ -601,6 +649,10 @@ async function chargerModeles() {
     const mode = sel.dataset.modele;
     sel.innerHTML = S.modeles.map(m => `<option value="${echap(m.nom)}">${echap(m.nom)}${m.capacites.includes("vision") ? " 👁" : ""}</option>`).join("") || "<option>aucun modèle</option>";
     sel.value = modeleDe(mode) || "";
+  }
+  for (const sel of $$("select[data-role]")) {
+    sel.innerHTML = S.modeles.map(m => `<option value="${echap(m.nom)}">${echap(m.nom)}</option>`).join("") || "<option>aucun</option>";
+    sel.value = modeleRole(sel.dataset.role) || "";
   }
   majBarreCodex(); rendreCerveau();
   return d;
@@ -637,11 +689,12 @@ async function ajouterPhotos(fichiers) {
   rendrePieces("chat");
 }
 async function ajouterFichiers(fichiers) {
+  const mode = S.vue === "equipe" ? "equipe" : "codex";
   for (const f of fichiers) {
     if (f.size > 400000) { toast(`${f.name} est trop gros (max 400 Ko)`); continue; }
-    S.pieces.codex.push({ type: "fichier", nom: f.name, donnees: await f.text() });
+    S.pieces[mode].push({ type: "fichier", nom: f.name, donnees: await f.text() });
   }
-  rendrePieces("codex");
+  rendrePieces(mode);
 }
 function rendrePieces(mode) {
   const zone = $(`#vue-${mode} [data-pieces]`); if (!zone) return;
@@ -650,13 +703,14 @@ function rendrePieces(mode) {
 }
 $("#vue-chat [data-plus]").onclick = () => $("#choix-photo").click();
 $("#vue-codex [data-plus]").onclick = () => $("#choix-fichier").click();
+$("#vue-equipe [data-plus]").onclick = () => $("#choix-fichier").click();
 $("#choix-photo").onchange = e => { ajouterPhotos([...e.target.files]); e.target.value = ""; };
 $("#choix-fichier").onchange = e => { ajouterFichiers([...e.target.files]); e.target.value = ""; };
 $("#vue-chat [data-saisie]").addEventListener("paste", e => {
   const imgs = [...(e.clipboardData || {}).files || []].filter(f => f.type.startsWith("image/"));
   if (imgs.length) { e.preventDefault(); ajouterPhotos(imgs); }
 });
-for (const id of ["vue-chat", "vue-codex"]) {
+for (const id of ["vue-chat", "vue-codex", "vue-equipe"]) {
   const v = $("#" + id);
   v.addEventListener("dragover", e => e.preventDefault());
   v.addEventListener("drop", e => { e.preventDefault(); const f = [...e.dataTransfer.files]; id === "vue-chat" ? ajouterPhotos(f) : ajouterFichiers(f); });
@@ -667,6 +721,7 @@ function boutonEnvoi(mode, enCours) {
   const b = $(`#vue-${mode} [data-envoyer]`);
   b.classList.toggle("arreter", enCours);
   if (mode === "codex") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
+  else if (mode === "equipe") b.innerHTML = enCours ? "■" : "👥";
   else b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
 }
 async function reponseIA(mode, modele) {
@@ -694,6 +749,12 @@ async function envoyer(mode) {
   const texte = zone.value.trim(), pieces = S.pieces[mode];
   if (!texte && !pieces.length) return;
   if (mode === "terminal") { zone.value = ""; ajuster(zone); return tache(texte); }
+  if (mode === "equipe") {
+    const fichiers = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n");
+    const affiche = (texte || "Améliore ces fichiers.") + (pieces.length ? "\n📄 " + pieces.map(p => p.nom).join(", ") : "");
+    S.pieces.equipe = []; rendrePieces("equipe"); zone.value = ""; ajuster(zone);
+    return lancerEquipe((fichiers ? fichiers + "\n\n" : "") + (texte || "Améliore ces fichiers."), affiche);
+  }
   let modele = modeleDe(mode);
   if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
   const msg = { role: "user", content: texte, affiche: texte };
@@ -718,11 +779,91 @@ async function envoyer(mode) {
   await reponseIA(mode, modele);
 }
 function ajuster(t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
-for (const mode of ["chat", "codex", "terminal"]) {
+for (const mode of ["chat", "codex", "terminal", "equipe"]) {
   const zone = $(`#vue-${mode} [data-saisie]`);
   zone.addEventListener("input", () => ajuster(zone));
   zone.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(mode); } });
   $(`#vue-${mode} [data-envoyer]`).onclick = () => envoyer(mode);
+}
+
+// ─── Équipe IA : Architecte → Codeur → Réviseur (→ corrections) ───
+const ROLES = {
+  architecte: { nom: "ARCHITECTE", ico: "🧭", c: "#4FC3F7", systeme:
+    "Tu es l'Architecte d'une équipe de développeurs IA (LexOS). Tu ne codes pas : tu écris un PLAN court et clair, en français, pour le Codeur : 1) ce qu'il faut construire, 2) les fichiers à créer avec leur nom, 3) les étapes, 4) les pièges à éviter. Maximum 15 lignes." },
+  codeur: { nom: "CODEUR", ico: "💻", c: "#FF7A00", systeme:
+    "Tu es le Codeur d'une équipe de développeurs IA (LexOS). Tu écris du code complet, propre et fonctionnel en suivant le plan de l'Architecte. Pour chaque fichier, écris une ligne « Fichier: chemin/du/fichier » puis le bloc de code complet, sans rien couper. Explications très courtes, en français." },
+  reviseur: { nom: "RÉVISEUR", ico: "🔍", c: "#35D64C", systeme:
+    "Tu es le Réviseur d'une équipe de développeurs IA (LexOS). Tu vérifies le code du Codeur : bugs, erreurs de syntaxe, oublis par rapport à la demande, sécurité. Si le code est bon, commence ta réponse par « APPROUVÉ » et explique en une phrase. Sinon, commence par « CORRECTIONS : » puis donne au maximum 5 corrections précises et numérotées. Ne réécris pas le code." },
+};
+function modeleRole(role) {
+  if (S.roles[role]) return S.roles[role];
+  if (role === "codeur") return S.defauts.codex;
+  if (role === "reviseur") { const r = S.modeles.find(m => m.nom.startsWith("deepseek-r1")); if (r) return r.nom; }
+  return S.defauts.chat;
+}
+$$("select[data-role]").forEach(sel => sel.addEventListener("change", () => { S.roles[sel.dataset.role] = sel.value; toast(`${ROLES[sel.dataset.role].nom} → ${sel.value}`); }));
+function bulleAgent(role, modele) {
+  const r = ROLES[role], el = document.createElement("div"); el.className = "msg ia";
+  el.innerHTML = `<div class="avatar-agent" style="--c:${r.c}">${r.ico}</div><div class="bulle"><div class="qui" style="--c:${r.c}">${r.nom}<span>${echap(modele || "")}</span></div><div class="corps-agent"></div></div>`;
+  fil("equipe").appendChild(el); majAccueil("equipe"); defiler("equipe");
+  return el.querySelector(".corps-agent");
+}
+function verdict(texte, ok) {
+  const el = document.createElement("div"); el.className = "verdict " + (ok ? "ok" : "ko"); el.textContent = texte;
+  fil("equipe").appendChild(el); defiler("equipe");
+}
+function codeDe(messages) {
+  const codes = messages.filter(m => m.agent === "codeur");
+  const dernier = codes.length ? codes[codes.length - 1].content : "";
+  return extraireBlocs(dernier).map(b => (b.chemin ? `Fichier: ${b.chemin}\n` : "") + "```" + b.langue + "\n" + b.code + "```").join("\n\n");
+}
+async function diffuser(cible, modele, messages, ctrl) {
+  let texte = "", prevu = false, fini = false;
+  const peindre = () => { prevu = false; if (!fini) { cible.innerHTML = md(texte) + '<span class="curseur"></span>'; defiler("equipe"); } };
+  cible.innerHTML = '<span class="curseur"></span>';
+  try {
+    await flux("/api/chat", { mode: "equipe", modele, messages }, o => {
+      if (o.reflexion && !texte) cible.innerHTML = '<span class="reflexion">réfléchit…</span><span class="curseur"></span>';
+      if (o.t) { texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
+      if (o.erreur) throw new Error(o.erreur);
+    }, ctrl.signal);
+  } finally { fini = true; cible.innerHTML = md(texte || "…"); }
+  return texte;
+}
+async function agent(role, contenu, ctrl) {
+  const modele = modeleRole(role);
+  if (!modele) throw new Error("aucun modèle sur la clé");
+  const texte = await diffuser(bulleAgent(role, modele), modele, [{ role: "system", content: ROLES[role].systeme }, { role: "user", content: contenu }], ctrl);
+  S.convs.equipe.messages.push({ role: "assistant", content: texte, agent: role, modele });
+  return texte;
+}
+async function lancerEquipe(demande, affiche) {
+  const conv = S.convs.equipe;
+  if (!conv.titre) conv.titre = affiche.slice(0, 60);
+  conv.messages.push({ role: "user", content: demande, affiche });
+  bulleToi("equipe", affiche);
+  const ctrl = new AbortController(); S.enCours = ctrl; boutonEnvoi("equipe", true);
+  const avant = S.codeEquipe ? `\n\nCODE ACTUEL DU PROJET :\n${S.codeEquipe}` : "";
+  try {
+    const plan = await agent("architecte", `DEMANDE :\n${demande}${avant}`, ctrl);
+    let code = await agent("codeur", `DEMANDE :\n${demande}\n\nPLAN DE L'ARCHITECTE :\n${plan}${avant}`, ctrl);
+    const tours = +$("#tours").value; let ok = false;
+    for (let t = 0; t <= tours; t++) {
+      const revue = await agent("reviseur", `DEMANDE :\n${demande}\n\nCODE DU CODEUR :\n${code}`, ctrl);
+      if (/^[\s*#>_]*APPROUV/i.test(revue)) { ok = true; break; }
+      if (t === tours) break;
+      code = await agent("codeur", `DEMANDE :\n${demande}\n\nTON CODE PRÉCÉDENT :\n${code}\n\nCORRECTIONS DEMANDÉES PAR LE RÉVISEUR :\n${revue}\n\nRéécris le code complet corrigé.`, ctrl);
+    }
+    S.codeEquipe = codeDe(conv.messages);
+    const v = ok ? "✔ Code approuvé par le Réviseur — il est dans TRAVAIL" : "⚠ Le Réviseur demande encore des corrections : relis-les ou redemande à l'équipe";
+    conv.messages.push({ role: "verdict", content: v, ok }); verdict(v, ok);
+    notifier(ok ? "👥 Équipe IA : code approuvé" : "👥 Équipe IA : corrections à revoir");
+  } catch (e) {
+    if (e.name === "AbortError") toast("Équipe arrêtée");
+    else { verdict("Erreur IA : " + e.message, false); notifier("Erreur Équipe IA : " + e.message); }
+  } finally {
+    S.enCours = null; boutonEnvoi("equipe", false); majTravail(); sauver("equipe");
+  }
 }
 
 // ─── CodexTerminal : l'IA propose, tu approuves ───
@@ -793,7 +934,7 @@ $("#dossier").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-
 // ─── Panneau TRAVAIL (tout le code des réponses) ───
 function majTravail() {
   const blocs = [];
-  for (const mode of ["chat", "codex"]) for (const m of S.convs[mode].messages) if (m.role === "assistant") blocs.push(...extraireBlocs(m.content));
+  for (const mode of ["chat", "codex", "equipe"]) for (const m of S.convs[mode].messages) if (m.role === "assistant" && m.agent !== "reviseur") blocs.push(...extraireBlocs(m.content));
   $("#contenu-travail").innerHTML = blocs.length ? blocs.map(b => "```" + b.langue + "\n" + b.code + "```").map((t, i) => md((blocs[i].chemin ? "Fichier: " + blocs[i].chemin + "\n" : "") + t)).join("")
     : '<div class="vide">Le code proposé par l\'IA apparaîtra ici.</div>';
 }
@@ -810,11 +951,11 @@ $("#btn-studio").onclick = () => {
 async function sauver(mode) {
   const c = S.convs[mode]; if (!c.messages.length) return;
   try {
-    const d = await api("/api/conversations", { id: c.id, titre: c.titre, mode, modele: modeleDe(mode), messages: c.messages.filter(m => !m.cache).map(m => ({ role: m.role, content: m.affiche || m.content, images: m.images })) });
+    const d = await api("/api/conversations", { id: c.id, titre: c.titre, mode, modele: modeleDe(mode), messages: c.messages.filter(m => !m.cache).map(m => ({ role: m.role, content: m.affiche || m.content, images: m.images, agent: m.agent, modele: m.modele, ok: m.ok })) });
     if (!c.id) { c.id = d.id; listerConvs(); }
   } catch (e) {}
 }
-const ICONES = { chat: "💬", codex: "💻", terminal: "⌨️" };
+const ICONES = { chat: "💬", codex: "💻", terminal: "⌨️", equipe: "👥" };
 async function listerConvs() {
   let convs = [];
   try { convs = await api("/api/conversations"); } catch (e) {}
@@ -833,7 +974,8 @@ async function listerConvs() {
 async function ouvrirConv(id) {
   const d = await api("/api/conversation?id=" + encodeURIComponent(id));
   const mode = d.mode in S.convs ? d.mode : "chat";
-  S.convs[mode] = { id, mode, titre: d.titre, messages: d.messages.map(m => ({ role: m.role, content: m.content })) };
+  S.convs[mode] = { id, mode, titre: d.titre, messages: d.messages.map(m => ({ role: m.role, content: m.content, agent: m.agent, modele: m.modele, ok: m.ok })) };
+  if (mode === "equipe") S.codeEquipe = codeDe(S.convs.equipe.messages);
   aller(mode); rendreConversation(mode); fermerTiroir();
 }
 $("#fab").onclick = () => {
@@ -944,7 +1086,7 @@ async function demarrer() {
     $("#txt-moteur").textContent = "Moteur IA inaccessible : " + e.message; $("#point-moteur").classList.add("rouge");
   }
   listerConvs();
-  ["chat", "codex", "terminal"].forEach(majAccueil);
+  ["chat", "codex", "terminal", "equipe"].forEach(majAccueil);
   setInterval(() => api("/api/ping", {}).catch(() => {}), 20000);
 }
 demarrer();
