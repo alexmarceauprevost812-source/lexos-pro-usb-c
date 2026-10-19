@@ -229,6 +229,29 @@ class TestApp(unittest.TestCase):
         code, d = self.json("POST", "/api/apercu", {"html": "<p>bloc</p>"})
         self.assertEqual(self.appel("GET", d["url"], jeton=False), (200, b"<p>bloc</p>"))
 
+    @unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg requis")
+    def test_video_mp4(self):
+        import base64, subprocess as sp
+        webm = Path(self.tmp) / "essai.webm"
+        sp.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=10", "-t", "1",
+                "-c:v", "libvpx", str(webm)], check=True)
+        code, d = self.json("POST", "/api/video-mp4", {"donnees": base64.b64encode(webm.read_bytes()).decode()})
+        self.assertEqual(code, 200)
+        self.assertEqual(base64.b64decode(d["mp4"])[4:8], b"ftyp")  # vrai fichier MP4
+        self.assertEqual(self.json("POST", "/api/video-mp4", {"donnees": "pas du base64 !"})[0], 400)
+        self.assertEqual(self.json("POST", "/api/video-mp4", {"donnees": "AAAA"}, jeton=False)[0], 403)
+        # assemblage image par image (méthode principale de l'app)
+        img = Path(self.tmp) / "img.jpg"
+        sp.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=orange:s=320x240", "-frames:v", "1", str(img)], check=True)
+        b64 = base64.b64encode(img.read_bytes()).decode()
+        code, d = self.json("POST", "/api/video-images", {"images": [b64] * 24, "ips": 24})
+        self.assertEqual(code, 200)
+        mp4 = Path(self.tmp) / "v.mp4"; mp4.write_bytes(base64.b64decode(d["mp4"]))
+        duree = sp.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(mp4)],
+                       capture_output=True, text=True).stdout.strip()
+        self.assertAlmostEqual(float(duree), 1.0, delta=0.1)  # 24 images à 24 i/s = 1 seconde
+        self.assertEqual(self.json("POST", "/api/video-images", {"images": ["iVBORw0KGgo="]})[0], 400)  # pas un JPEG
+
     # ── Conversations sur la clé ──
     def test_conversations(self):
         code, d = self.json("POST", "/api/conversations", {"titre": "Essai", "mode": "codex", "messages": [

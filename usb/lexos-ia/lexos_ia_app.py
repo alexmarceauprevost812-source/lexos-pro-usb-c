@@ -92,7 +92,8 @@ def systeme(mode, dossier):
             "l'utilisateur s'il en change). Sois direct et concis. Si on t'envoie une photo, regarde-la "
             "attentivement, décris ce que tu vois et réponds à la question. Quand on te demande un plan, "
             "un schéma, une organisation ou des étapes de travail, ajoute un schéma dans un bloc ```mermaid "
-            "(flowchart TD, étiquettes courtes en français entre guillemets).")
+            "(flowchart TD). Mets TOUJOURS chaque étiquette entre guillemets, par exemple : "
+            "A[\"Localisation (bureaux, ATM)\"] --> B{\"Prêt ?\"} et -->|\"oui\"| ; pas plus de 15 blocs.")
 
 
 def nettoyer_messages(messages):
@@ -267,7 +268,8 @@ class App(BaseHTTPRequestHandler):
                 return self._envoyer(200, {
                     "moteur": ia.ia_disponible(), "hote": ia.hote(), "dossier": etat_serveur["dossier"],
                     "systeme": f"{os.name}", "ram": ia.ram_go(), "version": ia.VERSION,
-                    "sensibles": ia.MOTIFS_SENSIBLES, "langues_shell": sorted(ia.LANGUES_SHELL)})
+                    "sensibles": ia.MOTIFS_SENSIBLES, "langues_shell": sorted(ia.LANGUES_SHELL),
+                    "ffmpeg": bool(shutil.which("ffmpeg"))})
             if url.path == "/api/modeles":
                 return self._envoyer(200, liste_modeles())
             if url.path == "/api/conversations":
@@ -335,7 +337,8 @@ class App(BaseHTTPRequestHandler):
             "/api/projet/supprimer-fichier": self._projet_supprimer_fichier,
             "/api/projet/github/cloner": self._github_cloner, "/api/projet/github/recuperer": self._github_recuperer,
             "/api/projet/github/envoyer": self._github_envoyer, "/api/projet/github/lier": self._github_lier,
-            "/api/apercu": self._apercu_creer,
+            "/api/apercu": self._apercu_creer, "/api/video-mp4": self._video_mp4,
+            "/api/video-images": self._video_images,
             "/api/ping": lambda d: self._envoyer(200, {"ok": True}), "/api/quitter": self._quitter,
             "/api/telephone": self._telephone,
         }.get(url.path)
@@ -585,6 +588,56 @@ class App(BaseHTTPRequestHandler):
                          "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'")
         self.end_headers()
         self.wfile.write(corps)
+
+    def _video_mp4(self, d):
+        """Convertit la vidéo d'un schéma en MP4 H.264 (lisible partout, même sur téléphone)."""
+        import base64
+        import tempfile
+        if not shutil.which("ffmpeg"):
+            raise ValueError("ffmpeg n'est pas installé sur ce PC (sudo apt install ffmpeg)")
+        donnees = base64.b64decode(str(d.get("donnees", "")), validate=True)
+        if not donnees or len(donnees) > 40 * 1024 * 1024:
+            raise ValueError("vidéo vide ou trop grosse")
+        with tempfile.TemporaryDirectory() as tmp:
+            entree, sortie = os.path.join(tmp, "entree.bin"), os.path.join(tmp, "schema.mp4")
+            with open(entree, "wb") as f:
+                f.write(donnees)
+            r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", entree, "-an", "-c:v", "libx264",
+                                "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                                sortie], capture_output=True, text=True, timeout=180, stdin=subprocess.DEVNULL)
+            if r.returncode != 0 or not os.path.exists(sortie):
+                raise ValueError("conversion MP4 impossible : " + (r.stderr.strip()[-300:] or "erreur ffmpeg"))
+            with open(sortie, "rb") as f:
+                mp4 = base64.b64encode(f.read()).decode()
+        self._envoyer(200, {"mp4": mp4})
+
+    def _video_images(self, d):
+        """Assemble les images d'une animation (JPEG) en vidéo MP4 H.264, image par image."""
+        import base64
+        import tempfile
+        if not shutil.which("ffmpeg"):
+            raise ValueError("ffmpeg n'est pas installé sur ce PC (sudo apt install ffmpeg)")
+        images = d.get("images") or []
+        ips = max(1, min(60, int(d.get("ips") or 24)))
+        if not isinstance(images, list) or not 1 <= len(images) <= 1800:
+            raise ValueError("nombre d'images invalide")
+        with tempfile.TemporaryDirectory() as tmp:
+            for i, b64 in enumerate(images):
+                octets = base64.b64decode(str(b64).split(",")[-1], validate=True)
+                if octets[:3] != b"\xff\xd8\xff":
+                    raise ValueError("image JPEG invalide")
+                with open(os.path.join(tmp, f"i{i:05d}.jpg"), "wb") as f:
+                    f.write(octets)
+            sortie = os.path.join(tmp, "schema.mp4")
+            r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(ips), "-i",
+                                os.path.join(tmp, "i%05d.jpg"), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+                                "-pix_fmt", "yuv420p", "-movflags", "+faststart", sortie],
+                               capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+            if r.returncode != 0 or not os.path.exists(sortie):
+                raise ValueError("assemblage MP4 impossible : " + (r.stderr.strip()[-300:] or "erreur ffmpeg"))
+            with open(sortie, "rb") as f:
+                mp4 = base64.b64encode(f.read()).decode()
+        self._envoyer(200, {"mp4": mp4})
 
     def _quitter(self, d):
         self._envoyer(200, {"ok": True})

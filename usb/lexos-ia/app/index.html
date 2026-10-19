@@ -243,9 +243,7 @@ main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:
 .schema .dessin svg{max-width:100%;height:auto}
 .schema .attente{color:var(--gris);font-style:italic;font-family:var(--mono);font-size:13px;white-space:pre-wrap}
 .schema .erreur-schema{color:var(--jaune);font-size:13px;margin-bottom:8px}
-.schema .anim{transition:opacity .45s ease}
-.schema .anim.cache{opacity:0}
-.schema path.trait{transition:stroke-dashoffset .6s ease}
+.schema .anim{opacity:0}
 .feuille{width:100%;max-width:900px;align-self:flex-start;background:#0b0b0b;border:1px solid #222;border-radius:14px;padding:18px 22px;color:#eee;line-height:1.6}
 .feuille h4{color:var(--orange2)}
 
@@ -952,7 +950,7 @@ for (const mode of ["chat", "codex", "terminal", "equipe"]) {
 // ─── Équipe IA : Architecte → Codeur → Réviseur (→ corrections) ───
 const ROLES = {
   architecte: { nom: "ARCHITECTE", ico: "🧭", c: "#4FC3F7", systeme:
-    "Tu es l'Architecte d'une équipe de développeurs IA (LexOS). Tu ne codes pas : tu écris un PLAN court et clair, en français, pour le Codeur : 1) ce qu'il faut construire, 2) les fichiers à créer avec leur nom, 3) les étapes, 4) les pièges à éviter. Maximum 15 lignes. Ajoute ensuite le schéma du plan dans un bloc ```mermaid (flowchart TD, étiquettes courtes en français entre guillemets)." },
+    "Tu es l'Architecte d'une équipe de développeurs IA (LexOS). Tu ne codes pas : tu écris un PLAN court et clair, en français, pour le Codeur : 1) ce qu'il faut construire, 2) les fichiers à créer avec leur nom, 3) les étapes, 4) les pièges à éviter. Maximum 15 lignes. Ajoute ensuite le schéma du plan dans un bloc ```mermaid (flowchart TD, maximum 12 blocs). Mets TOUJOURS chaque étiquette entre guillemets, par exemple : A[\"Créer index.html\"] --> B{\"Données ?\"}." },
   codeur: { nom: "CODEUR", ico: "💻", c: "#FF7A00", systeme:
     "Tu es le Codeur d'une équipe de développeurs IA (LexOS). Tu écris du code complet, propre et fonctionnel en suivant le plan de l'Architecte. Pour chaque fichier, écris une ligne « Fichier: chemin/du/fichier » puis le bloc de code complet, sans rien couper. Explications très courtes, en français." },
   reviseur: { nom: "RÉVISEUR", ico: "🔍", c: "#35D64C", systeme:
@@ -1396,7 +1394,7 @@ function chargerMermaid() {
   if (!promesseMermaid) promesseMermaid = new Promise((ok, ko) => {
     const sc = document.createElement("script"); sc.src = "vendor/mermaid.min.js";
     sc.onload = () => {
-      window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", flowchart: { curve: "basis" },
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", htmlLabels: false, flowchart: { curve: "basis", htmlLabels: false },
         themeVariables: { background: "#0d0d0d", primaryColor: "#1b1b1b", primaryTextColor: "#f4f4f4", primaryBorderColor: "#FF7A00",
           lineColor: "#FF9A3D", secondaryColor: "#141414", tertiaryColor: "#101010", clusterBkg: "#121212", clusterBorder: "#444",
           noteBkgColor: "#1b1b1b", noteTextColor: "#f4f4f4", fontFamily: "Space Grotesk, sans-serif", fontSize: "15px" } });
@@ -1409,7 +1407,7 @@ function chargerMermaid() {
 }
 function blocSchema(code, nom) {
   return `<div class="schema" data-mermaid="${encodeURIComponent(code)}"><div class="tete"><span>🗺</span><span class="nom">${echap(nom || "schéma")}</span>` +
-    `<button data-rejouer>▶ Rejouer</button><button data-image>⬇ Image</button><button data-voir-code>&lt;/&gt; Code</button>` +
+    `<button data-rejouer>▶ Rejouer</button><button data-video>🎬 MP4</button><button data-image>⬇ Image</button><button data-voir-code>&lt;/&gt; Code</button>` +
     `${S.projet ? `<button data-schema-projet data-chemin="${echap(nom || "")}">💾 Projet</button>` : ""}</div>` +
     `<div class="dessin"><pre class="attente">✏️ dessin du schéma…</pre></div></div>`;
 }
@@ -1424,7 +1422,12 @@ async function rendreSchemas(racine) {
     b.dataset.fait = "1";
     const code = decodeURIComponent(b.dataset.mermaid), zone = b.querySelector(".dessin"), id = "schema-" + (++numSchema);
     try {
-      const { svg } = await mm.render(id, code);
+      let aDessiner = code;
+      if (!(await mm.parse(code, { suppressErrors: true }))) {
+        aDessiner = reparerMermaid(code);
+        if (await mm.parse(aDessiner, { suppressErrors: true })) b.dataset.mermaid = encodeURIComponent(aDessiner);
+      }
+      const { svg } = await mm.render(id, aDessiner);
       zone.innerHTML = svg;
       animerSchema(zone.querySelector("svg"));
     } catch (e) {
@@ -1435,32 +1438,169 @@ async function rendreSchemas(racine) {
 }
 function animerSchema(svg) {
   if (!svg) return;
-  const noeuds = [...svg.querySelectorAll("g.node, g.cluster, g.actor, g.note, g.label-container, text.actor")];
-  const traits = [...svg.querySelectorAll("path.flowchart-link, .edgePaths path, path.messageLine0, path.messageLine1, line")];
-  const etiquettes = [...svg.querySelectorAll("g.edgeLabel, text.messageText")];
-  const ordre = [];
-  const n = Math.max(noeuds.length, traits.length);
-  for (let i = 0; i < n; i++) { if (noeuds[i]) ordre.push(noeuds[i]); if (traits[i]) ordre.push(traits[i]); if (etiquettes[i]) ordre.push(etiquettes[i]); }
-  if (!ordre.length) return;
-  for (const el of ordre) {
-    if (el.tagName === "path" && el.getTotalLength) {
-      const l = el.getTotalLength(); el.classList.add("trait");
-      el.style.strokeDasharray = l; el.style.strokeDashoffset = l;
-    } else { el.classList.add("anim", "cache"); }
+  const noeuds = [...svg.querySelectorAll("g.node, g.cluster, g.actor, g.note, text.actor")];
+  const traits = [...svg.querySelectorAll("path.flowchart-link, .edgePaths path, path.messageLine0, path.messageLine1")];
+  // les étiquettes de flèche vides (mises par Mermaid en haut du schéma) ne comptent pas dans l'animation
+  const etiquettes = [...svg.querySelectorAll("g.edgeLabel, text.messageText")].filter(el => el.textContent.trim() && el.getBoundingClientRect().width > 0);
+  const tous = [...noeuds, ...traits, ...etiquettes];
+  if (!tous.length) return;
+  // Ordre de lecture : de haut en bas, puis de gauche à droite (un bloc avant la flèche qui en part)
+  const position = el => { const r = el.getBoundingClientRect(); return [r.top + (noeuds.includes(el) ? -2 : 1), r.left]; };
+  tous.map(el => [el, position(el)]).sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1])
+    .forEach(([el], i) => { el.dataset.ordre = i; });
+  for (const el of traits) {
+    if (el.getTotalLength) { const l = el.getTotalLength(); el.style.strokeDasharray = l; el.classList.add("trait"); }
+    if (el.getAttribute("marker-end")) el.dataset.fleche = el.getAttribute("marker-end");
   }
-  ordre.forEach((el, i) => setTimeout(() => {
-    if (el.classList.contains("trait")) el.style.strokeDashoffset = 0; else el.classList.remove("cache");
-  }, 250 + i * 260));
+  for (const el of [...noeuds, ...etiquettes]) el.classList.add("anim");
+  jouerSchema(svg);
+}
+function elementsAnimes(svg) {
+  return [...svg.querySelectorAll(".anim, .trait")].sort((a, b) => (+a.dataset.ordre || 0) - (+b.dataset.ordre || 0));
+}
+// État de l'animation au temps t (ms) — sert à l'écran ET à la vidéo, pour un rendu identique
+const ANIM = { debut: 400, pas: 280, fondu: 450, trace: 650 };
+const doux = x => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+function poserSchema(els, t) {
+  els.forEach((el, i) => {
+    const t0 = ANIM.debut + i * ANIM.pas;
+    if (el.classList.contains("trait")) {
+      const L = parseFloat(el.style.strokeDasharray) || 0, p = doux((t - t0) / ANIM.trace);
+      el.style.strokeDashoffset = L * (1 - p);
+      if (el.dataset.fleche) { if (p >= 0.97) el.setAttribute("marker-end", el.dataset.fleche); else el.removeAttribute("marker-end"); }
+    } else el.style.opacity = doux((t - t0) / ANIM.fondu);
+  });
+}
+function dureeSchema(n) { return ANIM.debut + n * ANIM.pas + ANIM.trace + 150; }
+function jouerSchema(svg) {
+  const els = elementsAnimes(svg);
+  els.forEach(el => { el.style.transition = "none"; el.classList.remove("cache"); });
+  const fin = dureeSchema(els.length), t0 = performance.now();
+  if (svg._anim) cancelAnimationFrame(svg._anim);
+  const image = () => {
+    const t = performance.now() - t0;
+    poserSchema(els, t);
+    if (t < fin && svg.isConnected) svg._anim = requestAnimationFrame(image);
+  };
+  image();
 }
 document.addEventListener("click", e => {
-  const b = e.target.closest("[data-rejouer],[data-image],[data-voir-code],[data-schema-projet]");
+  const b = e.target.closest("[data-rejouer],[data-image],[data-voir-code],[data-schema-projet],[data-video]");
   if (!b) return;
   const bloc = b.closest(".schema"), code = decodeURIComponent(bloc.dataset.mermaid), svg = bloc.querySelector("svg");
-  if (b.dataset.rejouer !== undefined) { if (svg) { svg.querySelectorAll(".trait").forEach(p => { p.style.transition = "none"; p.style.strokeDashoffset = p.style.strokeDasharray; p.getBoundingClientRect(); p.style.transition = ""; }); svg.querySelectorAll(".anim").forEach(x => x.classList.add("cache")); const els = [...svg.querySelectorAll(".anim, .trait")]; els.forEach((el, i) => setTimeout(() => { if (el.classList.contains("trait")) el.style.strokeDashoffset = 0; else el.classList.remove("cache"); }, 250 + i * 260)); } }
+  if (b.dataset.video !== undefined) { videoSchema(bloc, b); return; }
+  if (b.dataset.rejouer !== undefined) { if (svg) jouerSchema(svg); }
   else if (b.dataset.image !== undefined) { if (svg) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg.outerHTML], { type: "image/svg+xml" })); a.download = "schema.svg"; a.click(); } }
   else if (b.dataset.voirCode !== undefined) { const z = bloc.querySelector(".dessin"); const vu = z.dataset.code === "1"; z.dataset.code = vu ? "" : "1"; if (vu) { delete bloc.dataset.fait; z.innerHTML = '<pre class="attente">✏️ dessin du schéma…</pre>'; rendreSchemas(bloc.parentElement); } else z.innerHTML = `<pre class="attente">${echap(code)}</pre>`; }
   else enregistrerDansProjet(b.dataset.chemin || prompt(`Nom du schéma dans 📁 ${S.projet} :`, "schemas/plan.mmd"), code);
 });
+// Les petits modèles oublient souvent les guillemets : A[Texte (avec, virgule)] → A["Texte (avec, virgule)"]
+function reparerMermaid(code) {
+  const net = t => t.replace(/"/g, "'").trim();
+  return code.replace(/^\s*```\w*\s*$/gm, "").split("\n").map(l => {
+    if (/^\s*(flowchart|graph|classDef|class|style|linkStyle|click|%%)\b/.test(l)) return l;
+    return l
+      .replace(/\b([\w-]+)\[(?![\["(\/\\])([^\[\]"]*?)\](?!\))/g, (m, id, t) => `${id}["${net(t)}"]`)
+      .replace(/\b([\w-]+)\{(?![{"])([^{}"]*?)\}/g, (m, id, t) => `${id}{"${net(t)}"}`)
+      .replace(/\|([^|"]+)\|/g, (m, t) => `|"${net(t)}"|`);
+  }).join("\n");
+}
+
+// ─── Vidéo MP4 d'un schéma animé ───
+let policeB64 = null, logoImg = null;
+async function ressourcesVideo() {
+  if (policeB64 === null) {
+    try {
+      const o = new Uint8Array(await (await fetch("polices/space-grotesk.woff2")).arrayBuffer());
+      let t = ""; for (let i = 0; i < o.length; i += 0x8000) t += String.fromCharCode(...o.subarray(i, i + 0x8000));
+      policeB64 = btoa(t);
+    } catch (e) { policeB64 = ""; }
+  }
+  if (!logoImg) { logoImg = new Image(); logoImg.src = "images/tilexal.png"; await logoImg.decode().catch(() => {}); }
+}
+function chargerImage(url) { return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; }); }
+function base64De(blob) { return new Promise(ok => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.readAsDataURL(blob); }); }
+async function videoSchema(bloc, bouton) {
+  const svg = bloc.querySelector(".dessin svg");
+  if (!svg) return toast("Le schéma n'est pas dessiné");
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast("Ce navigateur ne peut pas créer de vidéo");
+  bouton.disabled = true; const texteBouton = bouton.textContent; bouton.textContent = "🎬 …";
+  try {
+    await ressourcesVideo();
+    const W = 1280, H = 720, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    const clone = svg.cloneNode(true);
+    const vb = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width ? svg.viewBox.baseVal : svg.getBBox();
+    clone.setAttribute("width", vb.width); clone.setAttribute("height", vb.height);
+    clone.removeAttribute("style"); clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    if (policeB64) { const st = document.createElementNS("http://www.w3.org/2000/svg", "style"); st.textContent = `@font-face{font-family:"Space Grotesk";src:url(data:font/woff2;base64,${policeB64}) format("woff2")}`; clone.prepend(st); }
+    const els = elementsAnimes(clone);
+    els.forEach(el => { el.classList.remove("anim", "cache"); el.style.transition = "none"; });
+    const FIN = dureeSchema(els.length), TOTAL = FIN + 2000;
+    const poser = t => poserSchema(els, t);
+    const zoneW = W - 140, zoneH = H - 190, ech = Math.min(zoneW / vb.width, zoneH / vb.height, 3);
+    const dw = vb.width * ech, dh = vb.height * ech, dx = (W - dw) / 2, dy = 110 + (zoneH - dh) / 2;
+    const dessiner = async t => {
+      poser(t);
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: "image/svg+xml" }));
+      const img = await chargerImage(url); URL.revokeObjectURL(url);
+      ctx.fillStyle = "#0A0A0A"; ctx.fillRect(0, 0, W, H);
+      const g = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W * 0.7); g.addColorStop(0, "rgba(255,122,0,0.06)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      if (logoImg && logoImg.naturalWidth) ctx.drawImage(logoImg, 40, 22, 80, 80 * logoImg.naturalHeight / logoImg.naturalWidth);
+      ctx.fillStyle = "#FF7A00"; ctx.font = "700 30px 'Space Grotesk', sans-serif"; ctx.fillText("TI-LEX-AL · Schéma", 140, 62);
+      ctx.fillStyle = "#9b9b9b"; ctx.font = "18px 'Space Grotesk', sans-serif"; ctx.fillText(bloc.querySelector(".nom").textContent, 142, 90);
+      ctx.fillStyle = "#6d6d6d"; ctx.font = "15px 'Space Grotesk', sans-serif"; ctx.fillText("LexOS IA · IA locale sur clé USB-C · ⚜ Produit du Québec", 40, H - 26);
+      ctx.drawImage(img, dx, dy, dw, dh);
+    };
+    let video, ext;
+    if (S.ffmpeg) {
+      // Image par image : rien n'est perdu, ffmpeg assemble un vrai MP4 H.264
+      const IPS = 24, n = Math.ceil(TOTAL / 1000 * IPS) + 1, images = [];
+      for (let i = 0; i < n; i++) {
+        await dessiner(i * 1000 / IPS);
+        images.push(canvas.toDataURL("image/jpeg", 0.88).split(",")[1]);
+        if (i % 6 === 0) { bouton.textContent = `🎬 ${Math.round(100 * i / n)} %`; await new Promise(r => setTimeout(r, 0)); }
+      }
+      bouton.textContent = "🎬 MP4…";
+      const d = await api("/api/video-images", { images, ips: IPS });
+      const brut = atob(d.mp4), octets = new Uint8Array(brut.length);
+      for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
+      video = new Blob([octets], { type: "video/mp4" }); ext = "mp4";
+    } else {
+      // Sans ffmpeg : le navigateur enregistre lui-même (MP4 si possible, sinon WebM)
+      const type = ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
+      const enregistrer = async () => {
+        await dessiner(0);
+        const piste = canvas.captureStream(30), track = piste.getVideoTracks()[0];
+        const rec = new MediaRecorder(piste, { mimeType: type, videoBitsPerSecond: 5_000_000 });
+        const morceaux = []; rec.ondataavailable = e => { if (e.data.size) morceaux.push(e.data); };
+        const fini = new Promise(ok => rec.onstop = ok);
+        rec.start(250);
+        const t0 = performance.now();
+        for (;;) {
+          const t = performance.now() - t0;
+          await dessiner(Math.min(t, TOTAL));
+          if (track.requestFrame) track.requestFrame();
+          if (t >= TOTAL) break;
+          await new Promise(r => setTimeout(r, 16));
+        }
+        rec.stop(); await fini; track.stop();
+        return new Blob(morceaux, { type });
+      };
+      video = await enregistrer();
+      if (video.size < 20000) video = await enregistrer();
+      if (video.size < 20000) throw new Error("le navigateur n'a pas pu enregistrer la vidéo (installe ffmpeg : sudo apt install ffmpeg)");
+      ext = type.startsWith("video/mp4") ? "mp4" : "webm";
+    }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(video); a.download = `schema-lexos.${ext}`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(ext === "mp4" ? "🎬 Vidéo MP4 téléchargée" : "🎬 Vidéo WebM téléchargée (installe ffmpeg pour le MP4)");
+    notifier(`🎬 Vidéo du schéma créée (${ext.toUpperCase()}, ${(video.size / 1e6).toFixed(1)} Mo)`);
+  } catch (e) { toast("Vidéo impossible : " + e.message); }
+  finally { bouton.disabled = false; bouton.textContent = texteBouton; }
+}
+
 function schemaDuProjet() {
   if (!S.projetInfo) return toast("Choisis un projet");
   const etiquette = t => String(t).replace(/"/g, "'");
@@ -1557,7 +1697,7 @@ async function demarrer() {
   if (!JETON) { $("#txt-moteur").textContent = TEL ? "Scanne le code QR affiché sur le PC (menu → 📱 Téléphone)." : "Lien incomplet : relance APP-IA depuis la clé."; $("#point-moteur").classList.add("rouge"); if (TEL) toast("Scanne le code QR du PC"); return; }
   try {
     const e = await api("/api/etat");
-    S.sensibles = e.sensibles; S.langues = e.langues_shell; S.dossier = e.dossier; $("#dossier").value = e.dossier;
+    S.sensibles = e.sensibles; S.langues = e.langues_shell; S.ffmpeg = !!e.ffmpeg; S.dossier = e.dossier; $("#dossier").value = e.dossier;
     const d = await chargerModeles();
     const ok = e.moteur && S.modeles.length;
     $("#point-moteur").classList.toggle("rouge", !ok); $("#point-etat").classList.toggle("rouge", !e.moteur);

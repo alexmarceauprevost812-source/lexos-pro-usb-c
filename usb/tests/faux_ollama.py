@@ -41,6 +41,11 @@ def reponse_auto(messages):
         if "corrigé" in dernier:
             return "APPROUVÉ : la liste vide est gérée et le code est correct."
         return "CORRECTIONS :\n1. `moyenne([])` plante (division par zéro) : retourne 0.0 si la liste est vide."
+    if "Agent AL" in systeme and "banque" in dernier.lower():  # vraie erreur de qwen3:8b (19 oct.)
+        return ("Voici le plan :\n\n```mermaid\nflowchart TD\n    A[Agence bancaire] --> B[Services bancaires]\n"
+                "    A --> C[Infrastructure]\n    A --> D[Sécurité]\n    B --> E[Comptes clients]\n"
+                "    C --> H[Localisation (bureaux, ATM)]\n    C --> I[Technologie (systèmes, cloud)]\n"
+                "    D --> K[Surveillance et contrôle d'accès]\n    K --> U[Contrôle des accès]\n```")
     if "Agent AL" in systeme and ("plan" in dernier.lower() or "schéma" in dernier.lower()):
         return ("Voici le plan de travail pour ton site météo :\n\n```mermaid\nflowchart TD\n"
                 "  A[\"Idée : site météo\"] --> B[\"Maquette de la page\"]\n"
