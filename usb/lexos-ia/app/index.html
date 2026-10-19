@@ -432,6 +432,7 @@ html.telephone .pc-seulement{display:none!important}
   <div class="section pc-seulement">OUTILS</div>
   <button class="nav pc-seulement" id="btn-telephone"><span class="ico">📱</span>Téléphone</button>
   <button class="nav pc-seulement" data-ouvrir="textes"><span class="ico">📝</span>LexOS Textes</button>
+  <button class="nav pc-seulement" data-ouvrir="rea" title="Agent ti-lex : web, vision, fichiers du projet actif, commandes"><span class="ico">🤖</span>REA (agent)</button>
   <button class="nav pc-seulement" data-ouvrir="terminal"><span class="ico">🖥️</span>Terminal IA</button>
   <button class="nav pc-seulement" data-ouvrir="conversations"><span class="ico">📂</span>Mes fichiers</button>
   <div class="section">CONVERSATIONS</div>
@@ -1817,7 +1818,10 @@ document.addEventListener("keydown", e => {
 $$(".nav[data-vue]").forEach(n => n.onclick = () => aller(n.dataset.vue));
 $$("[data-aller]").forEach(n => n.onclick = () => aller(n.dataset.aller));
 $$(".nav[data-ouvrir]").forEach(n => n.onclick = async () => {
-  try { const d = await api("/api/ouvrir", { quoi: n.dataset.ouvrir }); toast(d.ok ? "Ouverture…" : "Impossible d'ouvrir ici"); } catch (e) { toast(e.message); }
+  try {
+    const d = await api("/api/ouvrir", { quoi: n.dataset.ouvrir, projet: S.projet });
+    toast(d.ok ? (n.dataset.ouvrir === "rea" ? `🤖 REA s'ouvre dans un terminal${S.projet ? ` · 📁 ${S.projet}` : ""}` : "Ouverture…") : "Impossible d'ouvrir ici");
+  } catch (e) { toast(e.message); }
 });
 function appliquerTheme(t) { document.documentElement.dataset.theme = t; $("#btn-theme").textContent = t === "jour" ? "☀️" : "🌙"; }
 $("#btn-theme").onclick = () => {

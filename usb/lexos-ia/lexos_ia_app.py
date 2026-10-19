@@ -201,7 +201,10 @@ def ouvrir_terminal(commande):
     return False
 
 
-def ouvrir(quoi):
+def ouvrir(quoi, projet=""):
+    if quoi == "rea":  # agent ti-lex dans un terminal, sur le projet actif
+        args = [projet] if NOM_PROJET.match(projet or "") else []
+        return ouvrir_terminal([sys.executable, str(ICI / "rea_lexos.py"), *args])
     if quoi == "textes":
         subprocess.Popen([sys.executable, str(ICI / "apps" / "lexos_textes.py")], start_new_session=True,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -486,7 +489,7 @@ class App(BaseHTTPRequestHandler):
             self._envoyer(200, etat_telephone())
 
     def _ouvrir(self, d):
-        self._envoyer(200, {"ok": ouvrir(str(d.get("quoi", "")))})
+        self._envoyer(200, {"ok": ouvrir(str(d.get("quoi", "")), str(d.get("projet") or ""))})
 
     # -- Projets --
     def _commande_en_flux(self, etapes, dossier):

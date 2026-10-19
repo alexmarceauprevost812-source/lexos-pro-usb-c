@@ -28,6 +28,7 @@ lexos-ia-chat|Chat IA|chat|chat|true|Discuter avec une IA locale
 lexos-ia-codex|Codex|codex|codex|true|Écrire et corriger du code avec une IA locale
 lexos-ia-codexterminal|CodexTerminal|codexterminal|codexterminal|true|L'IA travaille dans le terminal avec ta permission
 lexos-ia-modeles|Modèles IA|modeles|lexos-ia|true|Voir, choisir et télécharger les modèles de la clé
+lexos-ia-rea|REA (agent)|rea|lexos-ia|true|Agent ti-lex : web, vision, fichiers du projet, commandes
 lexos-ia-textes|LexOS Textes|textes|textes|false|Écrire des textes avec l'IA locale"
 
 if [ "${1:-}" = "--retirer" ]; then

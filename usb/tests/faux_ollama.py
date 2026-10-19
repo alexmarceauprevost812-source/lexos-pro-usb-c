@@ -86,6 +86,19 @@ def reponse_auto(messages):
     return REPONSE_DEFAUT
 
 
+def reponse_outils(donnees, texte):
+    """Imite un modèle qui appelle des outils (REA) : liste les fichiers puis résume."""
+    messages = donnees.get("messages", [])
+    dernier = messages[-1] if messages else {}
+    if donnees.get("tools"):
+        if dernier.get("role") == "tool":
+            return {"role": "assistant", "content": "Voici les fichiers du projet :\n" + str(dernier.get("content", ""))[:500]}
+        if "fichiers" in str(dernier.get("content", "")).lower():
+            return {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "list_files", "arguments": {}}}]}
+    propre = texte.split("</think>")[-1]
+    return {"role": "assistant", "content": propre}
+
+
 class Gestionnaire(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -129,6 +142,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 texte = f"Je vois {photos} photo(s) : un logo orange sur fond noir."
             else:
                 texte = reponse_auto(donnees.get("messages", []))
+            if donnees.get("stream") is False:  # réponse en un seul bloc (REA)
+                return self._json({"message": reponse_outils(donnees, texte), "done": True})
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")
             self.end_headers()

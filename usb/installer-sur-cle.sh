@@ -18,6 +18,7 @@
 #    --arm64          moteur Linux ARM au lieu de x86-64
 #    --sans-moteur    ne télécharge pas Ollama (mise à jour du code seulement)
 #    --sans-modeles   ne télécharge pas les modèles
+#    --sans-rea       n'ajoute pas REA (agent ti-lex, dépôt ti-lex-ia-REA-)
 #    --forcer         continuer même sur une clé FAT32
 #
 #  Internet est requis pendant la préparation, plus après.
@@ -28,7 +29,7 @@ ORANGE=$'\033[38;2;224;96;32m'; VERT=$'\033[38;2;53;214;76m'; GRIS=$'\033[90m'; 
 etape() { echo; echo "${ORANGE}▸ $*${RAZ}"; }
 erreur() { echo "${ROUGE}✗ $*${RAZ}" >&2; exit 1; }
 
-CLE=""; PROFIL=2; WINDOWS=0; ARCH=amd64; MOTEUR=1; MODELES=1; FORCER=0
+CLE=""; PROFIL=2; WINDOWS=0; ARCH=amd64; MOTEUR=1; MODELES=1; FORCER=0; REA=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --profil) PROFIL="${2:-}"; shift ;;
@@ -36,6 +37,7 @@ while [ $# -gt 0 ]; do
     --arm64) ARCH=arm64 ;;
     --sans-moteur) MOTEUR=0 ;;
     --sans-modeles) MODELES=0 ;;
+    --sans-rea) REA=0 ;;
     --forcer) FORCER=1 ;;
     -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
     -*) erreur "option inconnue : $1" ;;
@@ -68,7 +70,7 @@ fi
 # ── 1. Copier LexOS IA sur la clé (sans toucher aux modèles ni à la config) ─
 etape "Copie de LexOS IA sur la clé"
 mkdir -p "$DEST/apps" "$IA/modeles"
-for f in lexos_ia.py lexos_ia_app.py ACTIVER-IA.sh ACTIVER-IA.bat raccourcis-bureau.sh; do
+for f in lexos_ia.py lexos_ia_app.py rea_lexos.py ACTIVER-IA.sh ACTIVER-IA.bat raccourcis-bureau.sh; do
   cp "$DEPOT/lexos-ia/$f" "$DEST/$f"
 done
 mkdir -p "$DEST/icones" && cp "$DEPOT"/lexos-ia/icones/*.svg "$DEST/icones/"
@@ -194,6 +196,36 @@ if [ "$MODELES" = 1 ]; then
   kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; trap - EXIT
   echo
   [ ${#ECHECS[@]} -eq 0 ] || echo "${ROUGE}Non installés : ${ECHECS[*]}${RAZ}"
+fi
+
+# ── 4. REA : l'agent ti-lex (web, vision, fichiers, commandes) ──────────────
+# Dernière version du dépôt GitHub ti-lex-ia-REA-. Seul le cœur de l'agent
+# (agent + outils + mémoire) est copié : pas l'installateur ni les modes Heretic.
+if [ "$REA" = 1 ]; then
+  etape "REA — l'agent ti-lex (dernière version sur GitHub)"
+  URL_REA="https://github.com/alexmarceauprevost812-source/ti-lex-ia-REA-/archive/refs/heads/main.tar.gz"
+  rm -rf "$TMP/rea"
+  if { command -v git >/dev/null && git clone --quiet --depth 1 "https://github.com/alexmarceauprevost812-source/ti-lex-ia-REA-" "$TMP/rea" 2>/dev/null; } \
+     || { rm -rf "$TMP/rea" && mkdir -p "$TMP/rea" && curl -fsSL "$URL_REA" | tar -xz -C "$TMP/rea" --strip-components=1; }; then
+    rm -rf "$DEST/rea/ti_lex_agent" && mkdir -p "$DEST/rea/ti_lex_agent"
+    MANQUE=0
+    for f in __init__.py agent.py config.py memory.py ollama_client.py params.py tools.py; do
+      cp "$TMP/rea/ti_lex_agent/$f" "$DEST/rea/ti_lex_agent/$f" 2>/dev/null || MANQUE=1
+    done
+    if [ "$MANQUE" = 1 ]; then
+      echo "${ROUGE}REA : la structure du dépôt a changé, des fichiers manquent.${RAZ}"
+    else
+      echo "${GRIS}Dépendances de REA (requests, ddgs) sur la clé…${RAZ}"
+      if python3 -m pip install --quiet --upgrade --target "$DEST/rea/libs" requests ddgs 2>/dev/null \
+         || python3 -m pip install --quiet --upgrade --break-system-packages --target "$DEST/rea/libs" requests ddgs; then
+        echo "${VERT}✔ REA ajouté : bash $CLE/lexos-ia/ACTIVER-IA.sh rea  (ou menu de l'app → REA)${RAZ}"
+      else
+        echo "${ROUGE}pip est requis pour REA : sudo apt install python3-pip, puis relance l'installateur.${RAZ}"
+      fi
+    fi
+  else
+    echo "${ROUGE}REA non téléchargé (Internet ?). Relance plus tard avec --sans-moteur --sans-modeles.${RAZ}"
+  fi
 fi
 
 # ── Résumé ──────────────────────────────────────────────────────────────────

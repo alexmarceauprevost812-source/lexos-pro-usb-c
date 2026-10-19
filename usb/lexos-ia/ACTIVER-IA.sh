@@ -7,7 +7,7 @@
 #  3. lance le terminal LexOS IA : Chat · Codex · CodexTerminal · Modèles
 #  4. arrête le moteur en quittant — rien ne reste installé sur le PC
 #
-#  Usage : bash ACTIVER-IA.sh [app|chat|codex|codexterminal|modeles|textes]
+#  Usage : bash ACTIVER-IA.sh [app|rea [projet]|chat|codex|codexterminal|modeles|textes]
 #          app = l'application TI-LEX-AL (fenêtre graphique, sans terminal)
 # ───────────────────────────────────────────────────────────────────────────
 set -u
@@ -164,6 +164,12 @@ fi
 if [ "$MODE" = "app" ]; then
   "$PY" "$ICI/lexos_ia_app.py"
   exit $?
+fi
+if [ "$MODE" = "rea" ]; then
+  "$PY" "$ICI/rea_lexos.py" "${@:2}"
+  CODE=$?
+  [ "$CODE" -ne 0 ] && pause_et_sortir "$CODE"
+  exit 0
 fi
 cd "$HOME" 2>/dev/null || true
 "$PY" "$ICI/lexos_ia.py" ${MODE:+"$MODE"}

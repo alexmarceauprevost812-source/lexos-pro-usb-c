@@ -1,7 +1,7 @@
 @echo off
 rem ─────────────────────────────────────────────────────────────────────────
 rem  LexOS IA — active les IA locales de la clé USB-C en un clic (Windows)
-rem  Usage : ACTIVER-IA.bat [app|chat|codex|codexterminal|modeles|textes]
+rem  Usage : ACTIVER-IA.bat [app|rea|chat|codex|codexterminal|modeles|textes]
 rem ─────────────────────────────────────────────────────────────────────────
 chcp 65001 >nul
 setlocal
@@ -46,6 +46,8 @@ echo Pret.
 cd /d "%USERPROFILE%"
 if /i "%~1"=="textes" (
   %PY% "%ICI%apps\lexos_textes.py"
+) else if /i "%~1"=="rea" (
+  %PY% "%ICI%rea_lexos.py" %2
 ) else if /i "%~1"=="app" (
   %PY% "%ICI%lexos_ia_app.py"
 ) else (

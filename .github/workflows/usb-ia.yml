@@ -21,8 +21,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Récupérer REA (agent ti-lex) pour son test
+        if: runner.os == 'Linux'
+        run: git clone --depth 1 https://github.com/alexmarceauprevost812-source/ti-lex-ia-REA- "$RUNNER_TEMP/rea" && pip install requests
       - name: Tests LexOS IA
         working-directory: usb
+        env:
+          REA_SOURCE: ${{ runner.temp }}/rea
         run: python -m unittest discover -s tests -v
       - name: Vérifier les scripts shell
         if: runner.os == 'Linux'
