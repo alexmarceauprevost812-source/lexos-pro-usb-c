@@ -136,7 +136,8 @@ if [ "$MOTEUR" = 1 ]; then
   # -L : copie les liens comme de vrais fichiers (exFAT ne gère pas les liens)
   cp -rL "$LOCAL_LINUX/." "$IA/ollama-linux-$ARCH/"
   chmod +x "$IA/ollama-linux-$ARCH/bin/ollama" 2>/dev/null || true
-  echo "${VERT}✔ moteur Linux : $("$LOCAL_LINUX/bin/ollama" --version 2>/dev/null | tail -1)${RAZ}"
+  VERSION_OLLAMA="$("$LOCAL_LINUX/bin/ollama" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1 || true)"
+  echo "${VERT}✔ moteur Linux : Ollama ${VERSION_OLLAMA:-installé}${RAZ}"
 
   if [ "$WINDOWS" = 1 ]; then
     etape "Moteur Ollama pour Windows — environ 1,5 Go"
