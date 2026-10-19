@@ -13,6 +13,24 @@ Plusieurs modèles IA sont installés **directement sur la clé**. Tu branches l
   0  Quitter         arrête les IA
 ```
 
+## L'application TI-LEX-AL
+
+Elle reprend la même interface que ti-lex v10, branchée sur les IA de la clé. Pas besoin d'Internet.
+
+| Linux | Windows |
+| --- | --- |
+| double-clic sur `APP-IA.sh` à la racine de la clé, ou `bash APP-IA.sh` | double-clic sur `APP-IA.bat` |
+
+- **Menu à gauche** : Navigation (Chat, Codex, CodexTerminal, Cerveau), Outils (LexOS Textes, Terminal IA, Mes fichiers), et la liste des conversations sauvegardées sur la clé.
+- **Chat · Agent AL** : « + » ajoute une **photo**. Tu peux aussi coller une image ou la glisser dans la fenêtre. Si le modèle choisi ne voit pas les images, l'app passe toute seule à un modèle qui les voit (gemma3:4b).
+- **Codex** (style CodexLocal) : « + » ajoute un fichier de code. Chaque bloc de code a ses boutons Copier et Télécharger.
+- **CodexTerminal** : l'IA propose une commande dans une carte orange, avec les boutons Exécuter, Modifier, Refuser et Arrêter. Pour une commande sensible, il faut taper **OUI**.
+- **Cerveau** : les modèles de la clé. Tu choisis celui du Chat et celui de Codex, tu en télécharges ou en supprimes.
+- **STUDIO** affiche la conversation et le panneau **TRAVAIL** (tout le code des réponses) côte à côte. 🌙 passe du mode jour au mode nuit, et 🔔 montre les notifications.
+- Pour quitter, ferme la fenêtre ou choisis **⏻ Arrêter les IA**. Tout s'arrête et rien ne reste sur le PC.
+
+Sécurité : l'app n'écoute que sur ton PC (127.0.0.1) et chaque appel demande un jeton secret. Un site web ouvert dans ton navigateur ne peut donc ni parler aux IA ni lancer de commandes.
+
 ## 1. Préparer la clé (une seule fois, sous Linux, avec Internet)
 
 Formate la clé en **exFAT** (fonctionne sous Linux et Windows) ou en **ext4** (Linux seulement). Le FAT32 bloque les fichiers de plus de 4 Go, donc les gros modèles.
@@ -65,7 +83,7 @@ Si un Ollama tourne déjà sur le PC, la clé utilise le port 11435 pour ne pas 
 bash /media/$USER/NOM_DE_LA_CLE/lexos-ia/raccourcis-bureau.sh
 ```
 
-Ça ajoute 6 icônes sur le bureau et dans le menu des applications : **LexOS IA, Chat IA, Codex, CodexTerminal, Modèles IA, LexOS Textes**. Le bureau garde son interface habituelle, avec les IA de la clé en plus. Chaque icône retrouve la clé toute seule quand elle est branchée. Pour les enlever : `--retirer`.
+Ça ajoute 7 icônes sur le bureau et dans le menu des applications : **TI-LEX-AL** (l'application), **LexOS IA (terminal), Chat IA, Codex, CodexTerminal, Modèles IA, LexOS Textes**. Le bureau garde son interface habituelle, avec les IA de la clé en plus. Chaque icône retrouve la clé toute seule quand elle est branchée. Pour les enlever : `--retirer`.
 
 Sur GNOME, si une icône affiche « non fiable », fais un clic droit puis « Autoriser le lancement ».
 
@@ -102,9 +120,11 @@ Le choix automatique tient compte du PC : avec moins de 12 Go de RAM, les modèl
 
 ```
 CLÉ/
-├── ACTIVER-IA.sh / .bat      ← un clic
+├── APP-IA.sh / .bat          ← un clic : application TI-LEX-AL
+├── ACTIVER-IA.sh / .bat      ← un clic : version terminal
 ├── LISEZ-MOI-IA.txt
 └── lexos-ia/
+    ├── lexos_ia_app.py + app/ application TI-LEX-AL (menu à gauche, photos)
     ├── lexos_ia.py           terminal IA : Chat · Codex · CodexTerminal · Modèles
     ├── ACTIVER-IA.sh / .bat
     ├── raccourcis-bureau.sh  icônes sur le bureau du PC

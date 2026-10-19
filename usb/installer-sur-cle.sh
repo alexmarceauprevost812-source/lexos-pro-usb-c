@@ -68,10 +68,11 @@ fi
 # ── 1. Copier LexOS IA sur la clé (sans toucher aux modèles ni à la config) ─
 etape "Copie de LexOS IA sur la clé"
 mkdir -p "$DEST/apps" "$IA/modeles"
-for f in lexos_ia.py ACTIVER-IA.sh ACTIVER-IA.bat raccourcis-bureau.sh; do
+for f in lexos_ia.py lexos_ia_app.py ACTIVER-IA.sh ACTIVER-IA.bat raccourcis-bureau.sh; do
   cp "$DEPOT/lexos-ia/$f" "$DEST/$f"
 done
 mkdir -p "$DEST/icones" && cp "$DEPOT"/lexos-ia/icones/*.svg "$DEST/icones/"
+rm -rf "$DEST/app" && cp -r "$DEPOT/lexos-ia/app" "$DEST/app"
 cp "$DEPOT/modeles.txt" "$DEST/modeles.txt"
 if [ -f "$DEPOT/../desktop/lexos_textes.py" ]; then
   cp "$DEPOT/../desktop/lexos_textes.py" "$DEST/apps/lexos_textes.py"
@@ -85,12 +86,23 @@ cat >"$CLE/ACTIVER-IA.sh" <<'EOF'
 exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lexos-ia/ACTIVER-IA.sh" "$@"
 EOF
 printf '@echo off\r\nrem LexOS IA - un clic : active les IA de la cle et ouvre le terminal IA.\r\ncall "%%~dp0lexos-ia\\ACTIVER-IA.bat" %%*\r\n' >"$CLE/ACTIVER-IA.bat"
-chmod +x "$CLE/ACTIVER-IA.sh" 2>/dev/null || true
+cat >"$CLE/APP-IA.sh" <<'FIN_APP'
+#!/usr/bin/env bash
+# TI-LEX-AL — un clic : active les IA de la clé et ouvre l'application (Agent AL, Codex, CodexTerminal).
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lexos-ia/ACTIVER-IA.sh" app
+FIN_APP
+printf '@echo off\r\nrem TI-LEX-AL - un clic : active les IA de la cle et ouvre l application.\r\ncall "%%~dp0lexos-ia\\ACTIVER-IA.bat" app\r\n' >"$CLE/APP-IA.bat"
+chmod +x "$CLE/ACTIVER-IA.sh" "$CLE/APP-IA.sh" 2>/dev/null || true
 cat >"$CLE/LISEZ-MOI-IA.txt" <<'EOF'
 LexOS IA — les IA locales sont sur cette clé USB-C
 ==================================================
 
-UN CLIC :
+UN CLIC — APPLICATION TI-LEX-AL (fenêtre comme ti-lex v10) :
+  Linux   : double-clic sur APP-IA.sh (ou : bash APP-IA.sh)
+  Windows : double-clic sur APP-IA.bat
+  Menu à gauche : Chat (Agent AL, photos), Codex, CodexTerminal, Cerveau.
+
+UN CLIC — VERSION TERMINAL :
   Linux   : double-clic sur ACTIVER-IA.sh (ou dans un terminal : bash ACTIVER-IA.sh)
   Windows : double-clic sur ACTIVER-IA.bat
 
@@ -191,6 +203,7 @@ echo
 echo "${VERT}✔ Clé LexOS IA prête.${RAZ}"
 echo "${GRIS}Taille de lexos-ia : $(du -sh "$DEST" 2>/dev/null | cut -f1) · espace libre : $(df -h --output=avail "$CLE" | tail -1 | tr -d ' ')${RAZ}"
 echo
-echo "  Un clic :         ${ORANGE}$CLE/ACTIVER-IA.sh${RAZ}  (Windows : ACTIVER-IA.bat)"
+echo "  Application :     ${ORANGE}bash $CLE/APP-IA.sh${RAZ}  (Windows : APP-IA.bat)"
+echo "  Terminal IA :     ${ORANGE}bash $CLE/ACTIVER-IA.sh${RAZ}  (Windows : ACTIVER-IA.bat)"
 echo "  Icônes bureau :   ${ORANGE}bash \"$DEST/raccourcis-bureau.sh\"${RAZ}"
 echo "  Les téléchargements temporaires sont dans $TMP (tu peux les effacer)."

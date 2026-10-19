@@ -22,7 +22,8 @@ if [ -z "$BUREAU" ] || [ "$BUREAU" = "$HOME" ] || [ ! -d "$BUREAU" ]; then
 fi
 
 #        id               nom              mode            icône     terminal  description
-OUTILS="lexos-ia|LexOS IA||lexos-ia|true|Active les IA de la clé et ouvre le menu
+OUTILS="lexos-ia-app|TI-LEX-AL|app|tilexal|false|Agent AL, Codex et CodexTerminal avec les IA locales de la clé
+lexos-ia|LexOS IA (terminal)||lexos-ia|true|Active les IA de la clé et ouvre le menu dans le terminal
 lexos-ia-chat|Chat IA|chat|chat|true|Discuter avec une IA locale
 lexos-ia-codex|Codex|codex|codex|true|Écrire et corriger du code avec une IA locale
 lexos-ia-codexterminal|CodexTerminal|codexterminal|codexterminal|true|L'IA travaille dans le terminal avec ta permission
@@ -40,6 +41,7 @@ fi
 
 mkdir -p "$BIN" "$APPS" "$ICONES" "$CONF"
 cp "$ICI"/icones/*.svg "$ICONES/"
+[ -f "$ICI/app/images/tilexal.png" ] && cp "$ICI/app/images/tilexal.png" "$ICONES/tilexal.png"
 echo "$ICI" >"$CONF/cle"   # dernier emplacement connu de la clé
 
 # Petit lanceur qui retrouve la clé, même si elle change de nom de montage.
@@ -75,7 +77,7 @@ Version=1.0
 Name=$nom
 Comment=$desc
 Exec=$BIN/lexos-ia-cle${mode:+ $mode}
-Icon=$ICONES/$icone.svg
+Icon=$ICONES/$icone.$( [ "$icone" = tilexal ] && echo png || echo svg )
 Terminal=$terminal
 Categories=Development;Utility;
 Keywords=IA;AI;LexOS;Ollama;Codex;Chat;
@@ -93,5 +95,5 @@ done <<<"$OUTILS"
 update-desktop-database "$APPS" 2>/dev/null || true
 
 echo "✔ $n outils LexOS IA ajoutés au menu des applications${BUREAU:+ et sur le bureau ($BUREAU)}."
-echo "  Branche la clé, puis double-clique sur « LexOS IA »."
+echo "  Branche la clé, puis double-clique sur « TI-LEX-AL »."
 echo "  Pour les enlever :  bash \"$ICI/raccourcis-bureau.sh\" --retirer"

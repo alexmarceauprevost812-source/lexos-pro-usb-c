@@ -111,7 +111,7 @@ class TestAvecFauxMoteur(unittest.TestCase):
 
     def test_connexion_et_modeles(self):
         self.assertTrue(ia.ia_disponible())
-        self.assertEqual([m["name"] for m in ia.modeles_installes()], ["llama3.2:3b", "qwen2.5-coder:7b"])
+        self.assertEqual([m["name"] for m in ia.modeles_installes()], ["llama3.2:3b", "qwen2.5-coder:7b", "gemma3:4b"])
 
     def test_discuter_filtre_la_reflexion(self):
         with redirect_stdout(io.StringIO()):

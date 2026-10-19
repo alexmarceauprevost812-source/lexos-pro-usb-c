@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TI-LEX-AL · LexOS IA</title>
+<link rel="icon" href="images/tilexal.png">
+<style>
+@font-face{font-family:"Space Grotesk";src:url(polices/space-grotesk.woff2) format("woff2");font-weight:300 700;font-display:swap}
+:root{
+  --fond:#0A0A0A;--fond2:#111;--panneau:#141414;--carte:#1b1b1b;--carte2:#232323;--ligne:#2b2b2b;
+  --orange:#FF7A00;--orange2:#ff9a3d;--texte:#f4f4f4;--gris:#9b9b9b;--gris2:#6d6d6d;
+  --vert:#22c55e;--vert-term:#35D64C;--rouge:#ef4444;--jaune:#facc15;
+  --rayon:22px;--police:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"DejaVu Sans Mono","JetBrains Mono",Consolas,monospace;
+  --tiroir:340px;
+}
+:root[data-theme=jour]{--fond:#d6d6d3;--fond2:#cfcfcc;--panneau:#c9c9c6;--carte:#e4e4e1;--carte2:#ececea;--ligne:#b4b4b0;--texte:#111;--gris:#4b4b4b;--gris2:#6b6b6b}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--fond);color:var(--texte);font-family:var(--police)}
+body{overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+.logo-badge{border-radius:50%}
+:root[data-theme=jour] .logo-badge{background:radial-gradient(circle,#0A0A0A 58%,transparent 71%)}
+
+/* ── En-tête ─────────────────────────────── */
+header{position:fixed;inset:0 0 auto 0;height:66px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#000;z-index:30;border-bottom:1px solid #161616}
+:root[data-theme=jour] header{background:#0A0A0A}
+.btn-menu{width:48px;height:46px;border:2px solid var(--orange);border-radius:12px;display:grid;place-items:center;background:#111}
+.btn-menu span{display:block;width:20px;height:2.5px;background:var(--orange);border-radius:2px;box-shadow:0 7px 0 var(--orange),0 -7px 0 var(--orange)}
+header .petit-logo{height:44px;width:auto;margin-right:auto;filter:drop-shadow(0 0 6px rgba(255,122,0,.35))}
+.btn-studio{height:42px;padding:0 22px;border:1.5px solid #333;border-radius:999px;letter-spacing:.18em;font-weight:700;color:#9a9a9a;font-size:14px;display:flex;align-items:center;gap:8px}
+.btn-studio .eclair{color:#8a5a00}
+.btn-studio.actif{border-color:var(--orange);color:var(--orange)}
+.btn-studio.actif .eclair{color:var(--orange)}
+.btn-rond{width:44px;height:44px;border-radius:50%;background:#1d1d1d;display:grid;place-items:center;font-size:20px;position:relative}
+.pastille{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;background:var(--orange);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+.pastille[hidden]{display:none}
+
+/* ── Tiroir (menu à gauche) ──────────────── */
+#voile{position:fixed;inset:66px 0 0 0;background:rgba(0,0,0,.55);z-index:24;opacity:0;pointer-events:none;transition:opacity .2s}
+#voile.ouvert{opacity:1;pointer-events:auto}
+aside#tiroir{position:fixed;top:66px;bottom:0;left:0;width:min(var(--tiroir),86vw);background:linear-gradient(180deg,#121214,#0c0c0c);z-index:25;transform:translateX(-102%);transition:transform .25s ease;overflow-y:auto;border-right:1px solid #1f1f1f;padding:10px 14px 24px}
+aside#tiroir.ouvert{transform:none}
+:root[data-theme=jour] aside#tiroir{background:linear-gradient(180deg,#cfcfcc,#c6c6c3);border-color:var(--ligne)}
+.tiroir-logo{display:block;width:78%;margin:6px auto 0}
+.tiroir-titre{text-align:center;font-family:Georgia,"DejaVu Serif","Times New Roman",serif;font-size:44px;font-weight:400;margin:4px 0 22px;letter-spacing:.01em}
+.section{font-size:15px;letter-spacing:.12em;color:var(--gris);margin:18px 8px 8px;font-weight:500}
+.nav{display:flex;align-items:center;gap:18px;width:100%;padding:11px 18px;border-radius:999px;font-size:22px;letter-spacing:.02em;text-align:left;text-transform:uppercase}
+.nav .ico{font-size:24px;width:30px;text-align:center}
+.nav:hover{background:rgba(255,255,255,.04)}
+.nav.actif{background:#262626}
+:root[data-theme=jour] .nav.actif{background:#b9b9b5}
+#liste-convs .conv{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;font-size:15px;color:var(--gris)}
+#liste-convs .conv:hover{background:rgba(255,255,255,.04);color:var(--texte)}
+#liste-convs .conv span.t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+#liste-convs .conv button.x{opacity:.5;padding:2px 6px}
+#liste-convs .conv button.x:hover{opacity:1;color:var(--rouge)}
+.vide{color:var(--gris2);font-size:14px;padding:6px 12px}
+.pied-tiroir{margin-top:26px;border-top:1px solid var(--ligne);padding-top:16px;display:grid;gap:10px}
+.btn-quitter{border:1px solid #4a1d1d;color:#ff8a8a;border-radius:14px;padding:11px;font-weight:600}
+.qc{text-align:center;color:var(--gris2);font-size:13px}
+
+/* ── Zone principale ─────────────────────── */
+main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:left .25s,right .25s}
+.vue{position:absolute;inset:0;display:none;flex-direction:column}
+.vue.active{display:flex}
+.defile{flex:1;overflow-y:auto;padding:18px 18px 10px;scroll-behavior:smooth}
+.colonne{max-width:880px;margin:0 auto;width:100%}
+.recentes{text-align:center;color:var(--gris);font-size:17px;margin:14px 0 30px}
+.recentes button{color:var(--orange2);text-decoration:underline}
+.entete-agent{display:flex;align-items:center;gap:18px;padding:0 6px}
+.entete-agent img{width:74px}
+.entete-agent h2{font-size:26px;letter-spacing:.16em;font-weight:500}
+.entete-agent .sous{color:var(--gris);font-size:15px;margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.point{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--vert)}
+.point.rouge{background:var(--rouge)}
+.securisee{color:var(--vert);font-weight:700}
+.accueil{text-align:center;padding:9vh 0 5vh}
+.accueil img{width:140px}
+.accueil h1{font-size:52px;font-weight:700;margin-top:26px}
+.accueil p{color:var(--gris);margin-top:10px}
+.carte-etat{display:flex;align-items:center;gap:12px;border:1px solid var(--ligne);border-radius:var(--rayon);padding:18px 22px;margin:0 auto 10px;max-width:740px;background:rgba(255,255,255,.015)}
+.carte-etat .txt{flex:1;font-size:17px}
+.btn-config{border:1px solid #3a3a3a;border-radius:12px;padding:8px 16px;background:#141414}
+:root[data-theme=jour] .btn-config{background:var(--carte);border-color:var(--ligne)}
+
+/* Messages */
+.fil{display:flex;flex-direction:column;gap:18px;padding-bottom:8px}
+.msg{display:flex;gap:12px;align-items:flex-start}
+.msg.toi{justify-content:flex-end}
+.msg .avatar{width:40px;flex:none;margin-top:2px}
+.bulle{max-width:min(720px,88%);line-height:1.6;font-size:16.5px;overflow-wrap:anywhere}
+.msg.toi .bulle{background:var(--carte2);border:1px solid var(--ligne);padding:12px 16px;border-radius:20px 20px 6px 20px;white-space:pre-wrap}
+.msg.ia .bulle{padding:6px 2px}
+.bulle p{margin:0 0 .7em}.bulle p:last-child{margin-bottom:0}
+.bulle h3,.bulle h4{margin:.8em 0 .4em;color:var(--orange2)}
+.bulle ul,.bulle ol{margin:.3em 0 .8em 1.4em}
+.bulle code{font-family:var(--mono);font-size:.9em;background:rgba(255,122,0,.12);padding:1px 6px;border-radius:6px}
+.bulle strong{color:#fff}
+:root[data-theme=jour] .bulle strong{color:#000}
+.reflexion{color:var(--gris);font-style:italic;font-size:14px}
+.curseur::after{content:"▍";color:var(--orange);animation:clign 1s steps(1) infinite}
+@keyframes clign{50%{opacity:0}}
+.photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;justify-content:flex-end}
+.photos img{height:110px;border-radius:12px;border:1px solid var(--ligne)}
+.erreur{color:#ff8a8a}
+.bloc-code{border:1px solid #2e2e2e;border-radius:14px;overflow:hidden;margin:.6em 0;background:#0d0d0d}
+.bloc-code .tete{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#161616;font-size:13px;color:var(--gris)}
+.bloc-code .tete .nom{flex:1;font-family:var(--mono);color:var(--orange2)}
+.bloc-code .tete button{border:1px solid #333;border-radius:8px;padding:3px 10px;font-size:12px;color:#ddd}
+.bloc-code .tete button:hover{border-color:var(--orange);color:var(--orange)}
+.bloc-code pre{margin:0;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.5;color:#e9e9e9}
+.bloc-code pre code{background:none;padding:0}
+
+/* ── Barre d'écriture (ti-lex) ────────────── */
+.compo-zone{padding:8px 16px calc(14px + env(safe-area-inset-bottom))}
+.compo{max-width:880px;margin:0 auto;border:1.5px solid #2e2e2e;border-radius:30px;background:#1a1a1a;padding:14px 16px 12px 22px;position:relative}
+:root[data-theme=jour] .compo{background:var(--carte);border-color:var(--ligne)}
+.compo .rang{display:flex;align-items:center;gap:12px}
+.compo textarea{flex:1;resize:none;border:0;outline:0;background:transparent;font-size:19px;line-height:1.4;max-height:200px;min-height:30px;padding:6px 0}
+.compo textarea::placeholder{color:#777}
+.btn-envoyer{display:flex;flex-direction:column;align-items:center;gap:0;padding:0 4px;font-weight:800;letter-spacing:.05em;color:var(--orange);font-size:15px}
+.btn-envoyer img{width:62px;height:auto;margin-bottom:-6px}
+.btn-envoyer.arreter{color:var(--rouge)}
+.btn-envoyer:disabled{opacity:.35;cursor:default}
+.rang.bas{margin-top:10px;gap:14px}
+.btn-plus{width:52px;height:52px;border-radius:50%;border:1.5px solid #3a3a3a;font-size:30px;font-weight:300;display:grid;place-items:center;flex:none}
+.pilule{display:flex;align-items:center;gap:6px;border:1.5px solid #3a3a3a;border-radius:999px;padding:0 34px 0 18px;height:50px;font-weight:700;font-size:17px;position:relative;max-width:100%;min-width:0;white-space:nowrap;overflow:hidden}
+.pilule select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font-weight:700;font-size:17px;outline:0;cursor:pointer;min-width:0;flex:1;text-overflow:ellipsis;overflow:hidden}
+.pilule select option{background:#1a1a1a;color:#fff}
+.pilule::after{content:"⌄";position:absolute;right:14px;top:9px;font-size:18px;pointer-events:none}
+.pieces{display:flex;gap:8px;flex-wrap:wrap}
+.pieces:empty{display:none}
+.pieces{margin-bottom:10px}
+.piece{position:relative;border:1px solid var(--ligne);border-radius:12px;overflow:hidden;font-size:13px;display:flex;align-items:center}
+.piece img{height:64px;display:block}
+.piece .f{padding:8px 26px 8px 10px;font-family:var(--mono)}
+.piece button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:12px}
+
+/* ── Bouton flottant + onglet TRAVAIL ─────── */
+#fab{position:fixed;right:22px;bottom:210px;width:76px;height:76px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:34px;box-shadow:0 0 28px rgba(255,122,0,.55);z-index:20}
+#onglet-travail{position:fixed;right:0;top:46%;background:var(--orange);color:#111;border-radius:18px 0 0 18px;padding:14px 8px;writing-mode:vertical-rl;font-weight:800;letter-spacing:.12em;font-size:17px;z-index:20;display:flex;align-items:center;gap:10px}
+#onglet-travail .dossier{writing-mode:horizontal-tb;font-size:22px}
+#travail{position:fixed;top:66px;bottom:0;right:0;width:min(460px,92vw);background:var(--panneau);border-left:1px solid var(--ligne);z-index:26;transform:translateX(102%);transition:transform .25s;display:flex;flex-direction:column}
+#travail.ouvert{transform:none}
+#travail .tete-travail{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ligne)}
+#travail .tete-travail h3{flex:1;letter-spacing:.12em;color:var(--orange)}
+#travail .contenu{flex:1;overflow:auto;padding:12px 14px}
+
+/* ── Codex (style CodexLocal) ─────────────── */
+.barre-local{background:#111;color:var(--orange);font-size:15px;padding:9px 18px;border-bottom:1px solid #1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+:root[data-theme=jour] .barre-local{background:var(--fond2);border-color:var(--ligne)}
+.accueil.codex img{width:min(300px,60vw)}
+.accueil.codex h1{color:var(--orange);font-size:42px;font-weight:600;font-style:italic}
+.accueil.codex p{font-style:italic;font-size:17px}
+.accueil .aide{color:var(--gris2);font-size:14px;margin-top:28px}
+.compo-codex{max-width:880px;margin:0 auto;display:flex;align-items:flex-end;gap:14px;border-top:1px solid #1f1f1f;padding-top:12px}
+.compo-codex .plus{color:var(--orange);font-size:34px;width:40px}
+.compo-codex textarea{flex:1;resize:none;background:transparent;border:0;border-bottom:2px solid var(--orange);outline:0;font-size:18px;padding:8px 2px;max-height:200px;font-style:italic}
+.btn-code{width:74px;height:74px;border-radius:50%;background:var(--orange);color:#111;font-size:28px;font-weight:900;font-family:var(--mono);flex:none}
+.btn-code.arreter{background:var(--rouge);color:#fff}
+
+/* ── CodexTerminal ─────────────────────────── */
+.barre-term{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:var(--fond2);flex-wrap:wrap}
+.barre-term input{flex:1;min-width:180px;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:8px 12px;font-family:var(--mono);font-size:14px}
+.barre-term button,.btn-petit{border:1px solid var(--ligne);border-radius:10px;padding:8px 14px;background:var(--carte);font-size:14px}
+.interrupteur{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--gris)}
+.interrupteur input{accent-color:var(--orange);width:18px;height:18px}
+.carte-cmd{border:1.5px solid var(--orange);border-radius:16px;overflow:hidden;background:#0c0c0c}
+.carte-cmd .titre{background:rgba(255,122,0,.12);color:var(--orange);padding:8px 14px;font-size:13px;letter-spacing:.08em;font-weight:700}
+.carte-cmd textarea{width:100%;background:transparent;border:0;outline:0;resize:vertical;font-family:var(--mono);font-size:14.5px;padding:12px 14px;color:#fff;min-height:44px}
+.carte-cmd .actions{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid #222;align-items:center}
+.carte-cmd .actions button{border-radius:10px;padding:8px 14px;font-weight:600;font-size:14px;border:1px solid #333}
+.carte-cmd .go{background:var(--orange);color:#111;border-color:var(--orange)!important}
+.carte-cmd .go:disabled{opacity:.35}
+.carte-cmd .danger{color:var(--jaune);font-size:14px;padding:8px 14px 0}
+.carte-cmd .oui{width:110px;background:#111;border:1px solid var(--jaune);border-radius:8px;padding:6px 10px;color:var(--jaune);font-family:var(--mono)}
+.carte-cmd.fini{border-color:#2a2a2a;opacity:.85}
+.sortie{font-family:var(--mono);font-size:13px;white-space:pre-wrap;color:#bdbdbd;padding:10px 14px;border-top:1px solid #222;max-height:320px;overflow:auto}
+.code-sortie{padding:4px 14px 10px;font-size:13px;font-family:var(--mono)}
+.ok{color:var(--vert-term)}.ko{color:var(--rouge)}
+.puces{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
+.puce{border:1px solid var(--ligne);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--gris)}
+.puce:hover{border-color:var(--orange);color:var(--orange)}
+
+/* ── Cerveau (modèles) ─────────────────────── */
+.cerveau{padding:22px 18px 40px}
+.cerveau h2{font-size:28px;letter-spacing:.08em;margin-bottom:6px}
+.cerveau .info{color:var(--gris);margin-bottom:20px}
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.modele{border:1px solid var(--ligne);border-radius:18px;padding:16px;background:var(--carte);display:flex;flex-direction:column;gap:10px}
+.modele .nom{font-weight:700;font-size:18px;font-family:var(--mono)}
+.modele .meta{color:var(--gris);font-size:14px;display:flex;gap:8px;flex-wrap:wrap}
+.badge{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#262626}
+.badge.orange{background:rgba(255,122,0,.18);color:var(--orange2)}
+.badge.vert{background:rgba(34,197,94,.15);color:var(--vert)}
+.modele .boutons{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.modele .boutons button{border:1px solid var(--ligne);border-radius:10px;padding:6px 12px;font-size:13px}
+.modele .boutons button.choisi{background:var(--orange);color:#111;border-color:var(--orange)}
+.telecharger{margin-top:26px;border:1px dashed var(--ligne);border-radius:18px;padding:18px}
+.telecharger .rang{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.telecharger input{flex:1;min-width:200px;background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:10px 12px;font-family:var(--mono)}
+.btn-orange{background:var(--orange);color:#111;font-weight:700;border-radius:12px;padding:10px 18px}
+.progres{height:10px;border-radius:5px;background:#222;margin-top:12px;overflow:hidden}
+.progres div{height:100%;width:0;background:var(--orange);transition:width .3s}
+
+/* ── Notifications ─────────────────────────── */
+#notifs{position:fixed;top:72px;right:12px;width:min(380px,92vw);max-height:60vh;overflow:auto;background:var(--panneau);border:1px solid var(--ligne);border-radius:18px;z-index:40;padding:10px;display:none;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+#notifs.ouvert{display:block}
+#notifs .n{padding:10px 12px;border-bottom:1px solid var(--ligne);font-size:14px}
+#notifs .n:last-child{border:0}
+#notifs .n time{color:var(--gris2);font-size:12px;display:block}
+#toast{position:fixed;left:50%;top:80px;transform:translateX(-50%) translateY(20px);background:#222;border:1px solid var(--orange);color:#fff;padding:10px 18px;border-radius:14px;opacity:0;transition:.25s;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
+#toast.vu{opacity:1;transform:translateX(-50%)}
+#fin{position:fixed;inset:0;background:var(--fond);z-index:100;display:none;place-items:center;text-align:center}
+#fin.vu{display:grid}
+#fin img{width:160px}
+
+/* ── Grand écran : menu fixe à gauche, STUDIO = 2 panneaux ── */
+@media (min-width:1200px){
+  body.tiroir-fixe aside#tiroir{transform:none}
+  body.tiroir-fixe main{left:var(--tiroir)}
+  body.tiroir-fixe #voile{display:none}
+  body.studio main{right:min(460px,36vw)}
+  body.studio #travail{transform:none;width:min(460px,36vw)}
+  body.studio #onglet-travail{display:none}
+  body.studio #fab{right:calc(min(460px,36vw) + 22px)}
+}
+@media (max-width:640px){
+  header{gap:8px;padding:0 10px}
+  .btn-studio{padding:0 14px;font-size:12px}
+  .btn-rond{width:40px;height:40px;font-size:18px}
+  .entete-agent h2{font-size:19px}
+  .entete-agent img{width:56px}
+  .accueil h1{font-size:42px}
+  .compo textarea{font-size:17px}
+  #fab{width:64px;height:64px;font-size:28px;bottom:190px;right:16px}
+  .tiroir-titre{font-size:36px}
+  .nav{font-size:19px}
+  #onglet-travail{font-size:12px;padding:10px 4px;gap:6px;opacity:.92}
+  #onglet-travail .dossier{font-size:16px}
+  .pilule{font-size:15px;height:46px;padding:0 30px 0 14px}
+  .pilule select{font-size:15px}
+  .defile{padding-right:28px}
+}
+</style>
+</head>
+<body>
+<header>
+  <button class="btn-menu" id="btn-menu" aria-label="Menu"><span></span></button>
+  <img class="petit-logo" src="images/tilexal.png" alt="TI-LEX-AL">
+  <button class="btn-studio" id="btn-studio" title="Studio : conversation + panneau de code côte à côte"><span class="eclair">⚡</span>STUDIO</button>
+  <button class="btn-rond" id="btn-theme" title="Jour / nuit">🌙</button>
+  <button class="btn-rond" id="btn-cloche" title="Notifications">🔔<span class="pastille" id="pastille" hidden>0</span></button>
+</header>
+
+<div id="voile"></div>
+<aside id="tiroir">
+  <img class="tiroir-logo logo-badge" src="images/tilexal.png" alt="">
+  <div class="tiroir-titre">TI-LEX-AL</div>
+  <div class="section">NAVIGATION</div>
+  <button class="nav actif" data-vue="chat"><span class="ico">💬</span>Chat</button>
+  <button class="nav" data-vue="codex"><span class="ico">💻</span>Codex</button>
+  <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
+  <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
+  <div class="section">OUTILS</div>
+  <button class="nav" data-ouvrir="textes"><span class="ico">📝</span>LexOS Textes</button>
+  <button class="nav" data-ouvrir="terminal"><span class="ico">🖥️</span>Terminal IA</button>
+  <button class="nav" data-ouvrir="conversations"><span class="ico">📂</span>Mes fichiers</button>
+  <div class="section">CONVERSATIONS</div>
+  <div id="liste-convs"><div class="vide">Aucune conversation sauvegardée.</div></div>
+  <div class="pied-tiroir">
+    <button class="btn-quitter" id="btn-quitter">⏻ Arrêter les IA</button>
+    <div class="qc">⚜ Produit du Québec · IA 100 % locale sur ta clé</div>
+  </div>
+</aside>
+
+<main>
+  <!-- ═══ CHAT ═══ -->
+  <section class="vue active" id="vue-chat" data-mode="chat">
+    <div class="defile"><div class="colonne">
+      <div class="recentes" id="recentes">Aucune conversation sauvegardée.</div>
+      <div class="entete-agent">
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <div>
+          <h2>TI-LEX-AL · AGENT AL</h2>
+          <div class="sous"><span class="point" id="point-etat"></span> <span id="etat-court">Sur la clé</span> · Mémoire active · 🛡 <span class="securisee">IA Sécurisée</span></div>
+        </div>
+      </div>
+      <div class="accueil" data-accueil>
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <h1 id="bonjour">Bonjour</h1>
+      </div>
+      <div class="carte-etat" data-accueil>
+        <span class="point" id="point-moteur"></span>
+        <span class="txt" id="txt-moteur">Connexion au moteur IA de la clé…</span>
+        <button class="btn-config" data-aller="cerveau">⚙️ Config</button>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="compo">
+        <div class="pieces" data-pieces></div>
+        <div class="rang">
+          <textarea rows="1" data-saisie placeholder="Discuter avec Agent AL…"></textarea>
+          <button class="btn-envoyer" data-envoyer><img src="images/tilexal.png" alt=""><span>ENVOYER</span></button>
+        </div>
+        <div class="rang bas">
+          <button class="btn-plus" data-plus title="Ajouter une photo">+</button>
+          <label class="pilule">TI-LEX-AL ·&nbsp;<select data-modele="chat" title="Choisir l'IA"></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CODEX ═══ -->
+  <section class="vue" id="vue-codex" data-mode="codex">
+    <div class="barre-local" id="barre-codex">Local : …</div>
+    <div class="defile"><div class="colonne">
+      <div class="accueil codex" data-accueil>
+        <img class="logo-badge" src="images/marceau.png" alt="">
+        <h1>CodexLocal</h1>
+        <p>Assistant de code avec IA locale — fonctionne sans réseau</p>
+        <p class="aide">« + » ajoute un fichier de code · Cerveau → choisir ou télécharger un modèle</p>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="pieces colonne" data-pieces style="max-width:880px;margin:0 auto 8px"></div>
+      <div class="compo-codex">
+        <button class="plus" data-plus title="Ajouter un fichier">+</button>
+        <textarea rows="1" data-saisie placeholder="Demande du code, une correction, une explication…"></textarea>
+        <button class="btn-code" data-envoyer title="Envoyer">&lt;/&gt;</button>
+      </div>
+      <div style="max-width:880px;margin:8px auto 0;display:flex;justify-content:flex-end">
+        <label class="pilule" style="height:40px;font-size:14px">Codex ·&nbsp;<select data-modele="codex"></select></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CODEXTERMINAL ═══ -->
+  <section class="vue" id="vue-terminal" data-mode="terminal">
+    <div class="barre-term">
+      <span>📁</span>
+      <input id="dossier" spellcheck="false" title="Dossier de travail">
+      <button id="btn-dossier">Aller</button>
+      <label class="interrupteur"><input type="checkbox" id="auto"> Auto <span title="Exécute sans demander, sauf les commandes sensibles">ⓘ</span></label>
+    </div>
+    <div class="defile"><div class="colonne">
+      <div class="accueil" data-accueil>
+        <img class="logo-badge" src="images/tilexal.png" alt="" style="width:110px">
+        <h1 style="font-size:40px">CodexTerminal</h1>
+        <p>Donne une tâche : l'IA propose une commande à la fois, tu approuves chacune.</p>
+        <div class="puces">
+          <button class="puce">crée un projet Python avec un venv et un hello world</button>
+          <button class="puce">montre les 10 plus gros fichiers de mon dossier Téléchargements</button>
+          <button class="puce">fais un script qui affiche l'espace libre des disques</button>
+          <button class="puce">crée une page index.html avec le logo LexOS en orange sur noir</button>
+        </div>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="compo">
+        <div class="rang">
+          <textarea rows="1" data-saisie placeholder="Donne une tâche à CodexTerminal…"></textarea>
+          <button class="btn-envoyer" data-envoyer><img src="images/tilexal.png" alt=""><span>ENVOYER</span></button>
+        </div>
+        <div class="rang bas">
+          <label class="pilule">Agent ·&nbsp;<select data-modele="terminal"></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CERVEAU ═══ -->
+  <section class="vue" id="vue-cerveau">
+    <div class="defile"><div class="colonne cerveau">
+      <h2>🧠 CERVEAU</h2>
+      <div class="info" id="info-cerveau">Les modèles IA installés sur ta clé.</div>
+      <div class="grille" id="grille-modeles"></div>
+      <div class="telecharger">
+        <strong>Ajouter un modèle sur la clé</strong> <span style="color:var(--gris)">(Internet requis)</span>
+        <div class="rang">
+          <input id="nom-modele" placeholder="ex. qwen2.5-coder:7b" spellcheck="false">
+          <button class="btn-orange" id="btn-telecharger">Télécharger</button>
+        </div>
+        <div class="puces" style="justify-content:flex-start">
+          <button class="puce" data-sugg>llama3.2:3b</button><button class="puce" data-sugg>qwen3:8b</button>
+          <button class="puce" data-sugg>qwen2.5-coder:7b</button><button class="puce" data-sugg>gemma3:4b</button>
+          <button class="puce" data-sugg>deepseek-r1:8b</button>
+        </div>
+        <div class="progres" hidden id="progres"><div></div></div>
+        <div id="statut-telech" style="color:var(--gris);font-size:14px;margin-top:8px"></div>
+      </div>
+    </div></div>
+  </section>
+</main>
+
+<button id="fab" title="Nouvelle conversation">💬</button>
+<button id="onglet-travail" title="Le code des réponses"><span class="dossier">🗂️</span>TRAVAIL</button>
+<aside id="travail">
+  <div class="tete-travail"><h3>🗂️ TRAVAIL</h3><button class="btn-petit" id="fermer-travail">✕</button></div>
+  <div class="contenu" id="contenu-travail"><div class="vide">Le code proposé par l'IA apparaîtra ici.</div></div>
+</aside>
+<div id="notifs"></div>
+<div id="toast"></div>
+<div id="fin"><div><img class="logo-badge" src="images/tilexal.png" alt=""><h2 style="margin-top:18px">Les IA sont arrêtées.</h2><p style="color:var(--gris);margin-top:8px">Tu peux fermer cette fenêtre et retirer la clé.</p></div></div>
+<input type="file" id="choix-photo" accept="image/*" multiple hidden>
+<input type="file" id="choix-fichier" multiple hidden>
+
+<script>
+"use strict";
+// ─── Jeton secret (dans l'adresse #t=…), jamais envoyé ailleurs ───
+const JETON = (() => {
+  const m = location.hash.match(/t=([\w-]+)/);
+  try { if (m) sessionStorage.setItem("lexos-jeton", m[1]); } catch (e) {}
+  if (m) history.replaceState(null, "", location.pathname);
+  try { return m ? m[1] : sessionStorage.getItem("lexos-jeton") || ""; } catch (e) { return m ? m[1] : ""; }
+})();
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const S = {
+  vue: "chat", modeles: [], defauts: {}, choix: {}, sensibles: [], langues: [], dossier: "",
+  convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal") },
+  pieces: { chat: [], codex: [], terminal: [] }, enCours: null, notifs: [], nonLues: 0,
+};
+function nouvelle(mode) { return { id: null, mode, titre: "", messages: [] }; }
+
+async function api(chemin, corps) {
+  const r = await fetch(chemin, {
+    method: corps === undefined ? "GET" : "POST",
+    headers: { "X-LexOS-Jeton": JETON, "Content-Type": "application/json" },
+    body: corps === undefined ? undefined : JSON.stringify(corps),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.erreur || ("erreur " + r.status)); e.donnees = d; e.statut = r.status; throw e; }
+  return d;
+}
+async function flux(chemin, corps, surLigne, signal) {
+  const r = await fetch(chemin, { method: "POST", signal,
+    headers: { "X-LexOS-Jeton": JETON, "Content-Type": "application/json" }, body: JSON.stringify(corps) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || "erreur " + r.status);
+  const lecteur = r.body.getReader(), dec = new TextDecoder();
+  let tampon = "";
+  for (;;) {
+    const { value, done } = await lecteur.read();
+    if (done) break;
+    tampon += dec.decode(value, { stream: true });
+    let i;
+    while ((i = tampon.indexOf("\n")) >= 0) {
+      const ligne = tampon.slice(0, i).trim(); tampon = tampon.slice(i + 1);
+      if (ligne) surLigne(JSON.parse(ligne));
+    }
+  }
+}
+
+// ─── Petits outils ───
+function echap(t) { return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("vu"); clearTimeout(toast.m); toast.m = setTimeout(() => el.classList.remove("vu"), 3200); }
+function notifier(t) {
+  S.notifs.unshift({ t, quand: new Date() }); S.nonLues++;
+  const p = $("#pastille"); p.hidden = false; p.textContent = S.nonLues > 9 ? "9+" : S.nonLues;
+}
+function taille(o) { return o >= 1e9 ? (o / 1e9).toFixed(1) + " Go" : Math.round(o / 1e6) + " Mo"; }
+function telechargerTexte(nom, texte) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([texte], { type: "text/plain" })); a.download = nom; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const EXT = { python: "py", py: "py", javascript: "js", js: "js", typescript: "ts", html: "html", css: "css", bash: "sh", sh: "sh", shell: "sh", json: "json", markdown: "md", md: "md", java: "java", c: "c", cpp: "cpp", rust: "rs", go: "go", sql: "sql", yaml: "yml", php: "php", kotlin: "kt" };
+
+// ─── Markdown sûr (tout est échappé) ───
+const RE_BLOC = /(?:^|\n)[ \t]*(?:[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**[ \t]*\n+)?```([\w+.#-]*)[^\n]*\n([\s\S]*?)(?:```|$)/gi;
+function extraireBlocs(t) { const b = []; let m; RE_BLOC.lastIndex = 0; while ((m = RE_BLOC.exec(t))) b.push({ chemin: m[1] ? m[1].trim() : null, langue: (m[2] || "").toLowerCase(), code: m[3] }); return b; }
+function enLigne(t) {
+  return echap(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>");
+}
+function texteMd(t) {
+  const out = []; let liste = null;
+  const fermer = () => { if (liste) { out.push(`</${liste}>`); liste = null; } };
+  let para = [];
+  const vider = () => { if (para.length) { out.push("<p>" + para.map(enLigne).join("<br>") + "</p>"); para = []; } };
+  for (const ligne of t.split("\n")) {
+    let m;
+    if (!ligne.trim()) { vider(); fermer(); continue; }
+    if ((m = ligne.match(/^\s*#{1,6}\s+(.*)/))) { vider(); fermer(); out.push("<h4>" + enLigne(m[1]) + "</h4>"); continue; }
+    if ((m = ligne.match(/^\s*[-*•]\s+(.*)/)) || (m = ligne.match(/^\s*\d+[.)]\s+(.*)/))) {
+      vider(); const type = /^\s*\d/.test(ligne) ? "ol" : "ul";
+      if (liste !== type) { fermer(); out.push(`<${type}>`); liste = type; }
+      out.push("<li>" + enLigne(m[1]) + "</li>"); continue;
+    }
+    fermer(); para.push(ligne);
+  }
+  vider(); fermer();
+  return out.join("");
+}
+function md(t) {
+  let html = "", dernier = 0, m, n = 0;
+  const re = /```([\w+.#-]*)[^\n]*\n([\s\S]*?)(?:```|$)/g;
+  while ((m = re.exec(t))) {
+    const avant = t.slice(dernier, m.index);
+    const f = avant.match(/[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**\s*$/i);
+    html += texteMd(f ? avant.slice(0, f.index) : avant);
+    const langue = (m[1] || "").toLowerCase(), nom = f ? f[1].trim() : "";
+    html += `<div class="bloc-code"><div class="tete"><span class="nom">${echap(nom || langue || "code")}</span>` +
+      `<button data-copier="${n}">Copier</button><button data-telecharger="${n}" data-nom="${echap(nom || ("code." + (EXT[langue] || "txt")))}">Télécharger</button></div>` +
+      `<pre><code>${echap(m[2])}</code></pre></div>`;
+    dernier = re.lastIndex; n++;
+    if (m[0].length === 0) break;
+  }
+  return html + texteMd(t.slice(dernier));
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copier],[data-telecharger]");
+  if (!b) return;
+  const code = b.closest(".bloc-code").querySelector("code").textContent;
+  if (b.dataset.copier !== undefined) { navigator.clipboard.writeText(code).then(() => toast("Copié ✔"), () => toast("Copie impossible")); }
+  else telechargerTexte(b.dataset.nom, code);
+});
+
+// ─── Affichage des messages ───
+function fil(mode) { return $(`#vue-${mode} [data-fil]`); }
+function defiler(mode) { const d = $(`#vue-${mode} .defile`); d.scrollTop = d.scrollHeight; }
+function majAccueil(mode) {
+  const vide = S.convs[mode].messages.length === 0;
+  $$(`#vue-${mode} [data-accueil]`).forEach(el => el.style.display = vide ? "" : "none");
+}
+function bulleToi(mode, texte, images) {
+  const el = document.createElement("div"); el.className = "msg toi";
+  el.innerHTML = `<div class="bulle">${images && images.length ? `<div class="photos">${images.map(i => `<img src="${i}" alt="photo">`).join("")}</div>` : ""}${echap(texte)}</div>`;
+  fil(mode).appendChild(el); majAccueil(mode); defiler(mode); return el;
+}
+function bulleIA(mode, html) {
+  const el = document.createElement("div"); el.className = "msg ia";
+  el.innerHTML = `<img class="avatar logo-badge" src="images/${mode === "codex" ? "marceau" : "tilexal"}.png" alt=""><div class="bulle">${html || ""}</div>`;
+  fil(mode).appendChild(el); majAccueil(mode); defiler(mode); return el.querySelector(".bulle");
+}
+function rendreConversation(mode) {
+  fil(mode).innerHTML = "";
+  for (const m of S.convs[mode].messages) {
+    if (m.cache) continue;
+    if (m.role === "user") bulleToi(mode, m.affiche || m.content, m.images);
+    else if (m.role === "assistant") bulleIA(mode, md(mode === "terminal" ? pourTerminal(m.content) : m.content));
+  }
+  majAccueil(mode); majTravail();
+}
+
+// ─── Modèles ───
+function modeleDe(mode) { return S.choix[mode] || (mode === "chat" ? S.defauts.chat : S.defauts.codex) || (S.modeles[0] || {}).nom; }
+function voit(nom) { const m = S.modeles.find(x => x.nom === nom); return !!(m && m.capacites.includes("vision")); }
+async function chargerModeles() {
+  const d = await api("/api/modeles");
+  S.modeles = d.modeles; S.defauts = { chat: d.chat, codex: d.codex };
+  for (const sel of $$("select[data-modele]")) {
+    const mode = sel.dataset.modele;
+    sel.innerHTML = S.modeles.map(m => `<option value="${echap(m.nom)}">${echap(m.nom)}${m.capacites.includes("vision") ? " 👁" : ""}</option>`).join("") || "<option>aucun modèle</option>";
+    sel.value = modeleDe(mode) || "";
+  }
+  majBarreCodex(); rendreCerveau();
+  return d;
+}
+$$("select[data-modele]").forEach(sel => sel.addEventListener("change", async () => {
+  const mode = sel.dataset.modele; S.choix[mode] = sel.value;
+  const role = mode === "chat" ? "chat" : "codex";
+  try { await api("/api/config", { [role]: sel.value }); S.defauts[role] = sel.value; } catch (e) {}
+  majBarreCodex(); toast(`${mode === "chat" ? "Agent AL" : "Codex"} utilise ${sel.value}`);
+}));
+function majBarreCodex() { $("#barre-codex").textContent = `Local : ${modeleDe("codex") || "aucun modèle"} · sur la clé USB-C · hors ligne`; }
+
+// ─── Pièces jointes : photos (Chat) et fichiers (Codex) ───
+function reduirePhoto(fichier) {
+  return new Promise((ok, ko) => {
+    const lecteur = new FileReader();
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1280, r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        ok(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = ko; img.src = lecteur.result;
+    };
+    lecteur.onerror = ko; lecteur.readAsDataURL(fichier);
+  });
+}
+async function ajouterPhotos(fichiers) {
+  for (const f of fichiers) if (f.type.startsWith("image/")) {
+    try { S.pieces.chat.push({ type: "photo", nom: f.name, donnees: await reduirePhoto(f) }); } catch (e) { toast("Photo illisible : " + f.name); }
+  }
+  rendrePieces("chat");
+}
+async function ajouterFichiers(fichiers) {
+  for (const f of fichiers) {
+    if (f.size > 400000) { toast(`${f.name} est trop gros (max 400 Ko)`); continue; }
+    S.pieces.codex.push({ type: "fichier", nom: f.name, donnees: await f.text() });
+  }
+  rendrePieces("codex");
+}
+function rendrePieces(mode) {
+  const zone = $(`#vue-${mode} [data-pieces]`); if (!zone) return;
+  zone.innerHTML = S.pieces[mode].map((p, i) => `<div class="piece">${p.type === "photo" ? `<img src="${p.donnees}" alt="">` : `<span class="f">📄 ${echap(p.nom)}</span>`}<button data-retirer="${i}" title="Retirer">✕</button></div>`).join("");
+  zone.querySelectorAll("[data-retirer]").forEach(b => b.onclick = () => { S.pieces[mode].splice(+b.dataset.retirer, 1); rendrePieces(mode); });
+}
+$("#vue-chat [data-plus]").onclick = () => $("#choix-photo").click();
+$("#vue-codex [data-plus]").onclick = () => $("#choix-fichier").click();
+$("#choix-photo").onchange = e => { ajouterPhotos([...e.target.files]); e.target.value = ""; };
+$("#choix-fichier").onchange = e => { ajouterFichiers([...e.target.files]); e.target.value = ""; };
+$("#vue-chat [data-saisie]").addEventListener("paste", e => {
+  const imgs = [...(e.clipboardData || {}).files || []].filter(f => f.type.startsWith("image/"));
+  if (imgs.length) { e.preventDefault(); ajouterPhotos(imgs); }
+});
+for (const id of ["vue-chat", "vue-codex"]) {
+  const v = $("#" + id);
+  v.addEventListener("dragover", e => e.preventDefault());
+  v.addEventListener("drop", e => { e.preventDefault(); const f = [...e.dataTransfer.files]; id === "vue-chat" ? ajouterPhotos(f) : ajouterFichiers(f); });
+}
+
+// ─── Envoyer (Chat / Codex) ───
+function boutonEnvoi(mode, enCours) {
+  const b = $(`#vue-${mode} [data-envoyer]`);
+  b.classList.toggle("arreter", enCours);
+  if (mode === "codex") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
+  else b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
+}
+async function reponseIA(mode, modele) {
+  const bulle = bulleIA(mode, '<span class="curseur"></span>');
+  const ctrl = new AbortController(); S.enCours = ctrl; boutonEnvoi(mode, true);
+  let texte = "", prevu = false, termine = false;
+  const montrer = t => mode === "terminal" ? md(pourTerminal(t)) : md(t);
+  const peindre = () => { prevu = false; if (termine) return; bulle.innerHTML = montrer(texte) + '<span class="curseur"></span>'; defiler(mode); };
+  try {
+    await flux("/api/chat", { mode, modele, messages: S.convs[mode].messages.map(m => ({ role: m.role, content: m.content, images: m.images })) }, o => {
+      if (o.reflexion && !texte) bulle.innerHTML = '<span class="reflexion">Agent AL réfléchit…</span><span class="curseur"></span>';
+      if (o.t) { texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
+      if (o.erreur) throw new Error(o.erreur);
+    }, ctrl.signal);
+  } catch (e) {
+    if (e.name === "AbortError") texte += " [coupé]";
+    else { bulle.innerHTML = `<span class="erreur">Erreur IA : ${echap(e.message)}</span>`; notifier("Erreur IA : " + e.message); texte = ""; }
+  } finally { termine = true; S.enCours = null; boutonEnvoi(mode, false); }
+  if (texte) { bulle.innerHTML = montrer(texte); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
+  return texte;
+}
+async function envoyer(mode) {
+  if (S.enCours) { S.enCours.abort(); return; }
+  const zone = $(`#vue-${mode} [data-saisie]`);
+  const texte = zone.value.trim(), pieces = S.pieces[mode];
+  if (!texte && !pieces.length) return;
+  if (mode === "terminal") { zone.value = ""; ajuster(zone); return tache(texte); }
+  let modele = modeleDe(mode);
+  if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
+  const msg = { role: "user", content: texte, affiche: texte };
+  if (mode === "chat" && pieces.length) {
+    msg.images = pieces.map(p => p.donnees);
+    if (!msg.content) msg.content = msg.affiche = "Décris cette photo.";
+    if (!voit(modele)) {
+      const v = S.modeles.find(m => m.capacites.includes("vision"));
+      if (!v) { toast("Aucun modèle de la clé ne voit les photos. Installe gemma3:4b dans Cerveau."); return; }
+      modele = v.nom; notifier(`📷 Photo : Agent AL utilise ${v.nom}, qui voit les images.`); toast(`📷 ${v.nom} regarde ta photo`);
+    }
+  }
+  if (mode === "codex" && pieces.length) {
+    msg.content = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n") + "\n\n" + (texte || "Explique ce code.");
+    msg.affiche = (texte || "Explique ce code.") + "\n📄 " + pieces.map(p => p.nom).join(", ");
+  }
+  S.pieces[mode] = []; rendrePieces(mode);
+  zone.value = ""; ajuster(zone);
+  if (!S.convs[mode].titre) S.convs[mode].titre = (texte || "Photo").slice(0, 60);
+  S.convs[mode].messages.push(msg);
+  bulleToi(mode, msg.affiche, msg.images);
+  await reponseIA(mode, modele);
+}
+function ajuster(t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
+for (const mode of ["chat", "codex", "terminal"]) {
+  const zone = $(`#vue-${mode} [data-saisie]`);
+  zone.addEventListener("input", () => ajuster(zone));
+  zone.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(mode); } });
+  $(`#vue-${mode} [data-envoyer]`).onclick = () => envoyer(mode);
+}
+
+// ─── CodexTerminal : l'IA propose, tu approuves ───
+function extraireCommande(rep) {
+  if (/^\s*FINI/i.test(rep)) return null;
+  for (const b of extraireBlocs(rep)) if (S.langues.includes(b.langue) && b.code.trim()) return b.code.trim();
+  return null;
+}
+function pourTerminal(t) {
+  return t.replace(/```[\s\S]*?(?:```|$)/g, "").replace(/^\s*FINI\s*:?\s*/i, "✔ ").trim() || "…";
+}
+function sensible(cmd) { return S.sensibles.some(p => { try { return new RegExp(p, "i").test(cmd); } catch (e) { return false; } }); }
+function carteCommande(cmd) {
+  return new Promise(ok => {
+    const danger = sensible(cmd), carte = document.createElement("div");
+    carte.className = "carte-cmd";
+    carte.innerHTML = `<div class="titre">COMMANDE PROPOSÉE</div><textarea spellcheck="false" readonly>${echap(cmd)}</textarea>` +
+      (danger ? `<div class="danger">⚠ Commande sensible : tape <b>OUI</b> en majuscules pour l'exécuter.</div>` : "") +
+      `<div class="actions">${danger ? '<input class="oui" placeholder="OUI" spellcheck="false">' : ""}<button class="go">▶ Exécuter</button><button data-a="m">✎ Modifier</button><button data-a="n">✕ Refuser</button><button data-a="q">■ Arrêter</button></div>`;
+    fil("terminal").appendChild(carte); defiler("terminal");
+    const zone = carte.querySelector("textarea"), go = carte.querySelector(".go"), oui = carte.querySelector(".oui");
+    ajuster(zone);
+    if (oui) { go.disabled = true; oui.oninput = () => go.disabled = oui.value !== "OUI"; setTimeout(() => oui.focus(), 50); }
+    const finir = r => { carte.querySelectorAll("button,input").forEach(b => b.disabled = true); zone.readOnly = true; ok({ ...r, carte }); };
+    go.onclick = () => finir({ action: "o", commande: zone.value.trim(), confirme: oui ? oui.value : undefined });
+    carte.querySelector('[data-a="m"]').onclick = () => { zone.readOnly = false; zone.focus(); toast("Modifie la commande, puis Exécuter"); };
+    carte.querySelector('[data-a="n"]').onclick = () => finir({ action: "n" });
+    carte.querySelector('[data-a="q"]').onclick = () => finir({ action: "q" });
+    if ($("#auto").checked && !danger) setTimeout(() => go.onclick(), 150);
+  });
+}
+async function tache(texte) {
+  const conv = S.convs.terminal, modele = modeleDe("terminal");
+  if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
+  if (!conv.titre) conv.titre = texte.slice(0, 60);
+  conv.messages.push({ role: "user", content: "TÂCHE : " + texte, affiche: texte });
+  bulleToi("terminal", texte);
+  for (let etape = 1; etape <= 15; etape++) {
+    const rep = await reponseIA("terminal", modele);
+    if (!rep || rep.endsWith("[coupé]")) return;
+    const cmd = extraireCommande(rep);
+    if (!cmd) { toast("✔ Tâche terminée"); notifier("CodexTerminal : tâche terminée — " + texte.slice(0, 50)); return; }
+    const d = await carteCommande(cmd);
+    if (d.action === "q") { conv.messages.push({ role: "user", content: "L'utilisateur a arrêté la tâche.", cache: true }); d.carte.classList.add("fini"); return; }
+    if (d.action === "n") {
+      conv.messages.push({ role: "user", content: "L'utilisateur a REFUSÉ cette commande. Propose autre chose ou termine avec FINI:.", cache: true });
+      d.carte.classList.add("fini"); continue;
+    }
+    let res;
+    try { res = await api("/api/exec", { commande: d.commande, confirme: d.confirme }); }
+    catch (e) { res = { code: 1, sortie: "Refusé : " + e.message, dossier: S.dossier }; }
+    S.dossier = res.dossier; $("#dossier").value = res.dossier;
+    const sortie = document.createElement("div");
+    sortie.innerHTML = `<div class="sortie">${echap(res.sortie || "(aucune sortie)")}</div><div class="code-sortie ${res.code === 0 ? "ok" : "ko"}">code de sortie : ${res.code}</div>`;
+    d.carte.appendChild(sortie); d.carte.classList.add("fini"); defiler("terminal");
+    conv.messages.push({ role: "user", cache: true, content: `Commande exécutée : ${d.commande}\nDossier : ${res.dossier}\nCode de sortie : ${res.code}\nSortie :\n${(res.sortie || "(aucune)").slice(0, 8000)}` });
+    sauver("terminal");
+  }
+  toast("Arrêt après 15 étapes : redonne la tâche pour continuer.");
+}
+$$("#vue-terminal .puce").forEach(p => p.onclick = () => { const z = $("#vue-terminal [data-saisie]"); z.value = p.textContent; envoyer("terminal"); });
+$("#btn-dossier").onclick = async () => {
+  try { const d = await api("/api/dossier", { dossier: $("#dossier").value }); S.dossier = d.dossier; $("#dossier").value = d.dossier; toast("Dossier : " + d.dossier); }
+  catch (e) { toast(e.message); }
+};
+$("#dossier").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-dossier").click(); });
+
+// ─── Panneau TRAVAIL (tout le code des réponses) ───
+function majTravail() {
+  const blocs = [];
+  for (const mode of ["chat", "codex"]) for (const m of S.convs[mode].messages) if (m.role === "assistant") blocs.push(...extraireBlocs(m.content));
+  $("#contenu-travail").innerHTML = blocs.length ? blocs.map(b => "```" + b.langue + "\n" + b.code + "```").map((t, i) => md((blocs[i].chemin ? "Fichier: " + blocs[i].chemin + "\n" : "") + t)).join("")
+    : '<div class="vide">Le code proposé par l\'IA apparaîtra ici.</div>';
+}
+$("#onglet-travail").onclick = () => $("#travail").classList.add("ouvert");
+$("#fermer-travail").onclick = () => { $("#travail").classList.remove("ouvert"); document.body.classList.remove("studio"); $("#btn-studio").classList.remove("actif"); };
+$("#btn-studio").onclick = () => {
+  const on = !document.body.classList.contains("studio");
+  document.body.classList.toggle("studio", on); $("#btn-studio").classList.toggle("actif", on);
+  $("#travail").classList.toggle("ouvert", on);
+  if (on && S.vue === "chat") aller("codex");
+};
+
+// ─── Conversations sauvegardées sur la clé ───
+async function sauver(mode) {
+  const c = S.convs[mode]; if (!c.messages.length) return;
+  try {
+    const d = await api("/api/conversations", { id: c.id, titre: c.titre, mode, modele: modeleDe(mode), messages: c.messages.filter(m => !m.cache).map(m => ({ role: m.role, content: m.affiche || m.content, images: m.images })) });
+    if (!c.id) { c.id = d.id; listerConvs(); }
+  } catch (e) {}
+}
+const ICONES = { chat: "💬", codex: "💻", terminal: "⌨️" };
+async function listerConvs() {
+  let convs = [];
+  try { convs = await api("/api/conversations"); } catch (e) {}
+  $("#liste-convs").innerHTML = convs.length ? "" : '<div class="vide">Aucune conversation sauvegardée.</div>';
+  for (const c of convs.slice(0, 40)) {
+    const b = document.createElement("div"); b.className = "conv";
+    b.innerHTML = `<span>${ICONES[c.mode] || "💬"}</span><button class="t" style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${echap(c.titre)}</button><button class="x" title="Supprimer">✕</button>`;
+    b.querySelector(".t").onclick = () => ouvrirConv(c.id);
+    b.querySelector(".x").onclick = async () => { await api("/api/supprimer-conversation", { id: c.id }); if (S.convs[c.mode] && S.convs[c.mode].id === c.id) S.convs[c.mode] = nouvelle(c.mode); listerConvs(); };
+    $("#liste-convs").appendChild(b);
+  }
+  const n = convs.filter(c => c.mode === "chat").length;
+  $("#recentes").innerHTML = n ? `${n} conversation${n > 1 ? "s" : ""} sauvegardée${n > 1 ? "s" : ""} — <button id="voir-convs">voir</button>` : "Aucune conversation sauvegardée.";
+  const v = $("#voir-convs"); if (v) v.onclick = ouvrirTiroir;
+}
+async function ouvrirConv(id) {
+  const d = await api("/api/conversation?id=" + encodeURIComponent(id));
+  const mode = d.mode in S.convs ? d.mode : "chat";
+  S.convs[mode] = { id, mode, titre: d.titre, messages: d.messages.map(m => ({ role: m.role, content: m.content })) };
+  aller(mode); rendreConversation(mode); fermerTiroir();
+}
+$("#fab").onclick = () => {
+  const mode = S.convs[S.vue] ? S.vue : "chat";
+  S.convs[mode] = nouvelle(mode); rendreConversation(mode); aller(mode); toast("Nouvelle conversation");
+};
+
+// ─── Cerveau ───
+function rendreCerveau() {
+  $("#grille-modeles").innerHTML = S.modeles.map(m => `
+    <div class="modele">
+      <div class="nom">${echap(m.nom)}</div>
+      <div class="meta"><span>${taille(m.taille)}</span>${m.capacites.includes("vision") ? '<span class="badge vert">👁 voit les photos</span>' : ""}
+        ${S.defauts.chat === m.nom ? '<span class="badge orange">💬 Chat</span>' : ""}${S.defauts.codex === m.nom ? '<span class="badge orange">💻 Codex</span>' : ""}</div>
+      <div class="boutons">
+        <button data-role="chat" data-nom="${echap(m.nom)}" class="${S.defauts.chat === m.nom ? "choisi" : ""}">Pour le Chat</button>
+        <button data-role="codex" data-nom="${echap(m.nom)}" class="${S.defauts.codex === m.nom ? "choisi" : ""}">Pour Codex</button>
+        <button data-suppr="${echap(m.nom)}" title="Supprimer de la clé">🗑</button>
+      </div>
+    </div>`).join("") || '<div class="vide">Aucun modèle sur la clé. Télécharge-en un ci-dessous.</div>';
+  $$("#grille-modeles [data-role]").forEach(b => b.onclick = async () => {
+    await api("/api/config", { [b.dataset.role]: b.dataset.nom });
+    delete S.choix[b.dataset.role]; if (b.dataset.role === "codex") delete S.choix.terminal;
+    await chargerModeles(); toast(`${b.dataset.role === "chat" ? "Chat" : "Codex"} → ${b.dataset.nom}`);
+  });
+  $$("#grille-modeles [data-suppr]").forEach(b => b.onclick = async () => {
+    if (!confirm(`Supprimer ${b.dataset.suppr} de la clé ?`)) return;
+    try { await api("/api/supprimer-modele", { nom: b.dataset.suppr }); await chargerModeles(); toast("Supprimé"); } catch (e) { toast(e.message); }
+  });
+}
+$$("[data-sugg]").forEach(b => b.onclick = () => $("#nom-modele").value = b.textContent);
+$("#btn-telecharger").onclick = async () => {
+  const nom = $("#nom-modele").value.trim(); if (!nom) return;
+  const barre = $("#progres"), statut = $("#statut-telech"); barre.hidden = false;
+  try {
+    await flux("/api/telecharger-modele", { nom }, o => {
+      if (o.erreur) throw new Error(o.erreur);
+      if (o.total && o.completed) { barre.firstElementChild.style.width = (100 * o.completed / o.total).toFixed(1) + "%"; statut.textContent = `${o.status} · ${taille(o.completed)} / ${taille(o.total)}`; }
+      else if (o.status) statut.textContent = o.status;
+    });
+    statut.textContent = `${nom} installé sur la clé ✔`; notifier(`🧠 ${nom} installé sur la clé`); await chargerModeles();
+  } catch (e) { statut.textContent = "Téléchargement arrêté : " + e.message; }
+};
+
+// ─── Navigation, tiroir, thème, notifications ───
+function aller(vue) {
+  S.vue = vue;
+  $$(".vue").forEach(v => v.classList.toggle("active", v.id === "vue-" + vue));
+  $$(".nav[data-vue]").forEach(n => n.classList.toggle("actif", n.dataset.vue === vue));
+  $("#fab").style.display = vue === "cerveau" ? "none" : "";
+  if (vue === "cerveau") chargerModeles().catch(() => {});
+  const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
+  if (innerWidth < 1200) fermerTiroir();
+}
+function ouvrirTiroir() { $("#tiroir").classList.add("ouvert"); $("#voile").classList.add("ouvert"); }
+function fermerTiroir() { $("#tiroir").classList.remove("ouvert"); $("#voile").classList.remove("ouvert"); }
+$("#btn-menu").onclick = () => {
+  if (innerWidth >= 1200) document.body.classList.toggle("tiroir-fixe");
+  else ($("#tiroir").classList.contains("ouvert") ? fermerTiroir() : ouvrirTiroir());
+};
+$("#voile").onclick = fermerTiroir;
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  fermerTiroir(); $("#notifs").classList.remove("ouvert");
+  if (!document.body.classList.contains("studio")) $("#travail").classList.remove("ouvert");
+});
+$$(".nav[data-vue]").forEach(n => n.onclick = () => aller(n.dataset.vue));
+$$("[data-aller]").forEach(n => n.onclick = () => aller(n.dataset.aller));
+$$(".nav[data-ouvrir]").forEach(n => n.onclick = async () => {
+  try { const d = await api("/api/ouvrir", { quoi: n.dataset.ouvrir }); toast(d.ok ? "Ouverture…" : "Impossible d'ouvrir ici"); } catch (e) { toast(e.message); }
+});
+function appliquerTheme(t) { document.documentElement.dataset.theme = t; $("#btn-theme").textContent = t === "jour" ? "☀️" : "🌙"; }
+$("#btn-theme").onclick = () => {
+  const t = document.documentElement.dataset.theme === "jour" ? "nuit" : "jour"; appliquerTheme(t);
+  try { localStorage.setItem("lexos-theme", t); } catch (e) {}
+};
+try { appliquerTheme(localStorage.getItem("lexos-theme") || "nuit"); } catch (e) { appliquerTheme("nuit"); }
+$("#btn-cloche").onclick = () => {
+  const p = $("#notifs"); p.classList.toggle("ouvert");
+  p.innerHTML = S.notifs.length ? S.notifs.map(n => `<div class="n">${echap(n.t)}<time>${n.quand.toLocaleTimeString("fr-CA")}</time></div>`).join("") : '<div class="n">Aucune notification.</div>';
+  S.nonLues = 0; $("#pastille").hidden = true;
+};
+document.addEventListener("click", e => { if (!e.target.closest("#notifs,#btn-cloche")) $("#notifs").classList.remove("ouvert"); });
+$("#btn-quitter").onclick = async () => {
+  if (!confirm("Arrêter les IA de la clé ?")) return;
+  try { await api("/api/quitter", {}); } catch (e) {}
+  $("#fin").classList.add("vu");
+};
+
+// ─── Démarrage ───
+async function demarrer() {
+  const h = new Date().getHours();
+  $("#bonjour").textContent = h < 5 ? "Bonne nuit" : h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
+  if (innerWidth >= 1200) document.body.classList.add("tiroir-fixe");
+  if (!JETON) { $("#txt-moteur").textContent = "Lien incomplet : relance APP-IA depuis la clé."; $("#point-moteur").classList.add("rouge"); return; }
+  try {
+    const e = await api("/api/etat");
+    S.sensibles = e.sensibles; S.langues = e.langues_shell; S.dossier = e.dossier; $("#dossier").value = e.dossier;
+    const d = await chargerModeles();
+    const ok = e.moteur && S.modeles.length;
+    $("#point-moteur").classList.toggle("rouge", !ok); $("#point-etat").classList.toggle("rouge", !e.moteur);
+    $("#etat-court").textContent = e.moteur ? "En ligne sur la clé" : "Moteur arrêté";
+    $("#txt-moteur").textContent = ok ? `Moteur IA de la clé prêt · ${S.modeles.length} modèle${S.modeles.length > 1 ? "s" : ""} · Agent AL : ${d.chat}`
+      : e.moteur ? "Aucun modèle sur la clé — ouvre Config" : "Moteur IA arrêté";
+    notifier(ok ? `⚡ IA de la clé prêtes (${S.modeles.length} modèles)` : "Moteur IA : aucun modèle");
+    S.nonLues = 0; $("#pastille").hidden = true;
+  } catch (e) {
+    $("#txt-moteur").textContent = "Moteur IA inaccessible : " + e.message; $("#point-moteur").classList.add("rouge");
+  }
+  listerConvs();
+  ["chat", "codex", "terminal"].forEach(majAccueil);
+  setInterval(() => api("/api/ping", {}).catch(() => {}), 20000);
+}
+demarrer();
+</script>
+</body>
+</html>

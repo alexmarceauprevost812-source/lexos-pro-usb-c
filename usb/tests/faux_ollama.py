@@ -12,13 +12,31 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODELES = [{"name": "llama3.2:3b", "size": 2_000_000_000},
-           {"name": "qwen2.5-coder:7b", "size": 4_700_000_000}]
+           {"name": "qwen2.5-coder:7b", "size": 4_700_000_000},
+           {"name": "gemma3:4b", "size": 3_300_000_000}]
+VISION = {"gemma3:4b"}
 REPONSE_DEFAUT = "<think>je réfléchis</think>Bonjour, ici l'IA de la clé !"
 
 
 def morceaux(texte, n=4):
     """Découpe en petits morceaux, même au milieu des balises <think>."""
     return [texte[i:i + n] for i in range(0, len(texte), n)]
+
+
+def reponse_auto(messages):
+    """Réponses réalistes selon le mode (pour les démos et captures)."""
+    systeme = messages[0]["content"] if messages and messages[0]["role"] == "system" else ""
+    dernier = messages[-1]["content"] if messages else ""
+    if "CodexTerminal" in systeme:
+        if dernier.startswith("TÂCHE"):
+            return ("Je crée le fichier puis j'affiche son contenu.\n```bash\n"
+                    "echo \"Bonjour de LexOS\" > bonjour.txt && cat bonjour.txt\n```")
+        return "FINI: bonjour.txt est créé et contient « Bonjour de LexOS »."
+    if "Codex de LexOS" in systeme:
+        return ("Voici un petit programme qui salue en orange :\n\nFichier: bonjour.py\n```python\n"
+                "ORANGE = \"\\033[38;2;255;122;0m\"\n\ndef main():\n    print(ORANGE + \"Bonjour de LexOS !\")\n\n"
+                "if __name__ == \"__main__\":\n    main()\n```\n\nLance-le avec `python3 bonjour.py`.")
+    return REPONSE_DEFAUT
 
 
 class Gestionnaire(BaseHTTPRequestHandler):
@@ -53,8 +71,17 @@ class Gestionnaire(BaseHTTPRequestHandler):
     def do_POST(self):
         donnees = self._lire()
         self.server.requetes.append((self.path, donnees))
+        if self.path == "/api/show":
+            nom = donnees.get("model")
+            return self._json({"capabilities": ["completion"] + (["vision"] if nom in VISION else [])})
         if self.path == "/api/chat":
-            texte = self.server.reponses.pop(0) if self.server.reponses else REPONSE_DEFAUT
+            photos = sum(len(m.get("images") or []) for m in donnees.get("messages", []))
+            if self.server.reponses:
+                texte = self.server.reponses.pop(0)
+            elif photos:
+                texte = f"Je vois {photos} photo(s) : un logo orange sur fond noir."
+            else:
+                texte = reponse_auto(donnees.get("messages", []))
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")
             self.end_headers()

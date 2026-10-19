@@ -7,7 +7,8 @@
 #  3. lance le terminal LexOS IA : Chat · Codex · CodexTerminal · Modèles
 #  4. arrête le moteur en quittant — rien ne reste installé sur le PC
 #
-#  Usage : bash ACTIVER-IA.sh [chat|codex|codexterminal|modeles|textes]
+#  Usage : bash ACTIVER-IA.sh [app|chat|codex|codexterminal|modeles|textes]
+#          app = l'application TI-LEX-AL (fenêtre graphique, sans terminal)
 # ───────────────────────────────────────────────────────────────────────────
 set -u
 ICI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,10 +16,17 @@ MODE="${1:-}"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/lexos-ia"
 ORANGE=$'\033[38;2;224;96;32m'; GRIS=$'\033[90m'; ROUGE=$'\033[91m'; RAZ=$'\033[0m'
 
-pause_et_sortir() { echo; read -r -p "Appuie sur Entrée pour fermer…" _ </dev/tty 2>/dev/null; exit "${1:-1}"; }
+pause_et_sortir() {
+  [ -t 1 ] || { command -v notify-send >/dev/null && notify-send "LexOS IA" "Les IA n'ont pas pu démarrer. Lance ACTIVER-IA.sh dans un terminal pour voir le détail."; }
+  echo; read -r -p "Appuie sur Entrée pour fermer…" _ </dev/tty 2>/dev/null; exit "${1:-1}"
+}
 
 # ── 1. Pas dans un terminal (double-clic) ? On en ouvre un. ─────────────────
-if [ "$MODE" != "textes" ] && [ -z "${LEXOS_IA_SANS_TERMINAL:-}" ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
+case "$MODE" in app|textes) SANS_TERMINAL=1 ;; *) SANS_TERMINAL="${LEXOS_IA_SANS_TERMINAL:-}" ;; esac
+if [ "$MODE" = "app" ] && [ ! -t 1 ] && command -v notify-send >/dev/null; then
+  notify-send -i "$ICI/app/images/tilexal.png" "TI-LEX-AL" "Activation des IA de la clé…"
+fi
+if [ -z "$SANS_TERMINAL" ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
   SOI="$ICI/ACTIVER-IA.sh"
   for t in x-terminal-emulator xfce4-terminal qterminal gnome-terminal konsole kgx tilix mate-terminal lxterminal xterm; do
     command -v "$t" >/dev/null 2>&1 || continue
@@ -120,6 +128,10 @@ echo "${ORANGE}prêt ✔${RAZ}"
 # ── 4. Lancer LexOS IA (ou LexOS Textes) ────────────────────────────────────
 if [ "$MODE" = "textes" ]; then
   "$PY" "$ICI/apps/lexos_textes.py"
+  exit $?
+fi
+if [ "$MODE" = "app" ]; then
+  "$PY" "$ICI/lexos_ia_app.py"
   exit $?
 fi
 cd "$HOME" 2>/dev/null || true
