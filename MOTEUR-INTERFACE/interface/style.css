@@ -1230,3 +1230,26 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 .bu-embleme-sous { margin-top: 8px; font-size: clamp(11px, calc(var(--t) * .036), 15px); color: var(--blanc-doux); letter-spacing: .08em; text-shadow: 0 1px 8px #000; opacity: .85; animation: monte .9s .7s both cubic-bezier(.2,1.3,.4,1); }
 @media (max-width: 900px) { .bu-embleme { --t: min(46vh, 60vw); } }
 @media (prefers-reduced-motion: reduce) { .bu-embleme *, .bu-embleme { animation: none !important; } }
+
+/* Logo en bannière (LexOS · TI-LEX-AL · NOMAD) : plus large, le nom est déjà dans l'image */
+.bu-embleme.large { --t: min(54vw, 100vh); top: calc(50% + 6px); }
+.bu-embleme.large .bu-anneaux, .bu-embleme.large .bu-embleme-nom, .bu-embleme.large .bu-embleme-sous { display: none; }
+.bu-embleme.large .bu-halo { height: calc(var(--t) * .54); border-radius: 50%; background: radial-gradient(ellipse, rgba(var(--acc-rgb),.22) 0%, rgba(var(--acc-rgb),.06) 45%, transparent 70%); }
+.bu-embleme.large .bu-embleme-img { height: calc(var(--t) * .54); padding: 0; }
+.bu-embleme.large .bu-embleme-img img { border-radius: 0; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); filter: drop-shadow(0 0 22px rgba(var(--acc-rgb),.45)); animation: emb-neon 5s ease-in-out infinite; }
+.bu-embleme.large .bu-embleme-img:hover img { filter: drop-shadow(0 0 40px rgba(var(--acc-rgb),.85)) brightness(1.15); }
+@keyframes emb-neon { 0%, 100% { filter: drop-shadow(0 0 22px rgba(var(--acc-rgb),.45)); } 48% { filter: drop-shadow(0 0 34px rgba(var(--acc-rgb),.75)) brightness(1.12); } 50% { filter: drop-shadow(0 0 10px rgba(var(--acc-rgb),.3)) brightness(.85); } 52% { filter: drop-shadow(0 0 34px rgba(var(--acc-rgb),.75)) brightness(1.12); } }
+@media (max-width: 900px) { .bu-embleme.large { --t: 86vw; } }
+
+/* ⌨️ Moteur d'écriture de code dans le logo : le code s'écrit tout seul derrière LexOS */
+.bu-code { display: none; position: absolute; top: -4%; left: 50%; padding-left: 4px; width: 62%; height: 104%; margin: 0; overflow: hidden; pointer-events: none; font-family: "LX JetBrains Mono", ui-monospace, monospace; font-size: clamp(9px, calc(var(--t) * .0175), 15px); line-height: 1.75; color: rgba(255,255,255,.34); white-space: pre; -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 78%, transparent 100%), linear-gradient(90deg, #000 0%, #000 78%, transparent 100%); -webkit-mask-composite: source-in; mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 78%, transparent 100%), linear-gradient(90deg, #000 0%, #000 78%, transparent 100%); mask-composite: intersect; }
+.bu-embleme.large .bu-code { display: block; }
+.bu-code .ligne { display: block; transition: opacity .6s, transform .6s; }
+.bu-code .ligne.part { opacity: 0; transform: translateY(-10px); }
+.bu-code .tok-mot, .bu-code .tk-mot { color: rgba(var(--acc-rgb),.75); }
+.bu-code .tok-ch, .bu-code .tk-ch { color: rgba(156,207,162,.6); }
+.bu-code .tok-com, .bu-code .tk-com { color: rgba(255,255,255,.22); font-style: italic; }
+.bu-code-curseur { display: inline-block; width: .6em; height: 1.15em; vertical-align: -.2em; background: var(--orange); box-shadow: 0 0 10px var(--orange); animation: clignote-dur 1s steps(1) infinite; margin-left: 1px; }
+@media (max-width: 900px) { .bu-code { left: 30%; width: 70%; } }
+.bu-code [class^="tk-"] { opacity: .6; font-style: normal; } .bu-code .tk-mot { opacity: .9; }
+.bu-embleme.large .bu-embleme-img img { mix-blend-mode: normal; }

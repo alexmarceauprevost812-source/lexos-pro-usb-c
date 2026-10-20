@@ -503,15 +503,18 @@ document.addEventListener("keydown", (e) => {
 
 /* ── Grand logo au centre du bureau : clic = change de logo, suit un peu la souris ── */
 (() => {
-  const LOGOS = ["logo.png", "/cle-images/tilexal.png", "/cle-images/marceau.png"];
+  const LOGOS = ["lexos-nomad.png", "logo.png", "/cle-images/tilexal.png", "/cle-images/marceau.png"];
+  const LARGES = ["lexos-nomad.png"];                    // logos en bannière (larges, avec le nom dedans)
+  const emb = $("#bu-embleme");
+  const appliquer = (src) => { img.src = src; emb.classList.toggle("large", LARGES.includes(src)); };
   const btn = $("#bu-embleme-btn"), img = $("#bu-embleme-img");
   if (!btn) return;
-  let i = Math.max(0, LOGOS.indexOf(mem.lire("lexos-logo-bureau", "logo.png")));
-  img.src = LOGOS[i];
-  img.onerror = () => { if (img.src.indexOf("logo.png") < 0) { i = 0; img.src = LOGOS[0]; } };
+  let i = Math.max(0, LOGOS.indexOf(mem.lire("lexos-logo-bureau2", LOGOS[0])));
+  appliquer(LOGOS[i]);
+  img.onerror = () => { if (!img.src.includes(LOGOS[0])) { i = 0; appliquer(LOGOS[0]); } };
   btn.addEventListener("click", () => {
     btn.classList.remove("tourne", "onde"); void btn.offsetWidth; btn.classList.add("tourne", "onde");
-    setTimeout(() => { i = (i + 1) % LOGOS.length; img.src = LOGOS[i]; mem.ecrire("lexos-logo-bureau", LOGOS[i]); }, 400);
+    setTimeout(() => { i = (i + 1) % LOGOS.length; appliquer(LOGOS[i]); mem.ecrire("lexos-logo-bureau2", LOGOS[i]); }, 400);
     if (typeof etincelles === "function") etincelles(btn, 30);
   });
   btn.addEventListener("animationend", (e) => { if (e.animationName === "emb-tourne") btn.classList.remove("tourne", "onde"); });
@@ -520,4 +523,79 @@ document.addEventListener("keydown", (e) => {
     btn.style.transform = `rotateY(${x * 14}deg) rotateX(${-y * 14}deg)`;
   });
   $("#bureau").addEventListener("mouseleave", () => { btn.style.transform = ""; });
+})();
+
+/* ⌨️ Moteur d'écriture de code : le code se tape tout seul dans l'image du bureau */
+(() => {
+  const zone = $("#bu-code");
+  if (!zone) return;
+  const MORCEAUX = [
+`from pathlib import Path
+from lexos import bureau, ia
+
+CLE = Path("/media/LEXOS")`,
+`def dessiner_horizon(scene):
+    for ligne in scene.lignes:
+        scene.afficher(ligne)
+    return scene.horizon`,
+`# Une lumière discrète
+opacite: float = 0.35
+mouvement: str = "doux"`,
+`def composer_bureau(image, calques):
+    resultat = image.copy()
+    for calque in calques:
+        resultat = calque.appliquer(resultat)
+    return resultat`,
+`palette = {"texte": "#9c9fa2", "accent": "#ff6a00"}`,
+`async def demander(question: str) -> str:
+    modele = ia.choisir("qwen3")
+    return await modele.repondre(question)`,
+`class Nomad:
+    version = "2.0.0"
+    def demarrer(self):
+        bureau.ouvrir(theme="noir")
+        print("ti-lex IA est prêt")`,
+`for fichier in CLE.glob("**/*.gguf"):
+    ia.importer(fichier)  # tout reste sur la clé`,
+  ];
+  const MAX = 15;
+  let lignes = [""], morceau = 0, pos = 0, attente = 0, faute = null, minuteur = null;
+  const peindre = () => {
+    const html = lignes.map((l, i) => {
+      const c = typeof colorier === "function" ? colorier(l, "python") : echapper(l);
+      return `<span class="ligne">${c || " "}${i === lignes.length - 1 ? '<i class="bu-code-curseur"></i>' : ""}</span>`;
+    }).join("");
+    zone.innerHTML = html;
+  };
+  const taper = () => {
+    const visible = !$("#bureau").hidden && !document.hidden && $("#bu-embleme").classList.contains("large");
+    if (!visible) { minuteur = setTimeout(taper, 800); return; }
+    if (attente > 0) { attente--; minuteur = setTimeout(taper, 90); return; }
+    const texte = MORCEAUX[morceau];
+    if (faute !== null) {                              // petite faute de frappe… puis on efface
+      lignes[lignes.length - 1] = lignes[lignes.length - 1].slice(0, -1);
+      faute = null; peindre(); minuteur = setTimeout(taper, 140); return;
+    }
+    if (pos >= texte.length) {                         // morceau fini : on saute une ligne et on passe au suivant
+      lignes.push(""); morceau = (morceau + 1) % MORCEAUX.length; pos = 0; attente = 12;
+    } else {
+      const c = texte[pos++];
+      if (c === "\n") lignes.push("");
+      else {
+        if (/[a-z]/.test(c) && Math.random() < .025) {   // une faute, de temps en temps
+          lignes[lignes.length - 1] += String.fromCharCode(97 + Math.floor(Math.random() * 26));
+          faute = true; pos--;
+        } else lignes[lignes.length - 1] += c;
+      }
+      if (c === "\n") attente = 2 + Math.floor(Math.random() * 4);
+    }
+    while (lignes.length > MAX) lignes.shift();
+    peindre();
+    const vite = /[ (=:.,]/.test(texte[pos - 1] || "") ? 70 : 28;
+    minuteur = setTimeout(taper, vite + Math.random() * 60);
+  };
+  // Si on ne veut pas d'animation : le code est écrit d'un coup
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { lignes = MORCEAUX.slice(0, 3).join("\n\n").split("\n"); peindre(); return; }
+  lignes = (MORCEAUX[0] + "\n\n" + MORCEAUX[1] + "\n").split("\n"); morceau = 2;   // on commence avec du code déjà écrit
+  peindre(); taper();
 })();
