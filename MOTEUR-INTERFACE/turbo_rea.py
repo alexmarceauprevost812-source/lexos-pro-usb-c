@@ -47,7 +47,8 @@ Tu as des outils et tu t'en sers sans demander la permission :
 Tu ne peux PAS lancer de commandes : quand il faut tester ou installer, donne la commande dans un bloc ```bash
 (Alex la lance lui-même dans son terminal, déjà placé dans le dossier du projet).
 Si un outil renvoie une erreur, corrige-toi et réessaie autrement.
-Quand tu as fini, réponds avec un court résumé de ce que tu as fait et des fichiers touchés."""
+Commence ta PREMIÈRE réponse par ton plan de marche : 3 à 8 étapes courtes, une par ligne, au format « - [ ] étape ».
+Quand tu as fini, redonne ce plan avec « - [x] » devant chaque étape faite, puis un court résumé de ce que tu as fait et des fichiers touchés."""
 
 OUTILS = [
     {"type": "function", "function": {"name": "web_search",

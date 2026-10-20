@@ -96,6 +96,7 @@ async function ouvrirCodex() {
   await listerProjets($("#cx-projet"), $("#eq-projet"));
   if ($("#cx-projet").value !== CX.projet) { CX.projet = $("#cx-projet").value; CX.fichier = ""; }
   await listerFichiers();
+  if (typeof PLAN !== "undefined" && !PLAN.travaille) PLAN.charger();   // 🧭 plan de marche du projet
 }
 $("#cx-projet").addEventListener("change", async () => {
   if (CX.modifie && !confirm("Le fichier n'est pas enregistré. Changer de projet quand même ?")) { $("#cx-projet").value = CX.projet; return; }
@@ -235,7 +236,8 @@ const CX_SYSTEME = "Tu es Codex, un assistant de programmation qui roule en loca
   + "dans un seul bloc ```langage … ``` pour qu'on puisse l'appliquer d'un clic. Sois concis dans tes explications. "
   + "Tu ne peux PAS exécuter de commandes : c'est Alex qui les tape dans son terminal, déjà placé dans le dossier du projet. "
   + "Quand il faut une commande, mets-la dans un bloc ```bash séparé (une commande par ligne, sans sudo si possible). "
-  + "Quand Alex te colle un résultat de terminal, explique l'erreur simplement et donne la prochaine étape.";
+  + "Quand Alex te colle un résultat de terminal, explique l'erreur simplement et donne la prochaine étape. "
+  + "Si la demande a plusieurs étapes, commence par ton plan de marche : une étape par ligne au format « - [ ] étape ».";
 let cxHistorique = [];
 
 function bulleCx(role, texte) {
@@ -402,7 +404,7 @@ async function demanderCodex(question) {
   } finally {
     CX.ctrl = null; $("#cx-stop").hidden = true; b.classList.remove("ecrit");
     $(".cx-code").classList.remove("tape");
-    b.innerHTML = rendre(rep || "*(arrêté)*"); boutonsAppliquer(b);
+    b.innerHTML = rendre(rep || "*(arrêté)*"); boutonsAppliquer(b); if (typeof cocherCases === "function") cocherCases(b);
     // Écriture directe : on enregistre sur la clé
     if (direct && rep) {
       if (multi()) {
@@ -425,6 +427,7 @@ async function demanderCodex(question) {
       }
     }
     cxHistorique.push({ role: "user", content: question }, { role: "assistant", content: rep });
+    if (rep && typeof PLAN !== "undefined") { PLAN.question = question.slice(0, 200); PLAN.lireListe(rep); }
   }
 }
 $("#cx-direct").checked = mem.lire("lexos-direct", "1") === "1";
@@ -775,6 +778,7 @@ async function demanderTurbo(question, pieces) {
   if (pieces.length) texte += "\n\n(J'ai ajouté au projet : " + pieces.map((p) => p.chemin).join(", ") + ")";
   const moi = bulleCx("moi", question || "(fichiers ajoutés)");
   pieces.filter((p) => p.image).forEach((p) => { const i = document.createElement("img"); i.className = "cx-img"; i.src = `data:${p.type};base64,${p.data}`; moi.prepend(i); });
+  PLAN.debut(question, true);
   const b = bulleCx("ia", ""); b.classList.add("ecrit", "turbo-bulle");
   b.innerHTML = `<div class="turbo-tete">⚡ <b>Turbo REA</b> <span class="turbo-etape">démarre…</span></div><ol class="turbo-fil"></ol><div class="turbo-final"></div>`;
   const fil = $(".turbo-fil", b), etape = $(".turbo-etape", b);
@@ -797,6 +801,7 @@ async function demanderTurbo(question, pieces) {
       const lignes = tampon.split("\n"); tampon = lignes.pop();
       for (const l of lignes) {
         let ev; try { ev = JSON.parse(l); } catch { continue; }
+        PLAN.evenement(ev);
         if (ev.type === "etape") etape.textContent = `étape ${ev.n}`;
         else if (ev.type === "pensee") { const li = document.createElement("li"); li.className = "t-pensee"; li.textContent = "💭 " + ev.texte; fil.appendChild(li); }
         else if (ev.type === "info") { const li = document.createElement("li"); li.className = "t-info"; li.textContent = ev.texte; fil.appendChild(li); }
@@ -836,7 +841,8 @@ async function demanderTurbo(question, pieces) {
     CX.ctrl = null; $("#cx-stop").hidden = true; b.classList.remove("ecrit");
     $$(".encours", b).forEach((x) => { x.classList.remove("encours"); $(".t-etat", x).textContent = "—"; });
     etape.textContent = "terminé ✔";
-    $(".turbo-final", b).innerHTML = rendre(sansPensee(fin)); boutonsAppliquer(b);
+    PLAN.fin(sansPensee(fin), !/^⚠️|\(arrêté\)/.test(fin));
+    $(".turbo-final", b).innerHTML = rendre(sansPensee(fin)); boutonsAppliquer(b); cocherCases(b);
     if (ecritsTurbo.length) cacherCodeDansBulle($(".turbo-final", b), ecritsTurbo.join(", "));
     cxHistorique.push({ role: "user", content: texte }, { role: "assistant", content: sansPensee(fin) });
     defile();

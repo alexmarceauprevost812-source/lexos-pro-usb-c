@@ -1326,3 +1326,52 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 #bureau.deplace .bu-grille { outline: 1.5px dashed rgba(var(--acc-rgb),.18); outline-offset: 4px; border-radius: 14px; transition: outline-color .3s, background .3s; }
 #bureau.deplace .bu-grille.cible { outline-color: rgba(var(--acc-rgb),.7); background: rgba(var(--acc-rgb),.05); }
 #bureau.deplace, #bureau.deplace * { cursor: grabbing !important; }
+
+/* ═════════════════════════ CODEX : 🧭 PLAN DE MARCHE à droite (le code reste au centre) ═════════════════════════ */
+.cx-plan { display: none; }
+.cx-grille.avec-plan { grid-template-columns: 220px 1fr 310px !important; }
+.cx-grille.avec-plan .cx-plan { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; padding: 14px 14px 18px; border-left: 1px solid var(--ligne); background: linear-gradient(180deg, rgba(10,10,11,.8), rgba(7,7,7,.95)); animation: glisse-d .5s both cubic-bezier(.2,1,.3,1); }
+.pl-tete { display: flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 2px; font-weight: 700; }
+.pl-tete #pl-compte { margin-left: auto; color: var(--orange); letter-spacing: 0; font-size: 14px; }
+.pl-tete button { background: none; border: 1px solid var(--ligne); color: var(--gris); border-radius: 8px; width: 26px; height: 26px; cursor: pointer; }
+.pl-barre { height: 6px; border-radius: 3px; background: var(--noir-3); overflow: hidden; }
+.pl-barre i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--orange-fonce), var(--orange), var(--orange-2)); box-shadow: var(--lueur); transition: width .5s cubic-bezier(.2,1,.3,1); }
+.pl-etat { font-size: 13px; color: var(--gris); display: flex; align-items: center; gap: 8px; }
+.pl-etat.actif { color: var(--orange); }
+.pl-question { font-size: 13px; background: var(--noir-3); border-radius: 10px; padding: 8px 10px; color: var(--blanc-doux); overflow-wrap: anywhere; }
+.cx-plan h5 { margin: 8px 0 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gris); font-weight: 600; }
+.pl-etapes, .pl-actions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.pl-actions { max-height: 34vh; overflow-y: auto; }
+.pl-e { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; line-height: 1.35; padding: 7px 9px; border: 1px solid var(--ligne); border-radius: 10px; background: rgba(255,255,255,.02); animation: monte .35s both; }
+.pl-coche { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #4a4a52; display: grid; place-items: center; font-size: 11px; font-weight: 900; margin-top: 1px; }
+.pl-e.f { color: var(--gris); } .pl-e.f span:last-child { text-decoration: line-through; }
+.pl-e.f .pl-coche { background: #2fd067; border-color: #2fd067; color: #050505; }
+.pl-e.e { border-color: var(--orange); box-shadow: 0 0 0 1px rgba(var(--acc-rgb),.25) inset, var(--lueur); }
+.pl-e.e .pl-coche { border-color: var(--orange); border-top-color: transparent; animation: pl-tourne 1s linear infinite; }
+@keyframes pl-tourne { to { transform: rotate(360deg); } }
+.pl-a { display: flex; gap: 7px; align-items: center; font-size: 12.5px; padding: 5px 8px; border-left: 2px solid var(--ligne); border-radius: 0 8px 8px 0; background: rgba(255,255,255,.02); animation: monte .3s both; }
+.pl-a.encours { border-left-color: var(--orange); } .pl-a.ok { border-left-color: #2fd067; } .pl-a.rate { border-left-color: #ff4d4d; }
+.pl-a.info { color: var(--gris); }
+.pl-at { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pl-d { flex: none; color: var(--gris); font-size: 11.5px; }
+.pl-a.ok .pl-d { color: #2fd067; } .pl-a.rate .pl-d { color: #ff4d4d; }
+.pl-fichiers { display: flex; flex-wrap: wrap; gap: 5px; }
+.pl-fichiers button { border: 1px solid var(--ligne); background: var(--noir-3); color: var(--blanc-doux); border-radius: 8px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: ui-monospace, monospace; }
+.pl-fichiers button:hover { border-color: var(--orange); color: var(--orange); }
+.pl-vide { color: var(--gris); font-size: 12.5px; list-style: none; }
+#pl-nouveau { margin-top: 6px; align-self: flex-start; }
+#pl-bouton.actif { border-color: var(--orange); color: var(--orange); }
+#pl-bouton b { color: var(--orange); font-weight: 700; margin-left: 2px; }
+/* le détail de REA est à droite : la bulle de conversation reste courte */
+.cx-grille.avec-plan .turbo-fil { display: none; }
+.cx-grille.avec-plan .turbo-tete::after { content: "→ détails dans le plan à droite"; color: var(--gris); font-size: 12px; margin-left: 8px; }
+@media (max-width: 1100px) {
+  .cx-grille.avec-plan { grid-template-columns: 160px 1fr !important; }
+  .cx-grille.avec-plan { position: relative; }
+  .cx-grille.avec-plan .cx-plan { position: absolute; right: 0; top: 0; bottom: 0; width: min(330px, 92%); z-index: 30; background: var(--noir-2); box-shadow: -20px 0 50px rgba(0,0,0,.75); }
+}
+li.pl-case { list-style: none; margin-left: -1.1em; }
+li.pl-case::before { content: "○"; color: var(--gris); margin-right: 7px; }
+li.pl-case.fait { color: var(--gris); }
+li.pl-case.fait::before { content: "✔"; color: #2fd067; font-weight: 900; }
+@media (prefers-reduced-motion: reduce) { .pl-e.e .pl-coche, .pl-e, .pl-a { animation: none; } }

@@ -186,6 +186,7 @@
                   <input type="checkbox" id="cx-direct" checked><span class="turbo-piste"><i>✍️</i></span><b>Écriture directe</b></label>
                 <label class="turbo" title="REA travaille tout seul : web, fichiers, images, dépôts GitHub">
                   <input type="checkbox" id="cx-turbo"><span class="turbo-piste"><i>⚡</i></span><b>Turbo REA</b></label>
+                <button class="sugg-mini" id="pl-bouton" type="button" title="Voir tout le plan de marche à droite">🧭 Plan de marche <b></b></button>
               </div>
               <div id="cx-coller" class="cx-coller" hidden>
                 <div class="term-tete"><i></i><i></i><i></i><span>colle ici ce que ton terminal a affiché</span></div>
@@ -212,6 +213,19 @@
             </div>
           </div>
         </div>
+        <aside class="cx-plan" id="cx-plan" aria-label="Plan de marche">
+          <div class="pl-tete"><span>🧭 PLAN DE MARCHE</span><span id="pl-compte"></span><button type="button" id="pl-fermer" title="Cacher le plan">✕</button></div>
+          <div class="pl-barre"><i id="pl-progres"></i></div>
+          <div class="pl-etat" id="pl-etat"></div>
+          <div class="pl-question" id="pl-question" hidden></div>
+          <h5>📋 Étapes du plan</h5>
+          <ol class="pl-etapes" id="pl-etapes"></ol>
+          <h5>⚡ Ce que REA fait</h5>
+          <ul class="pl-actions" id="pl-actions"></ul>
+          <h5>📄 Fichiers touchés</h5>
+          <div class="pl-fichiers" id="pl-fichiers"></div>
+          <button type="button" class="btn btn-contour mini" id="pl-nouveau">↺ Nouveau plan</button>
+        </aside>
       </div>
       <div class="studio" id="studio" hidden>
         <div class="studio-tete">
@@ -650,6 +664,7 @@
 <script src="couleurs.js"></script>
 <script src="app.js"></script>
 <script src="codex.js"></script>
+<script src="plan.js"></script>
 <script src="fond.js"></script>
 <script src="schema.js"></script>
 <script src="images.js"></script>
