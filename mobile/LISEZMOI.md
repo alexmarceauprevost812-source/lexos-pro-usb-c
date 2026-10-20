@@ -14,6 +14,18 @@ modèle `.gguf` **directement sur la clé USB-C**, sans le copier.
   - Change de feuille en touchant l'onglet ou en glissant le doigt à gauche/droite.
   - `+` = nouvelle feuille, appui long sur l'onglet actif = supprimer.
 
+
+## Signer ton APK avec TA clé (sans GitHub)
+L'APK du build est signée avec une clé « debug » (bonne pour toi, pas pour distribuer largement).
+Pour la signer avec ta propre clé — sur ton Ubuntu / Kali, sans GitHub :
+```bash
+cd mobile/signature
+bash creer-cle.sh            # une seule fois : crée ta clé (garde le .jks et les mots de passe !)
+bash signer-apk.sh LexOS-Mobile.apk   # signe n'importe quelle APK (locale ou téléchargée de GitHub)
+```
+Besoin : Java (`sudo apt install default-jdk`) et l'Android SDK (`apksigner`, fourni par Android Studio).
+⚠️ Garde ta clé `.jks` et tes mots de passe en lieu sûr : c'est ton identité d'auteur. Perdue = tu ne peux plus mettre à jour une app publiée avec.
+
 ## Construire l'APK
 
 ### Option A — GitHub (le plus simple, rien à installer)
