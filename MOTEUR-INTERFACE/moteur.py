@@ -273,7 +273,10 @@ class Acces:
         if not (COFFRE_FICHIER.is_file() and _coffre is not None):
             return False
         try:
-            os.environ.update(_coffre._lire_coffre(mdp))
+            secrets = _coffre._lire_coffre(mdp)
+            glob = {k: v for k, v in secrets.items() if not k.startswith("§")}
+            os.environ.update(glob)
+            ENV_NOMS_CACHE["noms"] = list(glob)
             return True
         except Exception:
             return False
@@ -344,6 +347,8 @@ class Acces:
 
 
 ACCES_MOTEUR = Acces()
+ENV_NOMS_CACHE: dict = {}          # noms des variables (jamais les valeurs), pour l'affichage
+NOM_VARIABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 
 # ─────────────────────────────── Fichiers .gguf ──────────────────────────────
@@ -479,6 +484,9 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 return self._json({"jeton": ACCES_MOTEUR.jeton_apercu(self._jeton())})
             if self.path == "/moteur/studio":
                 return self._studio()
+            if self.path == "/moteur/env":
+                return self._json({"coffre": COFFRE_FICHIER.is_file(), "cryptographie": _coffre is not None,
+                                   "noms": sorted(ENV_NOMS_CACHE.get("noms", []))})
             if self.path == "/moteur/images":
                 IMAGES.mkdir(exist_ok=True)
                 out = []
@@ -546,6 +554,8 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 return self._importer()
             if self.path == "/moteur/rea":
                 return self._turbo_rea()
+            if self.path == "/moteur/env":
+                return self._env()
             if self.path == "/moteur/arreter":
                 self._json({"ok": True})
                 threading.Timer(0.5, arret.set).start()
@@ -755,6 +765,99 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             nom = f"fond-{int(time.time() * 1000)}.{ext}"
             (FONDS / nom).write_bytes(data)
             self._json({"ok": True, "nom": nom})
+
+        # ── 🔑 Variables d'environnement, façon Vercel (chiffrées dans le coffre .env.coffre) ──
+        # Globales : clé « NOM » (chargées aussi dans le moteur).
+        # Par projet : clé « §projet§env§NOM », env = tous | dev | prod.
+        def _env(self):
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            if _coffre is None:
+                return self._json({"erreur": "le module « cryptography » manque sur ce PC : pip install cryptography"}, 501)
+            mdp, action = str(d.get("mdp", "")), d.get("action")
+            # Le mot de passe maître est redemandé : sans lui, personne ne lit ni ne change une variable.
+            if not ACCES_MOTEUR._bon(mdp):
+                time.sleep(1.5)
+                return self._json({"erreur": "mot de passe incorrect"}, 403)
+            try:
+                secrets = _coffre._lire_coffre(mdp) if COFFRE_FICHIER.is_file() else {}
+            except Exception:
+                return self._json({"erreur": "le coffre ne s'ouvre pas avec ce mot de passe (créé avec un autre ?)"}, 409)
+
+            def cle(portee: str, env: str, nom: str) -> str:
+                return nom if portee == "global" else f"§{portee}§{env}§{nom}"
+
+            def resume() -> dict:
+                glob, proj = [], {}
+                for k in secrets:
+                    if k.startswith("§"):
+                        _, p, e, n = k.split("§", 3)
+                        proj.setdefault(p, []).append({"nom": n, "env": e})
+                    else:
+                        glob.append(k)
+                return {"globales": sorted(glob), "projets": {p: sorted(v, key=lambda x: (x["nom"], x["env"])) for p, v in proj.items()}}
+
+            portee = str(d.get("portee", "global"))
+            env = d.get("env", "tous") if d.get("env") in ("tous", "dev", "prod") else "tous"
+            nom = str(d.get("nom", "")).strip()
+            if portee != "global" and not (self._dossier_projet(portee) and (PROJETS / portee).is_dir()):
+                return self._json({"erreur": "projet introuvable"}, 404)
+            if action == "liste":
+                ENV_NOMS_CACHE["noms"] = [k for k in secrets if not k.startswith("§")]
+                return self._json(resume())
+            if action == "lire":
+                k = cle(portee, env, nom)
+                if k not in secrets:
+                    return self._json({"erreur": "variable introuvable"}, 404)
+                return self._json({"nom": nom, "valeur": secrets[k]})
+            if action in ("definir", "retirer"):
+                if not NOM_VARIABLE.match(nom):
+                    return self._json({"erreur": "nom invalide : lettres, chiffres et _ (ex. OPENAI_API_KEY)"}, 400)
+                k = cle(portee, env, nom)
+                if action == "definir":
+                    valeur = str(d.get("valeur", ""))
+                    if len(valeur) > 20000:
+                        return self._json({"erreur": "valeur trop longue"}, 400)
+                    secrets[k] = valeur
+                    if portee == "global":
+                        os.environ[nom] = valeur
+                else:
+                    secrets.pop(k, None)
+                    if portee == "global":
+                        os.environ.pop(nom, None)
+                _coffre._ecrire_coffre(secrets, mdp)
+                ENV_NOMS_CACHE["noms"] = [x for x in secrets if not x.startswith("§")]
+                return self._json({"ok": True, **resume()})
+            if action == "tirer":                       # comme « vercel env pull » : écrit le .env du projet
+                if portee == "global":
+                    return self._json({"erreur": "choisis un projet"}, 400)
+                cible_env = "prod" if d.get("env") == "prod" else "dev"
+                final: dict[str, str] = {}
+                final.update({k: v for k, v in secrets.items() if not k.startswith("§")} if d.get("avec_globales", True) else {})
+                for e in ("tous", cible_env):            # le plus précis gagne
+                    pre = f"§{portee}§{e}§"
+                    final.update({k[len(pre):]: v for k, v in secrets.items() if k.startswith(pre)})
+                if not final:
+                    return self._json({"erreur": "aucune variable pour ce projet"}, 400)
+                projet = PROJETS / portee
+                nom_fichier = ".env.production" if cible_env == "prod" else ".env"
+                esc = lambda v: v.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+                lignes = [f"# Fait par LexOS ({'Production' if cible_env == 'prod' else 'Développement'}) — EN CLAIR : jamais sur GitHub"]
+                lignes += [f'{k}="{esc(v)}"' for k, v in sorted(final.items())]
+                (projet / nom_fichier).write_text("\n".join(lignes) + "\n", "utf-8")
+                try:
+                    (projet / nom_fichier).chmod(0o600)
+                except OSError:
+                    pass
+                gi = projet / ".gitignore"
+                actuel = gi.read_text("utf-8") if gi.is_file() else ""
+                ajout = [x for x in (".env", ".env.*") if x not in actuel.split()]
+                if ajout:
+                    gi.write_text(actuel + ("\n" if actuel and not actuel.endswith("\n") else "") + "\n".join(ajout) + "\n", "utf-8")
+                return self._json({"ok": True, "fichier": f"{portee}/{nom_fichier}", "n": len(final)})
+            self._json({"erreur": "action inconnue"}, 400)
 
         # ── ⚡ Turbo REA : l'agent travaille dans le projet et raconte ce qu'il fait ──
         def _turbo_rea(self):

@@ -48,6 +48,17 @@ python3 coffre.py liste               # affiche le NOM des clés
 
 Quand tu déverrouilles l'interface, le coffre s'ouvre aussi. Les clés vont **en mémoire seulement**, jamais en clair sur le disque.
 
+### 🔑 Variables d'environnement (façon Vercel)
+
+Le bouton **🔑 Variables** est en haut de l'écran, dans le Codex, et sur chaque carte du Studio.
+
+- **🌍 Globales** : pour tous les projets. Elles sont aussi chargées dans le moteur.
+- **📁 Par projet**, avec trois environnements : **Tous**, **🛠 Développement** et **🚀 Production**.
+- Tout est **chiffré dans le coffre** (`.env.coffre`). Le mot de passe maître est redemandé pour ouvrir les variables, puis oublié après 10 minutes ou quand tu verrouilles.
+- Pour chaque variable : 👁 voir, 📋 copier, ⌨️ copier `export NOM=…` pour le terminal, ✏️ modifier, 🗑 supprimer.
+- **⬇ .env / .env.production**, comme `vercel env pull` : écrit le fichier du projet avec les globales, les variables du projet et celles de l'environnement choisi. Si un nom existe à deux niveaux, la valeur la plus précise gagne. Le fichier est ajouté automatiquement au `.gitignore`.
+- Il faut le module `cryptography` sur le PC : `pip install cryptography`.
+
 ---
 
 ## 🧭 Ce qu'il y a dedans
@@ -62,6 +73,8 @@ Quand tu déverrouilles l'interface, le coffre s'ouvre aussi. Les clés vont **e
 - **Changer de fichier = tourner une page** : la page se dézoome, pivote, et le nouveau fichier arrive.
 - **Zone d'écriture en bas, au centre**, comme ChatGPT ou Claude Code. La conversation se replie avec « Codex ▾ ».
 - **Bouton ＋ animé** pour ajouter des images ou des fichiers au projet. Tu peux aussi les glisser-déposer, ou coller une image avec Ctrl+V.
+- **✍️ Écriture directe** : le code s'écrit **en direct dans l'éditeur** et s'enregistre tout seul (une copie `.avant-codex` est gardée). En bas, il ne reste que l'explication.
+- **🎨 Code en couleurs** : Python, JavaScript, HTML, CSS, JSON, bash et Markdown, dans l'éditeur comme dans la conversation.
 - **↳ Appliquer** met le code proposé dans le fichier, et une copie `.avant-codex` est gardée.
 - **Terminal « à la main »**, sans sudo :
   - 📋 **Copier pour le terminal** copie une commande proposée par l'IA ;

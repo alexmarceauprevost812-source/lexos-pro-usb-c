@@ -635,6 +635,7 @@ function rendreStudio() {
       <ul class="sc-fichiers">${p.liste.slice(0, 6).map((x) => `<li data-f="${echapper(x)}">${icone(x)} ${echapper(x)}</li>`).join("")}${p.fichiers > 6 ? `<li class="plus">+ ${p.fichiers - 6} autre(s)</li>` : ""}</ul>
       <div class="sc-btns">
         <button class="btn btn-plein mini" data-act="ouvrir">✏️ Ouvrir</button>
+        <button class="btn btn-contour mini" data-act="env" title="Variables d'environnement de ce projet">🔑</button>
         ${p.web ? `<button class="btn btn-contour mini" data-act="apercu">👁 Aperçu</button>` : ""}
         ${p.principal && commandeLancer(p.principal) ? `<button class="btn btn-contour mini" data-act="lancer">▶ Commande</button>` : ""}
       </div></div>`;
@@ -646,6 +647,7 @@ $("#studio-cartes").addEventListener("click", async (e) => {
   const p = STUDIO.projets.find((x) => x.nom === carte.dataset.p);
   const act = e.target.closest("[data-act]")?.dataset.act, fichier = e.target.closest("li[data-f]")?.dataset.f;
   if (act === "apercu") return montrerApercu(p, carte);
+  if (act === "env") return ouvrirEnv(p.nom);
   if (act === "lancer") {
     const b = e.target.closest("button");
     await copierTexte(`${commandeCd(p.nom)} && ${commandeLancer(p.principal)}`); retourCopie(b);

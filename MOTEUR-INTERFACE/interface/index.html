@@ -99,6 +99,7 @@
         <select id="modele"></select>
       </div>
       <div class="entete-droite">
+        <button class="btn btn-contour mini btn-env" id="ouvrir-env" title="Variables d'environnement (clés API…)"><span class="cle-ic">🔑</span> Variables</button>
         <span class="puce" id="puce-version">Ollama —</span>
         <span class="puce chaud" id="puce-vitesse">0 mots/s</span>
       </div>
@@ -148,6 +149,7 @@
           <button class="btn btn-contour mini" id="cx-nouveau-fichier">＋ Fichier</button>
           <button class="btn btn-contour mini" id="cx-chemin" title="Copie la commande cd pour aller dans ce projet">📂 Chemin du projet</button>
           <button class="btn btn-plein mini brille" id="cx-studio" title="Voir tous tes projets">🎛️ Studio</button>
+          <button class="btn btn-contour mini btn-env" data-env title="Variables d'environnement du projet">🔑 Variables</button>
         </div>
         <div class="cx-groupe">
           <label>Modèle Codex</label>
@@ -438,6 +440,46 @@
 
 <div id="toasts"></div>
 
+<!-- ═══════════════ VARIABLES D'ENVIRONNEMENT ═══════════════ -->
+<div id="env" hidden>
+  <div class="env-boite">
+    <div class="env-tete">
+      <div class="env-cle">🔑</div>
+      <div><h3>Variables d'environnement</h3><small>chiffrées dans le coffre de la clé · mot de passe maître</small></div>
+      <button class="btn-icone" id="env-fermer" title="Fermer">✕</button>
+    </div>
+    <form id="env-deverrouiller" class="env-deverrou">
+      <p>Entre ton mot de passe pour ouvrir le coffre des variables.</p>
+      <div class="champ"><input type="password" id="env-mdp" placeholder="Mot de passe maître" autocomplete="current-password"></div>
+      <button class="btn btn-plein">🔓 Ouvrir le coffre</button>
+      <p class="env-msg" id="env-msg"></p>
+    </form>
+    <div id="env-contenu" hidden>
+      <div class="env-portees" id="env-portees"></div>
+      <div class="env-envs" id="env-envs">
+        <button type="button" data-e="tous" class="actif">Tous les environnements</button>
+        <button type="button" data-e="dev">🛠 Développement</button>
+        <button type="button" data-e="prod">🚀 Production</button>
+        <i class="env-envs-glisse"></i>
+      </div>
+      <form id="env-ajout" class="env-ajout" autocomplete="off">
+        <input id="env-nom" placeholder="NOM (ex. OPENAI_API_KEY)" spellcheck="false">
+        <div class="champ"><input type="password" id="env-valeur" placeholder="valeur" spellcheck="false" autocomplete="off">
+          <button type="button" class="oeil" data-cible="env-valeur" title="Voir">👁</button></div>
+        <button class="btn btn-plein mini">＋ Ajouter</button>
+      </form>
+      <p class="env-aide" id="env-aide"></p>
+      <ul id="env-liste"></ul>
+      <div class="env-bas" id="env-bas">
+        <span>Comme <code>vercel env pull</code> :</span>
+        <button class="btn btn-plein mini" data-tirer-env="dev">⬇ .env (Développement)</button>
+        <button class="btn btn-contour mini" data-tirer-env="prod">⬇ .env.production</button>
+        <small>⚠️ En clair dans le projet, ajouté au <code>.gitignore</code>. Le projet reçoit : globales + projet + environnement choisi.</small>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="modal" hidden>
   <div class="modal-boite">
     <div class="modal-icone">⏻</div>
@@ -463,5 +505,6 @@
 <script src="fond.js"></script>
 <script src="schema.js"></script>
 <script src="images.js"></script>
+<script src="variables.js"></script>
 </body>
 </html>
