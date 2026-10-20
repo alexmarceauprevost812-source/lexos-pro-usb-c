@@ -12,6 +12,9 @@ on:
       - '.github/workflows/apk-mobile.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -54,3 +57,13 @@ jobs:
         with:
           name: LexOS-Mobile-apk
           path: mobile/LexOS-Mobile.apk
+
+      - name: Publier un lien direct (Release publique)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create apk-mobile LexOS-Mobile.apk \
+            --title "LexOS Mobile — APK (dernière version)" \
+            --notes "IA locale sur la clé USB-C. Télécharge LexOS-Mobile.apk et installe-le sur ton téléphone (autorise les sources inconnues)." \
+            --latest 2>/dev/null \
+          || gh release upload apk-mobile LexOS-Mobile.apk --clobber
