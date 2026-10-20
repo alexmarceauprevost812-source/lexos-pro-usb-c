@@ -393,7 +393,69 @@ html.telephone .pc-seulement{display:none!important}
 .img-grande img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 0 0 1px #333}
 .msg .image-chat{max-width:min(100%,420px);border-radius:14px;display:block;margin-top:8px;border:1px solid var(--ligne)}
 @media (max-width:640px){.img-options .graine{margin-left:0}.img-creer{width:100%;justify-content:center}}
-@media (prefers-reduced-motion:reduce){.img-toile::after,.img-toile .pinceau,.onde i,.points i,.pensee-titre,.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:none}}
+/* ─── Codex : panneau des tâches à droite, conversation au centre ─── */
+.avec-panneau{container-type:inline-size}
+.avec-panneau > .taches{position:absolute;top:0;right:0;bottom:0;width:300px;background:var(--panneau);border-left:1px solid var(--ligne);display:flex;flex-direction:column;gap:12px;padding:16px 14px;z-index:4}
+.t-tete{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.12em;font-size:14px}
+.t-tete .t-compte{margin-left:auto;color:var(--orange);letter-spacing:0;font-variant-numeric:tabular-nums}
+.t-tete button{border:1px solid var(--ligne);border-radius:9px;width:30px;height:30px}
+.t-barre{height:6px;border-radius:3px;background:var(--carte2);overflow:hidden}
+.t-barre div{height:100%;width:0;background:linear-gradient(90deg,var(--orange),var(--orange2));transition:width .4s}
+.t-liste{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px}
+.t-item{display:flex;align-items:flex-start;gap:8px;padding:9px 8px;border:1px solid var(--ligne);border-radius:12px;background:var(--carte);font-size:14px;line-height:1.35;animation:apparait .25s ease-out}
+.t-item .t-txt{flex:1;min-width:0;overflow-wrap:anywhere;padding-top:3px}
+.t-item button{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--gris);font-size:13px}
+.t-item button:hover{color:var(--orange);background:var(--carte2)}
+.t-item .t-coche{border:2px solid var(--gris2);border-radius:50%;width:22px;height:22px;margin-top:1px}
+.t-item.etat-f .t-coche{background:var(--vert);border-color:var(--vert);color:#0A0A0A;font-weight:900}
+.t-item.etat-f .t-txt{color:var(--gris);text-decoration:line-through}
+.t-item.etat-e{border-color:var(--orange);box-shadow:0 0 0 1px rgba(255,122,0,.25) inset}
+.t-item.etat-e .t-coche{border-color:var(--orange);border-top-color:transparent;animation:tourne 1s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+@keyframes apparait{from{opacity:0;transform:translateY(4px)}}
+.t-ajout{display:flex;gap:6px}
+.t-ajout input{flex:1;min-width:0;background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:9px 10px;color:var(--texte);font:inherit;font-size:14px}
+.t-ajout button{border:1px solid var(--ligne);border-radius:10px;width:40px;font-size:18px;background:var(--carte)}
+.t-actions{display:flex;flex-direction:column;gap:6px}
+.t-actions .btn-orange{padding:10px}
+.t-aide{color:var(--gris);font-size:12px;line-height:1.4;margin:0}
+.t-vide{color:var(--gris);font-size:14px;text-align:center;padding:18px 6px;border:1px dashed var(--ligne);border-radius:12px}
+.p-ouvrir b{color:var(--orange);margin-left:4px}
+@container (min-width: 900px){
+  .avec-panneau > .barre-local,.avec-panneau > .defile,.avec-panneau > .compo-zone{margin-right:300px}
+  .p-ouvrir,.p-fermer{display:none}
+}
+@container (max-width: 899.98px){
+  .avec-panneau > .taches{width:min(340px,92%);transform:translateX(105%);transition:transform .25s;box-shadow:-18px 0 40px rgba(0,0,0,.45)}
+  .avec-panneau > .taches.ouvert{transform:none}
+}
+li.case{list-style:none;margin-left:-1.2em;display:flex;gap:9px;align-items:flex-start}
+li.case .boite{flex:none;width:18px;height:18px;margin-top:3px;border:2px solid var(--gris2);border-radius:5px;display:grid;place-items:center;font-size:12px;font-weight:900}
+li.case.cochee .boite{background:var(--vert);border-color:var(--vert);color:#0A0A0A}
+li.case.cochee{color:var(--gris)}
+/* Panneau des tâches visible : le bouton 💬 et l'onglet TRAVAIL se tassent à sa gauche */
+body.taches-fixes #fab{right:322px}
+body.taches-fixes #onglet-travail{right:300px}
+body.taches-fixes .avec-panneau > .defile{padding-right:56px}
+body.taches-ouvertes #fab,body.taches-ouvertes #onglet-travail{display:none}
+/* REA : directions dans le panneau de droite */
+.d-liste{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+.d-groupe{display:flex;flex-direction:column;gap:6px}
+.d-groupe.passe{opacity:.6}
+.d-demande{font-size:13px;color:var(--texte);background:var(--carte2);border-radius:10px;padding:8px 10px;line-height:1.35;overflow-wrap:anywhere}
+.d-demande::before{content:"🗣 ";}
+.d-groupe .rea-outils{margin:0}
+.d-groupe .outil{flex-wrap:wrap;font-size:13px}
+.d-groupe .outil code{flex-basis:100%;white-space:normal;overflow-wrap:anywhere;max-height:3.6em;overflow:hidden}
+.d-groupe .carte-cmd pre{font-size:12.5px;max-height:220px;overflow:auto}
+.d-etat{font-size:12.5px;color:var(--gris);padding-left:4px}
+.d-groupe.en-cours .d-etat{color:var(--orange)}
+.lien-directions{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--orange);border:1px solid rgba(255,122,0,.4);border-radius:999px;padding:4px 11px;margin:2px 0 8px}
+.gh-compte .gh-ok{color:var(--vert);font-weight:600}
+.gh-compte input{width:100%;background:var(--fond2);border:1px solid var(--ligne);border-radius:9px;padding:8px 9px;color:var(--texte);font-family:var(--mono);font-size:12px}
+.gh-compte a{color:var(--orange)}
+.gh-compte ol{margin:0;padding-left:18px;line-height:1.5}
+@media (prefers-reduced-motion:reduce){.t-item,.t-item.etat-e .t-coche,.img-toile::after,.img-toile .pinceau,.onde i,.points i,.pensee-titre,.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:none}}
 
 /* ── Mémoire ───────────────────────────────── */
 .memo-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
@@ -532,7 +594,7 @@ html.telephone .pc-seulement{display:none!important}
   </section>
 
   <!-- ═══ CODEX ═══ -->
-  <section class="vue" id="vue-codex" data-mode="codex">
+  <section class="vue avec-panneau" id="vue-codex" data-mode="codex">
     <div class="barre-local" id="barre-codex">Local : …</div>
     <div class="defile"><div class="colonne">
       <div class="accueil codex" data-accueil>
@@ -550,10 +612,22 @@ html.telephone .pc-seulement{display:none!important}
         <textarea rows="1" data-saisie placeholder="Demande du code, une correction, une explication…"></textarea>
         <button class="btn-code" data-envoyer title="Envoyer">&lt;/&gt;</button>
       </div>
-      <div style="max-width:880px;margin:8px auto 0;display:flex;justify-content:flex-end">
+      <div style="max-width:880px;margin:8px auto 0;display:flex;justify-content:flex-end;gap:8px">
+        <button class="pilule p-ouvrir" id="t-ouvrir" style="height:40px;font-size:14px" title="Tâches">📋 Tâches<b id="t-compte2">0/0</b></button>
         <label class="pilule" style="height:40px;font-size:14px">Codex ·&nbsp;<select data-modele="codex"></select></label>
       </div>
     </div>
+    <aside class="taches" id="taches" aria-label="Tâches">
+      <div class="t-tete"><span>📋 TÂCHES</span><span class="t-compte" id="t-compte">0/0</span><button class="p-fermer" id="t-fermer" title="Fermer">✕</button></div>
+      <div class="t-barre"><div id="t-progres"></div></div>
+      <ul class="t-liste" id="t-liste"></ul>
+      <form class="t-ajout" id="t-ajout"><input id="t-texte" placeholder="Ajouter une tâche…" maxlength="300" autocomplete="off"><button title="Ajouter">＋</button></form>
+      <div class="t-actions">
+        <button class="btn-orange" id="t-tout">▶ Faire les tâches</button>
+        <button class="btn-petit" id="t-nettoyer">🧹 Enlever les tâches faites</button>
+      </div>
+      <p class="t-aide">Codex ajoute ici les étapes de son plan. ▶ sur une tâche : Codex la fait. Clique le rond pour la cocher.</p>
+    </aside>
   </section>
 
   <!-- ═══ ÉQUIPE IA ═══ -->
@@ -622,7 +696,7 @@ html.telephone .pc-seulement{display:none!important}
 
   <!-- ═══ CERVEAU ═══ -->
   <!-- ═══ REA : agent ti-lex ═══ -->
-  <section class="vue" id="vue-rea" data-mode="rea">
+  <section class="vue avec-panneau" id="vue-rea" data-mode="rea">
     <div class="barre-local" id="barre-rea">Local : REA · agent ti-lex · sur la clé USB-C</div>
     <div class="defile"><div class="colonne">
       <div class="entete-agent">
@@ -653,10 +727,16 @@ html.telephone .pc-seulement{display:none!important}
         </div>
         <div class="rang bas">
           <button class="btn-plus" id="rea-oublier" title="Nouvelle conversation avec REA">⟲</button>
+          <button class="pilule p-ouvrir" id="d-ouvrir" title="Les directions de REA">🧭 Directions<b id="d-compte2">0</b></button>
           <label class="pilule">REA ·&nbsp;<select data-modele="rea" title="Modèle (doit savoir utiliser des outils)"></select></label>
         </div>
       </div>
     </div>
+    <aside class="taches" id="directions" aria-label="Directions de REA">
+      <div class="t-tete"><span>🧭 DIRECTIONS</span><span class="t-compte" id="d-compte"></span><button class="p-fermer" id="d-fermer" title="Fermer">✕</button></div>
+      <div class="d-liste" id="d-liste"><div class="t-vide">Ici, tu vois REA travailler, étape par étape : recherches web, fichiers lus et écrits, commandes.<br><br>Le code et les réponses restent au centre.</div></div>
+      <p class="t-aide">🛡 Quand REA veut lancer une commande ou écrire un fichier, il te demande la permission ici.</p>
+    </aside>
   </section>
 
   <!-- ═══ IMAGES ═══ -->
@@ -709,6 +789,7 @@ html.telephone .pc-seulement{display:none!important}
         </div>
         <button class="btn-petit" id="p-cloner">⬇ Cloner depuis GitHub</button>
         <div class="p-github" id="p-github"></div>
+        <div class="p-github gh-compte" id="gh-compte"></div>
         <div class="p-titre">FICHIERS</div>
         <div class="p-fichiers" id="p-fichiers"><div class="vide">Crée ou choisis un projet.</div></div>
         <button class="btn-petit" id="p-nouveau-fichier">＋ Nouveau fichier</button>
@@ -910,6 +991,8 @@ function texteMd(t) {
     if ((m = ligne.match(/^\s*[-*•]\s+(.*)/)) || (m = ligne.match(/^\s*\d+[.)]\s+(.*)/))) {
       vider(); const type = /^\s*\d/.test(ligne) ? "ol" : "ul";
       if (liste !== type) { fermer(); out.push(`<${type}>`); liste = type; }
+      const c = m[1].match(/^\[( |x|X)\]\s+(.*)/);
+      if (c) { out.push(`<li class="case${c[1] === " " ? "" : " cochee"}"><span class="boite">${c[1] === " " ? "" : "✓"}</span>${enLigne(c[2])}</li>`); continue; }
       out.push("<li>" + enLigne(m[1]) + "</li>"); continue;
     }
     fermer(); para.push(ligne);
@@ -1092,7 +1175,7 @@ async function reponseIA(mode, modele) {
     if (e.name === "AbortError") texte += " [coupé]";
     else { z.reponse.innerHTML = `<span class="erreur">Erreur IA : ${echap(e.message)}</span>`; notifier("Erreur IA : " + e.message); texte = ""; }
   } finally { termine = true; z.terminer(); S.enCours = null; boutonEnvoi(mode, false); }
-  if (texte) { z.reponse.innerHTML = montrer(texte); rendreSchemas(z.reponse); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
+  if (texte) { z.reponse.innerHTML = montrer(texte); rendreSchemas(z.reponse); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); if (mode === "codex") tachesDepuisReponse(texte); sauver(mode); }
   return texte;
 }
 async function envoyer(mode) {
@@ -1119,7 +1202,8 @@ async function envoyer(mode) {
   }
   let modele = modeleDe(mode);
   if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
-  const msg = { role: "user", content: texte, affiche: texte };
+  const affiche = S.afficheProchain || texte; S.afficheProchain = null;  // texte court pour une tâche du panneau
+  const msg = { role: "user", content: texte, affiche };
   if (mode === "chat" && pieces.length) {
     msg.images = pieces.map(p => p.donnees);
     if (!msg.content) msg.content = msg.affiche = "Décris cette photo.";
@@ -1136,10 +1220,10 @@ async function envoyer(mode) {
   }
   S.pieces[mode] = []; rendrePieces(mode);
   zone.value = ""; ajuster(zone);
-  if (!S.convs[mode].titre) S.convs[mode].titre = (texte || "Photo").slice(0, 60);
+  if (!S.convs[mode].titre) S.convs[mode].titre = (affiche || "Photo").slice(0, 60);
   S.convs[mode].messages.push(msg);
   bulleToi(mode, msg.affiche, msg.images);
-  await reponseIA(mode, modele);
+  return await reponseIA(mode, modele);
 }
 function ajuster(t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
 for (const mode of ["chat", "codex", "terminal", "equipe", "rea"]) {
@@ -1323,7 +1407,7 @@ function majTravail() {
 }
 function ouvrirStudio(onglet) {
   $("#travail").classList.add("ouvert");
-  if (innerWidth >= 1200) { document.body.classList.add("studio"); $("#btn-studio").classList.add("actif"); }
+  if (innerWidth >= 1200) { document.body.classList.add("studio"); $("#btn-studio").classList.add("actif"); placerTaches(); }
   ongletStudio(onglet || "code");
 }
 function ongletStudio(o) {
@@ -1364,10 +1448,10 @@ $("#ap-pc").onclick = () => $("#cadre-apercu").classList.remove("tel");
 $("#ap-recharger").onclick = () => { if (S.apercuUrl) montrerApercu(S.apercuUrl, $("#titre-apercu").textContent); };
 $("#ap-fenetre").onclick = () => { if (S.apercuUrl) window.open(S.apercuUrl, "_blank", "noopener"); };
 $("#onglet-travail").onclick = () => ouvrirStudio("code");
-$("#fermer-travail").onclick = () => { $("#travail").classList.remove("ouvert"); document.body.classList.remove("studio"); $("#btn-studio").classList.remove("actif"); };
+$("#fermer-travail").onclick = () => { $("#travail").classList.remove("ouvert"); document.body.classList.remove("studio"); $("#btn-studio").classList.remove("actif"); placerTaches(); };
 $("#btn-studio").onclick = () => {
   const on = !document.body.classList.contains("studio");
-  document.body.classList.toggle("studio", on); $("#btn-studio").classList.toggle("actif", on);
+  document.body.classList.toggle("studio", on); $("#btn-studio").classList.toggle("actif", on); placerTaches();
   $("#travail").classList.toggle("ouvert", on);
   if (on) ongletStudio(S.apercuUrl ? "apercu" : "code");
   if (on && S.vue === "chat") aller("codex");
@@ -1375,9 +1459,9 @@ $("#btn-studio").onclick = () => {
 
 // ─── Conversations sauvegardées sur la clé ───
 async function sauver(mode) {
-  const c = S.convs[mode]; if (!c.messages.length) return;
+  const c = S.convs[mode]; if (!c.messages.length && !(c.taches || []).length) return;
   try {
-    const d = await api("/api/conversations", { id: c.id, titre: c.titre, mode, modele: modeleDe(mode), messages: c.messages.filter(m => !m.cache).map(m => ({ role: m.role, content: m.affiche || m.content, images: m.images, agent: m.agent, modele: m.modele, ok: m.ok })) });
+    const d = await api("/api/conversations", { id: c.id, titre: c.titre, mode, modele: modeleDe(mode), messages: c.messages.filter(m => !m.cache).map(m => ({ role: m.role, content: m.affiche || m.content, images: m.images, agent: m.agent, modele: m.modele, ok: m.ok })), taches: c.taches });
     if (!c.id) { c.id = d.id; listerConvs(); }
   } catch (e) {}
 }
@@ -1400,13 +1484,15 @@ async function listerConvs() {
 async function ouvrirConv(id) {
   const d = await api("/api/conversation?id=" + encodeURIComponent(id));
   const mode = d.mode in S.convs ? d.mode : "chat";
-  S.convs[mode] = { id, mode, titre: d.titre, messages: d.messages.map(m => ({ role: m.role, content: m.content, agent: m.agent, modele: m.modele, ok: m.ok })) };
+  S.convs[mode] = { id, mode, titre: d.titre, taches: d.taches || [], messages: d.messages.map(m => ({ role: m.role, content: m.content, agent: m.agent, modele: m.modele, ok: m.ok })) };
+  if (mode === "codex") rendreTaches();
   if (mode === "equipe") S.codeEquipe = codeDe(S.convs.equipe.messages);
   aller(mode); rendreConversation(mode); fermerTiroir();
 }
 $("#fab").onclick = () => {
   const mode = S.convs[S.vue] ? S.vue : "chat";
   S.convs[mode] = nouvelle(mode); rendreConversation(mode); aller(mode); toast("Nouvelle conversation");
+  if (mode === "codex") rendreTaches();
 };
 
 // ─── Cerveau ───
@@ -1492,8 +1578,12 @@ function rendreGithub() {
   if (!i) { z.innerHTML = '<span>Aucun projet ouvert.</span>'; return; }
   if (S.git === false) { z.innerHTML = '<span>Installe git pour relier GitHub : <code>sudo apt install git</code></span>'; return; }
   if (!i.lie) {
-    z.innerHTML = '<span>○ Pas relié à GitHub</span><div class="rang-gh"><button class="btn-petit" id="gh-lier">🔗 Relier à un dépôt GitHub</button></div>';
-    $("#gh-lier").onclick = lierGithub; return;
+    z.innerHTML = '<span>○ Pas relié à GitHub</span><div class="rang-gh">' +
+      (S.github?.connecte ? '<button class="btn-orange" id="gh-creer" style="padding:8px 12px;font-size:13px">⬆ Créer le dépôt et envoyer</button>' : "") +
+      '<button class="btn-petit" id="gh-lier">🔗 Relier à un dépôt existant</button></div>';
+    $("#gh-lier").onclick = lierGithub;
+    if ($("#gh-creer")) $("#gh-creer").onclick = creerDepot;
+    return;
   }
   z.innerHTML = `<span><span class="point"></span> Relié à GitHub · ${echap(i.branche || "")}${i.modifs ? ` · <b style="color:var(--jaune)">${i.modifs} modif${i.modifs > 1 ? "s" : ""}</b>` : " · à jour"}</span>
     <span class="gh-url">${echap(i.url.replace("https://", ""))}</span>
@@ -1515,8 +1605,49 @@ async function git(chemin, corps, titre, apres) {
   await ouvrirProjet(S.projet);
   return code;
 }
+// ─── 🔑 Jeton GitHub (gardé sur ce PC, jamais sur la clé) ───
+async function chargerGithub() {
+  try { S.github = await api("/api/github"); } catch (e) { S.github = { connecte: false }; }
+  rendreCompteGithub();
+}
+function rendreCompteGithub() {
+  const z = $("#gh-compte"), g = S.github || {};
+  if (g.connecte) {
+    z.innerHTML = `<span>🔑 GitHub : <span class="gh-ok">✔ ${echap(g.login)}</span></span>
+      <span>Les envois et les dépôts privés marchent sans mot de passe.</span>
+      <div class="rang-gh"><button class="btn-petit" id="gh-oublier">Oublier le jeton</button></div>`;
+    $("#gh-oublier").onclick = async () => {
+      if (!confirm("Oublier le jeton GitHub sur ce PC ?")) return;
+      await api("/api/github/oublier", {}).catch(e => toast(e.message)); await chargerGithub(); rendreGithub(); toast("Jeton oublié");
+    };
+    return;
+  }
+  z.innerHTML = `<span>🔑 <b>Jeton GitHub</b> : pour envoyer tes projets sur tes dépôts</span>
+    <ol><li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Crée un jeton</a> :
+      « All repositories », puis <b>Contents</b> et <b>Administration</b> en « Read and write ».</li><li>Colle-le ici :</li></ol>
+    <input id="gh-jeton" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+    <div class="rang-gh"><button class="btn-orange" id="gh-connecter" style="padding:8px 12px;font-size:13px">Connecter</button></div>
+    <span style="font-size:12px">Gardé sur ce PC seulement (pas sur la clé). Jamais montré ni envoyé ailleurs qu'à GitHub.</span>`;
+  const envoyerJeton = async () => {
+    const jeton = $("#gh-jeton").value.trim(); if (!jeton) return;
+    $("#gh-connecter").disabled = true;
+    try {
+      const r = await api("/api/github/jeton", { jeton });
+      S.github = r; rendreCompteGithub(); rendreGithub(); toast(`🔑 Connecté à GitHub : ${r.login}`);
+      if (r.avertissement) notifier("⚠ " + r.avertissement);
+    } catch (e) { toast(e.message); $("#gh-connecter").disabled = false; }
+  };
+  $("#gh-connecter").onclick = envoyerJeton;
+  $("#gh-jeton").onkeydown = e => { if (e.key === "Enter") envoyerJeton(); };
+}
+async function creerDepot() {
+  const depot = prompt(`Nom du dépôt à créer sur GitHub (compte ${S.github.login}) :`, S.projet);
+  if (!depot) return;
+  const prive = confirm("Dépôt PRIVÉ ? (OK = privé, seulement toi le vois · Annuler = public)");
+  await git("/api/projet/github/creer", { nom: S.projet, depot: depot.trim(), prive }, `Création de ${depot} sur GitHub et envoi…`);
+}
 async function lierGithub() {
-  const url = prompt("Adresse du dépôt GitHub (crée-le d'abord sur github.com) :", "https://github.com/alexmarceauprevost812-source/" + S.projet);
+  const url = prompt("Adresse du dépôt GitHub (crée-le d'abord sur github.com) :", `https://github.com/${S.github?.login || "alexmarceauprevost812-source"}/` + S.projet);
   if (!url) return;
   try { await api("/api/projet/github/lier", { nom: S.projet, url }); toast("🔗 Relié à GitHub"); await ouvrirProjet(S.projet); }
   catch (e) { toast(e.message); }
@@ -1869,7 +2000,7 @@ function cartePermission(zone, o, attentes) {
   const carte = document.createElement("div"); carte.className = "carte-cmd";
   carte.innerHTML = `<div class="titre">REA DEMANDE TA PERMISSION</div><pre>${echap(o.confirmer)}</pre>` +
     `<div class="actions"><button class="go">✔ Oui</button><button data-non>✕ Non</button></div>`;
-  zone.appendChild(carte); defiler("rea");
+  zone.appendChild(carte);
   notifier("🤖 REA demande ta permission");
   const repondre = async oui => {
     carte.querySelectorAll("button").forEach(b => b.disabled = true); carte.classList.add("fini");
@@ -1887,21 +2018,30 @@ async function lancerRea(texte) {
   conv.messages.push({ role: "user", content: texte, affiche: texte });
   bulleToi("rea", texte);
   const bulle = bulleIA("rea", ""), z = animationReflexion(bulle, "rea");
-  const outils = document.createElement("div"); outils.className = "rea-outils"; z.reponse.before(outils);
+  const { groupe, outils, etat } = groupeDirections(texte);
+  const lien = document.createElement("button"); lien.className = "lien-directions"; lien.type = "button";
+  lien.textContent = "🧭 REA commence…"; z.reponse.before(lien);
+  lien.onclick = () => { ouvrirDirections(); groupe.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  let etapes = 0;
+  const etape = () => { etapes++; lien.textContent = `🧭 ${etapes} étape${etapes > 1 ? "s" : ""} → à droite`; majCompteDirections(); $("#d-liste").scrollTop = 1e9; };
   const ctrl = new AbortController(), attentes = new Set(); S.enCours = ctrl; boutonEnvoi("rea", true);
   let reponse = "";
   try {
     await flux("/api/rea/demander", { texte, projet: S.projet || "rea", modele: S.choix.rea || "" }, o => {
       if (o.info) majBarreRea(o.info);
-      if (o.outil) { carteOutil(outils, o.outil); defiler("rea"); }
-      if (o.confirmer) cartePermission(outils, o, attentes);
+      if (o.outil) { carteOutil(outils, o.outil); etape(); }
+      if (o.confirmer) { cartePermission(outils, o, attentes); etape(); ouvrirDirections(); toast("🛡 REA demande ta permission → à droite"); }
       if (o.t) { z.repondre(); reponse = o.t; }
       if (o.erreur) throw new Error(o.erreur);
     }, ctrl.signal);
   } catch (e) {
     if (e.name === "AbortError") { for (const id of attentes) api("/api/rea/repondre", { id, oui: false }).catch(() => {}); reponse = reponse || "(arrêté)"; }
     else { z.reponse.innerHTML = `<span class="erreur">Erreur : ${echap(e.message)}</span>`; notifier("Erreur REA : " + e.message); }
-  } finally { z.terminer(); S.enCours = null; boutonEnvoi("rea", false); }
+  } finally {
+    z.terminer(); S.enCours = null; boutonEnvoi("rea", false); groupe.classList.remove("en-cours");
+    etat.textContent = reponse === "(arrêté)" ? "⏹ Arrêté" : reponse ? `✔ Terminé · ${etapes} étape${etapes > 1 ? "s" : ""}` : "⚠ Erreur";
+    if (!etapes) lien.remove(); else lien.textContent = `🧭 ${etapes} étape${etapes > 1 ? "s" : ""} → à droite`;
+  }
   if (reponse) {
     z.reponse.innerHTML = md(reponse); rendreSchemas(z.reponse);
     conv.messages.push({ role: "assistant", content: reponse }); majTravail(); sauver("rea");
@@ -1912,7 +2052,26 @@ $$("#vue-rea .puce").forEach(p => p.onclick = () => { const z = $("#vue-rea [dat
 $("#rea-oublier").onclick = async () => {
   try { await api("/api/rea/oublier", { projet: S.projet || "rea" }); } catch (e) {}
   S.convs.rea = nouvelle("rea"); rendreConversation("rea"); toast("🤖 Nouvelle conversation avec REA");
+  viderDirections();
 };
+const VIDE_DIRECTIONS = $("#d-liste").innerHTML;
+function viderDirections() { $("#d-liste").innerHTML = VIDE_DIRECTIONS; majCompteDirections(); }
+function groupeDirections(texte) {
+  const liste = $("#d-liste");
+  liste.querySelector(".t-vide")?.remove();
+  liste.querySelectorAll(".d-groupe").forEach(g => g.classList.add("passe"));
+  const groupe = document.createElement("div"); groupe.className = "d-groupe en-cours";
+  groupe.innerHTML = `<div class="d-demande">${echap(texte.length > 160 ? texte.slice(0, 160) + "…" : texte)}</div><div class="rea-outils"></div><div class="d-etat">⏳ REA travaille…</div>`;
+  liste.appendChild(groupe); liste.scrollTop = 1e9;
+  return { groupe, outils: groupe.querySelector(".rea-outils"), etat: groupe.querySelector(".d-etat") };
+}
+function majCompteDirections() {
+  const n = $$("#d-liste .outil, #d-liste .carte-cmd").length;
+  $("#d-compte").textContent = n ? `${n} étape${n > 1 ? "s" : ""}` : ""; $("#d-compte2").textContent = n;
+}
+function ouvrirDirections() { $("#directions").classList.add("ouvert"); placerTaches(); }
+$("#d-ouvrir").onclick = ouvrirDirections;
+$("#d-fermer").onclick = () => { $("#directions").classList.remove("ouvert"); placerTaches(); };
 
 // ─── Mode réflexion animé : on voit l'IA travailler ───
 const PENSEES = {
@@ -2122,15 +2281,97 @@ async function imageDansChat(mode, texte) {
     S.images.liste = []; // la galerie se recharge à la prochaine visite
   } catch (e) { const s = etat(); if (s) s.textContent = "Image non créée : " + e.message; }
 }
+// ─── Codex : tâches (panneau de droite) ───
+const ETATS_TACHE = { a: "", e: "", f: "✓" };
+function taches() { const c = S.convs.codex; return c.taches || (c.taches = []); }
+const normal = s => s.toLowerCase().replace(/[`*_]/g, "").replace(/\s+/g, " ").trim();
+function rendreTaches() {
+  const l = taches(), faites = l.filter(x => x.etat === "f").length, compte = `${faites}/${l.length}`;
+  $("#t-compte").textContent = compte; $("#t-compte2").textContent = compte;
+  $("#t-progres").style.width = l.length ? (100 * faites / l.length) + "%" : "0";
+  const ul = $("#t-liste");
+  ul.innerHTML = l.length ? l.map((x, i) => `<li class="t-item etat-${x.etat}" data-i="${i}">
+      <button class="t-coche" data-coche title="${x.etat === "f" ? "Remettre à faire" : "Marquer comme faite"}">${ETATS_TACHE[x.etat]}</button>
+      <span class="t-txt">${echap(x.texte)}</span>
+      ${x.etat !== "f" ? '<button data-faire title="Codex fait cette tâche">▶</button>' : ""}
+      <button data-suppr title="Enlever">✕</button></li>`).join("")
+    : '<li class="t-vide">Aucune tâche.<br>Demande quelque chose à Codex ou ajoute une tâche ci-dessous.</li>';
+  ul.querySelectorAll(".t-item").forEach(li => {
+    const x = l[+li.dataset.i];
+    li.querySelector("[data-coche]").onclick = () => { if (x.etat === "e") return; x.etat = x.etat === "f" ? "a" : "f"; rendreTaches(); sauver("codex"); };
+    li.querySelector("[data-suppr]").onclick = () => { if (x.etat === "e") return; l.splice(l.indexOf(x), 1); rendreTaches(); sauver("codex"); };
+    const f = li.querySelector("[data-faire]"); if (f) f.onclick = () => faireTache(x);
+  });
+  $("#t-tout").textContent = S.tachesAuto ? "⏹ Arrêter" : "▶ Faire les tâches";
+  $("#t-tout").disabled = !S.tachesAuto && !l.some(x => x.etat !== "f");
+}
+function ajouterTache(texte, etat = "a") {
+  texte = texte.trim().slice(0, 300); if (!texte) return false;
+  const l = taches(), deja = l.find(x => normal(x.texte) === normal(texte));
+  if (deja) { if (etat === "f" && deja.etat !== "e") deja.etat = "f"; return false; }
+  l.push({ texte, etat }); return true;
+}
+function tachesDepuisReponse(texte) {  // « - [ ] tâche » / « - [x] tâche » dans la réponse de Codex
+  let n = 0;
+  for (const ligne of texte.replace(/```[\s\S]*?```/g, "").split("\n")) {
+    const m = ligne.match(/^\s*(?:[-*+]|\d+[.)])\s*\[( |x|X)\]\s+(.+?)\s*$/);
+    if (m && ajouterTache(m[2], m[1] === " " ? "a" : "f")) n++;
+  }
+  if (n) { rendreTaches(); toast(`📋 ${n} tâche${n > 1 ? "s" : ""} ajoutée${n > 1 ? "s" : ""} à droite`); }
+  return n;
+}
+async function faireTache(x) {
+  if (S.enCours) { toast("Codex travaille déjà : attends qu'il finisse"); return false; }
+  const l = taches(), num = l.indexOf(x) + 1;
+  x.etat = "e"; rendreTaches();
+  const plan = l.map((y, i) => `${y.etat === "f" ? "- [x]" : "- [ ]"} ${i + 1}. ${y.texte}`).join("\n");
+  const zone = $("#vue-codex [data-saisie]");
+  zone.value = `Plan :\n${plan}\n\nFais maintenant SEULEMENT la tâche ${num} : « ${x.texte} ». Donne le code complet des fichiers touchés.`;
+  S.afficheProchain = `▶ Tâche ${num} : ${x.texte}`;
+  let texte = "";
+  try { texte = await envoyer("codex"); } catch (e) { texte = ""; }
+  x.etat = texte && !/\[coupé\]$/.test(texte) ? "f" : "a";
+  rendreTaches(); sauver("codex");
+  return x.etat === "f";
+}
+async function faireToutesLesTaches() {
+  if (S.tachesAuto) { S.tachesAuto = false; if (S.enCours) S.enCours.abort(); rendreTaches(); return; }
+  S.tachesAuto = true; rendreTaches();
+  while (S.tachesAuto) {
+    const x = taches().find(y => y.etat === "a");
+    if (!x) break;
+    if (!(await faireTache(x))) break;
+  }
+  const fini = !taches().some(y => y.etat !== "f");
+  S.tachesAuto = false; rendreTaches();
+  if (fini && taches().length) notifier("📋 Codex a fini toutes les tâches ✔");
+}
+$("#t-ajout").onsubmit = e => {
+  e.preventDefault(); const i = $("#t-texte");
+  if (ajouterTache(i.value)) { i.value = ""; rendreTaches(); sauver("codex"); } else if (i.value.trim()) toast("Cette tâche est déjà là");
+};
+$("#t-tout").onclick = faireToutesLesTaches;
+$("#t-nettoyer").onclick = () => { const c = S.convs.codex; c.taches = taches().filter(x => x.etat !== "f"); rendreTaches(); sauver("codex"); };
+function placerTaches() {  // panneau de droite (tâches de Codex, directions de REA)
+  const vue = $(`#vue-${S.vue}`), panneau = vue && vue.classList.contains("avec-panneau") ? vue.querySelector(":scope > .taches") : null;
+  const large = !!panneau && vue.clientWidth >= 900;
+  document.body.classList.toggle("taches-fixes", large && !document.body.classList.contains("studio"));
+  document.body.classList.toggle("taches-ouvertes", !!panneau && !large && panneau.classList.contains("ouvert"));
+}
+addEventListener("resize", placerTaches);
+$("#t-ouvrir").onclick = () => { $("#taches").classList.add("ouvert"); placerTaches(); };
+$("#t-fermer").onclick = () => { $("#taches").classList.remove("ouvert"); placerTaches(); };
 function aller(vue) {
   S.vue = vue;
   $$(".vue").forEach(v => v.classList.toggle("active", v.id === "vue-" + vue));
   $$(".nav[data-vue]").forEach(n => n.classList.toggle("actif", n.dataset.vue === vue));
   $("#fab").style.display = ["cerveau", "projets", "images"].includes(vue) ? "none" : "";
   if (vue === "cerveau") { chargerModeles().catch(() => {}); chargerMemoire(); }
-  if (vue === "projets") chargerProjets();
+  if (vue === "projets") { chargerGithub(); chargerProjets(); }
   if (vue === "rea") etatRea();
   if (vue === "images") chargerImages();
+  if (vue === "codex") rendreTaches();
+  placerTaches();
   const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
   if (innerWidth < 1200) fermerTiroir();
 }

@@ -70,6 +70,16 @@ def reponse_auto(messages):
             return ("Je crée le fichier puis j'affiche son contenu.\n```bash\n"
                     "echo \"Bonjour de LexOS\" > bonjour.txt && cat bonjour.txt\n```")
         return "FINI: bonjour.txt est créé et contient « Bonjour de LexOS »."
+    if "Codex de LexOS" in systeme and "SEULEMENT la tâche" in dernier:
+        import re as _re
+        m = _re.search(r"la tâche (\d+) : « (.+?) »", dernier)
+        n, quoi = (m.group(1), m.group(2)) if m else ("?", "la tâche")
+        return (f"Tâche {n} : {quoi}.\n\nFichier: etape{n}.js\n```javascript\n// {quoi}\n"
+                f"export function etape{n}() {{\n  return \"fait\";\n}}\n```\n\nC'est fait ✔")
+    if "Codex de LexOS" in systeme and "météo" in dernier.lower() and "site" in dernier.lower():
+        return ("Voici le plan pour ton site météo :\n\n- [ ] Créer index.html avec la structure de la page\n"
+                "- [ ] Ajouter style.css (thème noir et orange)\n- [ ] Écrire meteo.js pour afficher la température\n"
+                "- [ ] Tester la page sur le téléphone\n\nClique ▶ dans le panneau des tâches pour que je les fasse une par une.")
     if "Codex de LexOS" in systeme and "html" in dernier.lower():
         return ("Voici ta page météo :\n\nFichier: index.html\n```html\n<!doctype html>\n<html lang=\"fr-CA\">\n"
                 "<head><meta charset=\"utf-8\"><title>Météo</title>\n<style>\n"

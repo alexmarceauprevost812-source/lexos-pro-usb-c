@@ -447,6 +447,8 @@ def systeme_codex(dossier):
             "Tu aides à écrire, expliquer, corriger et améliorer du code. Réponds en français. "
             "Quand tu donnes un fichier complet, écris juste avant son bloc de code une ligne "
             "« Fichier: chemin/relatif/du/fichier » puis le bloc ```langage complet, sans couper. "
+            "Si la demande a plusieurs étapes, commence ta réponse par la liste des tâches, une par ligne, "
+            "au format « - [ ] tâche courte » (« - [x] tâche » pour une tâche déjà faite). "
             f"Dossier de travail : {dossier}")
 
 

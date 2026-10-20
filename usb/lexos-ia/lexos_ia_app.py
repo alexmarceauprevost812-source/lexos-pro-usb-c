@@ -20,7 +20,9 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -40,7 +42,7 @@ INACTIVITE_MAX = 180          # secondes sans signe de la fenêtre → on arrêt
 PORT_DEFAUT = 47800           # fixe : le navigateur se souvient du thème jour/nuit
 PORT_TELEPHONE = 47801        # accès Wi-Fi du téléphone (seulement si activé depuis le PC)
 HOTE_IP = re.compile(r"^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$")  # adresse IP seulement (pas de nom de domaine)
-INTERDIT_TELEPHONE = {"/api/ouvrir", "/api/telephone", "/api/quitter"}
+INTERDIT_TELEPHONE = {"/api/ouvrir", "/api/telephone", "/api/quitter", "/api/github/jeton", "/api/github/oublier"}
 TAILLE_MAX = 60 * 1024 * 1024  # photos comprises
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".js": "text/javascript; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg",
@@ -180,8 +182,13 @@ def sauver_conversation(d):
         if m.get("images"):
             m2["photos"] = len(m["images"])  # les photos ne sont pas recopiées sur la clé
         messages.append(m2)
+    taches = []
+    for x in (d.get("taches") or [])[:100]:  # liste de tâches du Codex (panneau de droite)
+        if isinstance(x, dict) and str(x.get("texte", "")).strip():
+            taches.append({"texte": str(x["texte"]).strip()[:300], "etat": x.get("etat") if x.get("etat") in ("a", "e", "f") else "a"})
     chemin.write_text(json.dumps({"titre": str(d.get("titre", "Sans titre"))[:80], "mode": d.get("mode", "chat"),
-                                  "modele": d.get("modele"), "date": time.time(), "messages": messages},
+                                  "modele": d.get("modele"), "date": time.time(), "messages": messages,
+                                  "taches": taches},
                                  ensure_ascii=False, indent=1), encoding="utf-8")
     return ident
 
@@ -322,6 +329,9 @@ class App(BaseHTTPRequestHandler):
                 d = charger_memoire()
                 return self._envoyer(200, {"apprendre": d.get("apprendre", True), "entrees": d["entrees"],
                                            "types": TYPES_MEMOIRE})
+            if url.path == "/api/github":
+                j = lire_jeton()
+                return self._envoyer(200, {"connecte": bool(j), "login": (j or {}).get("login", "")})
             if url.path == "/api/projets":
                 return self._envoyer(200, {"projets": lister_projets(), "git": bool(shutil.which("git")),
                                            "dossier": str(DOSSIER_PROJETS)})
@@ -391,6 +401,8 @@ class App(BaseHTTPRequestHandler):
             "/api/projet/supprimer-fichier": self._projet_supprimer_fichier,
             "/api/projet/github/cloner": self._github_cloner, "/api/projet/github/recuperer": self._github_recuperer,
             "/api/projet/github/envoyer": self._github_envoyer, "/api/projet/github/lier": self._github_lier,
+            "/api/projet/github/creer": self._github_creer_depot,
+            "/api/github/jeton": self._github_jeton, "/api/github/oublier": self._github_oublier,
             "/api/apercu": self._apercu_creer, "/api/video-mp4": self._video_mp4,
             "/api/rea/demander": self._rea_demander, "/api/rea/repondre": self._rea_repondre,
             "/api/rea/oublier": self._rea_oublier,
@@ -518,11 +530,10 @@ class App(BaseHTTPRequestHandler):
             for cmd in etapes:
                 self._ligne({"l": "$ " + " ".join(cmd)})
                 p = subprocess.Popen(cmd, cwd=dossier, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     stdin=subprocess.DEVNULL, text=True, errors="replace",
-                                     env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+                                     stdin=subprocess.DEVNULL, text=True, errors="replace", env=env_git())
                 for ligne in p.stdout:
                     if ligne.strip():
-                        self._ligne({"l": ligne.rstrip()[:400]})
+                        self._ligne({"l": cacher_jeton(ligne.rstrip())[:400]})
                 p.stdout.close()
                 code = p.wait()
                 if code != 0:
@@ -588,17 +599,58 @@ class App(BaseHTTPRequestHandler):
         dossier = dossier_projet(str(d.get("nom", "")))
         if not (dossier / ".git").exists():
             raise ValueError("ce projet n'est pas relié à GitHub")
-        message = str(d.get("message") or "Mise à jour depuis LexOS IA").strip()[:200]
-        identite = []
-        if git(dossier, "config", "user.email")[0] != 0:  # pas d'identité git : celle du dépôt GitHub
-            _, url = git(dossier, "remote", "get-url", "origin")
-            proprio = url.rstrip("/").split("/")[-2] if url.count("/") >= 4 else "lexos"
-            identite = ["-c", f"user.name={proprio}", "-c", f"user.email={proprio}@users.noreply.github.com"]
-        etapes = [["git", "add", "-A"]]
-        if git(dossier, "status", "--porcelain")[1].strip():
-            etapes.append(["git", *identite, "commit", "-m", message])
-        etapes.append(["git", "push", "-u", "origin", "HEAD"])
-        self._commande_en_flux(etapes, dossier)
+        self._commande_en_flux(etapes_envoi(dossier, d.get("message")), dossier)
+
+    def _github_jeton(self, d):
+        jeton = str(d.get("jeton", "")).strip()
+        if not JETON_GITHUB.match(jeton):
+            raise ValueError("ce n'est pas un jeton GitHub (il commence par github_pat_ ou ghp_)")
+        code, moi, entetes = api_github("GET", "/user", jeton)
+        if code == 401:
+            raise ValueError("GitHub refuse ce jeton (expiré ou mal copié)")
+        if code != 200 or not moi.get("login"):
+            raise ValueError(f"GitHub a répondu {code} : {moi.get('message', '')}")
+        sauver_jeton(jeton, moi["login"])
+        portees = entetes.get("X-OAuth-Scopes") or entetes.get("x-oauth-scopes")
+        avertir = bool(portees is not None and "repo" not in portees)
+        self._envoyer(200, {"connecte": True, "login": moi["login"],
+                            "avertissement": "Ce jeton n'a pas la permission « repo » : l'envoi risque d'être refusé." if avertir else ""})
+
+    def _github_oublier(self, d):
+        FICHIER_JETON.unlink(missing_ok=True)
+        self._envoyer(200, {"connecte": False})
+
+    def _github_creer_depot(self, d):
+        """Crée le dépôt sur GitHub avec le jeton, relie le projet et envoie tout."""
+        self._verifier_git()
+        j = lire_jeton()
+        if not j:
+            raise ValueError("ajoute d'abord ton jeton GitHub (Projets → 🔑 GitHub)")
+        dossier = dossier_projet(str(d.get("nom", "")))
+        if not dossier.is_dir():
+            raise ValueError("projet introuvable")
+        depot = str(d.get("depot") or dossier.name).strip()
+        if not NOM_DEPOT.match(depot):
+            raise ValueError("nom de dépôt invalide (lettres, chiffres, - _ .)")
+        code, rep, _ = api_github("POST", "/user/repos", j["jeton"],
+                                  {"name": depot, "private": bool(d.get("prive", True)),
+                                   "description": "Créé avec LexOS IA (clé USB-C)"})
+        if code == 422 and "already exists" in json.dumps(rep):
+            url = f"https://github.com/{j['login']}/{depot}.git"     # il existe déjà : on s'y relie
+        elif code == 201:
+            url = rep.get("clone_url") or f"https://github.com/{j['login']}/{depot}.git"
+        elif code in (401, 403):
+            raise ValueError("GitHub refuse : le jeton n'a pas le droit de créer des dépôts "
+                             "(jeton classique : coche « repo » ; jeton fin : Administration en écriture)")
+        else:
+            raise ValueError(f"GitHub a répondu {code} : {rep.get('message', '')}")
+        if not (dossier / ".git").exists():
+            git(dossier, "init", "-b", "main")
+        if git(dossier, "remote", "get-url", "origin")[0] == 0:
+            git(dossier, "remote", "set-url", "origin", url)
+        else:
+            git(dossier, "remote", "add", "origin", url)
+        self._commande_en_flux(etapes_envoi(dossier, d.get("message") or "Premier envoi depuis LexOS IA"), dossier)
 
     def _github_lier(self, d):
         self._verifier_git()
@@ -922,10 +974,92 @@ def fichier_projet(nom, chemin):
 
 
 def git(dossier, *args, timeout=120):
-    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
     r = subprocess.run(["git", *args], cwd=dossier, capture_output=True, text=True, errors="replace",
-                       timeout=timeout, env=env, stdin=subprocess.DEVNULL)
-    return r.returncode, (r.stdout + r.stderr).strip()
+                       timeout=timeout, env=env_git(), stdin=subprocess.DEVNULL)
+    return r.returncode, cacher_jeton(r.stdout + r.stderr).strip()
+
+
+def etapes_envoi(dossier, message=None):
+    """git add + commit (s'il y a des changements) + push."""
+    message = str(message or "Mise à jour depuis LexOS IA").strip()[:200]
+    identite = []
+    if git(dossier, "config", "user.email")[0] != 0:  # pas d'identité git : celle du compte GitHub
+        j = lire_jeton()
+        _, url = git(dossier, "remote", "get-url", "origin")
+        proprio = (j or {}).get("login") or (url.rstrip("/").split("/")[-2] if url.count("/") >= 4 else "lexos")
+        identite = ["-c", f"user.name={proprio}", "-c", f"user.email={proprio}@users.noreply.github.com"]
+    etapes = [["git", "add", "-A"]]
+    if git(dossier, "status", "--porcelain")[1].strip() or git(dossier, "rev-parse", "HEAD")[0] != 0:
+        etapes.append(["git", *identite, "commit", "--allow-empty", "-m", message])
+    etapes.append(["git", "push", "-u", "origin", "HEAD"])
+    return etapes
+
+
+# ── Jeton GitHub : gardé SUR LE PC (pas sur la clé), lisible par toi seul ──
+DOSSIER_CONFIG_PC = Path(os.environ.get("APPDATA") or os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "lexos-ia"
+FICHIER_JETON = DOSSIER_CONFIG_PC / "github.json"
+JETON_GITHUB = re.compile(r"^(gh[pousr]_[A-Za-z0-9]{20,255}|github_pat_[A-Za-z0-9_]{20,255})$")
+NOM_DEPOT = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
+
+
+def lire_jeton():
+    try:
+        d = json.loads(FICHIER_JETON.read_text(encoding="utf-8"))
+        return d if JETON_GITHUB.match(d.get("jeton", "")) else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def sauver_jeton(jeton, login):
+    FICHIER_JETON.parent.mkdir(parents=True, exist_ok=True)
+    tmp = FICHIER_JETON.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump({"jeton": jeton, "login": login}, f)
+    os.replace(tmp, FICHIER_JETON)
+    try:
+        os.chmod(FICHIER_JETON, 0o600)
+    except OSError:
+        pass
+
+
+def api_github(methode, chemin, jeton, corps=None):
+    """Appel à l'API GitHub. Retourne (code HTTP, réponse JSON, en-têtes)."""
+    req = urllib.request.Request("https://api.github.com" + chemin, method=methode,
+                                 data=json.dumps(corps).encode() if corps is not None else None,
+                                 headers={"Authorization": f"Bearer {jeton}", "Accept": "application/vnd.github+json",
+                                          "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "LexOS-IA",
+                                          "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status, json.loads(r.read() or b"{}"), dict(r.headers)
+    except urllib.error.HTTPError as e:
+        try:
+            donnees = json.loads(e.read() or b"{}")
+        except ValueError:
+            donnees = {}
+        return e.code, donnees, dict(e.headers or {})
+    except (urllib.error.URLError, OSError) as e:
+        raise ValueError(f"GitHub ne répond pas (Internet ?) : {e}") from None
+
+
+def env_git():
+    """Environnement de git : jamais de question dans le terminal ; le jeton passe par
+    une variable (pas dans la ligne de commande, ni dans .git/config du projet)."""
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    j = lire_jeton()
+    if j:
+        import base64
+        cle = base64.b64encode(f"x-access-token:{j['jeton']}".encode()).decode()
+        n = int(env.get("GIT_CONFIG_COUNT") or 0) if str(env.get("GIT_CONFIG_COUNT", "0")).isdigit() else 0
+        env.update({"GIT_CONFIG_COUNT": str(n + 1), f"GIT_CONFIG_KEY_{n}": "http.https://github.com/.extraheader",
+                    f"GIT_CONFIG_VALUE_{n}": f"AUTHORIZATION: basic {cle}"})  # ajouté aux réglages git déjà là
+    return env
+
+
+def cacher_jeton(texte):
+    j = lire_jeton()
+    return texte.replace(j["jeton"], "***") if j else texte
 
 
 def infos_github(dossier):
