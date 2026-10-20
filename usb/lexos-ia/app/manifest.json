@@ -1,0 +1,11 @@
+{
+  "name": "TI-LEX-AL · CodexLocal",
+  "short_name": "TI-LEX-AL",
+  "description": "Les IA locales de la clé LexOS USB-C, sur ton téléphone",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "lang": "fr-CA",
+  "icons": [{"src": "images/tilexal.png", "sizes": "512x433", "type": "image/png", "purpose": "any"}]
+}

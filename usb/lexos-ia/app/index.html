@@ -1,0 +1,2223 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TI-LEX-AL · LexOS IA</title>
+<link rel="icon" href="images/tilexal.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="images/tilexal.png">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+@font-face{font-family:"Space Grotesk";src:url(polices/space-grotesk.woff2) format("woff2");font-weight:300 700;font-display:swap}
+:root{
+  --fond:#0A0A0A;--fond2:#111;--panneau:#141414;--carte:#1b1b1b;--carte2:#232323;--ligne:#2b2b2b;
+  --orange:#FF7A00;--orange2:#ff9a3d;--texte:#f4f4f4;--gris:#9b9b9b;--gris2:#6d6d6d;
+  --vert:#22c55e;--vert-term:#35D64C;--rouge:#ef4444;--jaune:#facc15;
+  --rayon:22px;--police:"Space Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"DejaVu Sans Mono","JetBrains Mono",Consolas,monospace;
+  --tiroir:340px;
+}
+:root[data-theme=jour]{--fond:#d6d6d3;--fond2:#cfcfcc;--panneau:#c9c9c6;--carte:#e4e4e1;--carte2:#ececea;--ligne:#b4b4b0;--texte:#111;--gris:#4b4b4b;--gris2:#6b6b6b}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--fond);color:var(--texte);font-family:var(--police)}
+body{overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+.logo-badge{border-radius:50%}
+:root[data-theme=jour] .logo-badge{background:radial-gradient(circle,#0A0A0A 58%,transparent 71%)}
+
+/* ── En-tête ─────────────────────────────── */
+header{position:fixed;inset:0 0 auto 0;height:66px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#000;z-index:30;border-bottom:1px solid #161616}
+:root[data-theme=jour] header{background:#0A0A0A}
+.btn-menu{width:48px;height:46px;border:2px solid var(--orange);border-radius:12px;display:grid;place-items:center;background:#111}
+.btn-menu span{display:block;width:20px;height:2.5px;background:var(--orange);border-radius:2px;box-shadow:0 7px 0 var(--orange),0 -7px 0 var(--orange)}
+header .petit-logo{height:44px;width:auto;margin-right:auto;filter:drop-shadow(0 0 6px rgba(255,122,0,.35))}
+.btn-studio{height:42px;padding:0 22px;border:1.5px solid #333;border-radius:999px;letter-spacing:.18em;font-weight:700;color:#9a9a9a;font-size:14px;display:flex;align-items:center;gap:8px}
+.btn-studio .eclair{color:#8a5a00}
+.btn-studio.actif{border-color:var(--orange);color:var(--orange)}
+.btn-studio.actif .eclair{color:var(--orange)}
+.btn-rond{width:44px;height:44px;border-radius:50%;background:#1d1d1d;display:grid;place-items:center;font-size:20px;position:relative}
+.pastille{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;background:var(--orange);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+.pastille[hidden]{display:none}
+
+/* ── Tiroir (menu à gauche) ──────────────── */
+#voile{position:fixed;inset:66px 0 0 0;background:rgba(0,0,0,.55);z-index:24;opacity:0;pointer-events:none;transition:opacity .2s}
+#voile.ouvert{opacity:1;pointer-events:auto}
+aside#tiroir{position:fixed;top:66px;bottom:0;left:0;width:min(var(--tiroir),86vw);background:linear-gradient(180deg,#121214,#0c0c0c);z-index:25;transform:translateX(-102%);transition:transform .25s ease;overflow-y:auto;border-right:1px solid #1f1f1f;padding:10px 14px 24px}
+aside#tiroir.ouvert{transform:none}
+:root[data-theme=jour] aside#tiroir{background:linear-gradient(180deg,#cfcfcc,#c6c6c3);border-color:var(--ligne)}
+.tiroir-logo{display:block;width:78%;margin:6px auto 0}
+.tiroir-titre{text-align:center;font-family:Georgia,"DejaVu Serif","Times New Roman",serif;font-size:44px;font-weight:400;margin:4px 0 22px;letter-spacing:.01em}
+.section{font-size:15px;letter-spacing:.12em;color:var(--gris);margin:18px 8px 8px;font-weight:500}
+.nav{display:flex;align-items:center;gap:18px;width:100%;padding:11px 18px;border-radius:999px;font-size:22px;letter-spacing:.02em;text-align:left;text-transform:uppercase}
+.nav .ico{font-size:24px;width:30px;text-align:center}
+.nav:hover{background:rgba(255,255,255,.04)}
+.nav.actif{background:#262626}
+:root[data-theme=jour] .nav.actif{background:#b9b9b5}
+#liste-convs .conv{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;font-size:15px;color:var(--gris)}
+#liste-convs .conv:hover{background:rgba(255,255,255,.04);color:var(--texte)}
+#liste-convs .conv span.t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+#liste-convs .conv button.x{opacity:.5;padding:2px 6px}
+#liste-convs .conv button.x:hover{opacity:1;color:var(--rouge)}
+.vide{color:var(--gris2);font-size:14px;padding:6px 12px}
+.pied-tiroir{margin-top:26px;border-top:1px solid var(--ligne);padding-top:16px;display:grid;gap:10px}
+.btn-quitter{border:1px solid #4a1d1d;color:#ff8a8a;border-radius:14px;padding:11px;font-weight:600}
+.qc{text-align:center;color:var(--gris2);font-size:13px}
+
+/* ── Zone principale ─────────────────────── */
+main{position:fixed;top:66px;bottom:0;left:0;right:0;overflow:hidden;transition:left .25s,right .25s}
+.vue{position:absolute;inset:0;display:none;flex-direction:column}
+.vue.active{display:flex}
+.defile{flex:1;overflow-y:auto;padding:18px 18px 10px;scroll-behavior:smooth}
+.colonne{max-width:880px;margin:0 auto;width:100%}
+.recentes{text-align:center;color:var(--gris);font-size:17px;margin:14px 0 30px}
+.recentes button{color:var(--orange2);text-decoration:underline}
+.entete-agent{display:flex;align-items:center;gap:18px;padding:0 6px}
+.entete-agent img{width:74px}
+.entete-agent h2{font-size:26px;letter-spacing:.16em;font-weight:500}
+.entete-agent .sous{color:var(--gris);font-size:15px;margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.point{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--vert)}
+.point.eteint{background:var(--gris2)}
+.point.rouge{background:var(--rouge)}
+.securisee{color:var(--vert);font-weight:700}
+.accueil{text-align:center;padding:9vh 0 5vh}
+.accueil img{width:140px}
+.accueil h1{font-size:52px;font-weight:700;margin-top:26px}
+.accueil p{color:var(--gris);margin-top:10px}
+.carte-etat{display:flex;align-items:center;gap:12px;border:1px solid var(--ligne);border-radius:var(--rayon);padding:18px 22px;margin:0 auto 10px;max-width:740px;background:rgba(255,255,255,.015)}
+.carte-etat .txt{flex:1;font-size:17px}
+.btn-config{border:1px solid #3a3a3a;border-radius:12px;padding:8px 16px;background:#141414}
+:root[data-theme=jour] .btn-config{background:var(--carte);border-color:var(--ligne)}
+
+/* Messages */
+.fil{display:flex;flex-direction:column;gap:18px;padding-bottom:8px}
+.msg{display:flex;gap:12px;align-items:flex-start}
+.msg.toi{justify-content:flex-end}
+.msg .avatar{width:40px;flex:none;margin-top:2px}
+.bulle{max-width:min(720px,88%);line-height:1.6;font-size:16.5px;overflow-wrap:anywhere}
+.msg.toi .bulle{background:var(--carte2);border:1px solid var(--ligne);padding:12px 16px;border-radius:20px 20px 6px 20px;white-space:pre-wrap}
+.msg.ia .bulle{padding:6px 2px}
+.bulle p{margin:0 0 .7em}.bulle p:last-child{margin-bottom:0}
+.bulle h3,.bulle h4{margin:.8em 0 .4em;color:var(--orange2)}
+.bulle ul,.bulle ol{margin:.3em 0 .8em 1.4em}
+.bulle code{font-family:var(--mono);font-size:.9em;background:rgba(255,122,0,.12);padding:1px 6px;border-radius:6px}
+.bulle strong{color:#fff}
+:root[data-theme=jour] .bulle strong{color:#000}
+.reflexion{color:var(--gris);font-style:italic;font-size:14px}
+.curseur::after{content:"▍";color:var(--orange);animation:clign 1s steps(1) infinite}
+@keyframes clign{50%{opacity:0}}
+.photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;justify-content:flex-end}
+.photos img{height:110px;border-radius:12px;border:1px solid var(--ligne)}
+.erreur{color:#ff8a8a}
+.bloc-code{border:1px solid #2e2e2e;border-radius:14px;overflow:hidden;margin:.6em 0;background:#0d0d0d}
+.bloc-code .tete{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#161616;font-size:13px;color:var(--gris)}
+.bloc-code .tete .nom{flex:1;font-family:var(--mono);color:var(--orange2)}
+.bloc-code .tete button{border:1px solid #333;border-radius:8px;padding:3px 10px;font-size:12px;color:#ddd}
+.bloc-code .tete button:hover{border-color:var(--orange);color:var(--orange)}
+.bloc-code pre{margin:0;padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.5;color:#e9e9e9}
+.bloc-code pre code{background:none;padding:0}
+.bloc-code .tete .pastille-lang{width:10px;height:10px;border-radius:50%;flex:none}
+.bloc-code .corps{display:flex;overflow-x:auto}
+.bloc-code .nums{flex:none;padding:12px 10px 12px 14px;text-align:right;color:#4a4a4a;font-family:var(--mono);font-size:13.5px;line-height:1.5;user-select:none;white-space:pre;border-right:1px solid #1f1f1f}
+.bloc-code .corps pre{flex:1;overflow:visible}
+/* Couleurs du code — thème LexOS */
+.hljs-keyword,.hljs-selector-tag,.hljs-doctag,.hljs-meta .hljs-keyword{color:#FF7A00;font-weight:600}
+.hljs-string,.hljs-template-string,.hljs-regexp,.hljs-addition,.hljs-meta .hljs-string{color:#35D64C}
+.hljs-number,.hljs-literal,.hljs-symbol,.hljs-bullet{color:#C792EA}
+.hljs-comment,.hljs-quote{color:#6B7280;font-style:italic}
+.hljs-title,.hljs-title.function_,.hljs-section{color:#4FC3F7}
+.hljs-title.class_,.hljs-type,.hljs-built_in,.hljs-class .hljs-title{color:#FFCB6B}
+.hljs-attr,.hljs-attribute,.hljs-selector-attr{color:#FFCB6B}
+.hljs-property,.hljs-selector-class,.hljs-selector-id{color:#F78C6C}
+.hljs-variable,.hljs-template-variable,.hljs-params{color:#EEFFFF}
+.hljs-meta,.hljs-meta .hljs-keyword{color:#FF6AC1}
+.hljs-name,.hljs-tag{color:#FF9A3D}
+.hljs-deletion{color:#F07178}
+.hljs-subst{color:#EEFFFF}
+.hljs-punctuation,.hljs-operator{color:#89DDFF}
+.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}
+
+/* ── Barre d'écriture (ti-lex) ────────────── */
+.compo-zone{padding:8px 16px calc(14px + env(safe-area-inset-bottom))}
+.compo{max-width:880px;margin:0 auto;border:1.5px solid #2e2e2e;border-radius:30px;background:#1a1a1a;padding:14px 16px 12px 22px;position:relative}
+:root[data-theme=jour] .compo{background:var(--carte);border-color:var(--ligne)}
+.compo .rang{display:flex;align-items:center;gap:12px}
+.compo textarea{flex:1;resize:none;border:0;outline:0;background:transparent;font-size:19px;line-height:1.4;max-height:200px;min-height:30px;padding:6px 0}
+.compo textarea::placeholder{color:#777}
+.btn-envoyer{display:flex;flex-direction:column;align-items:center;gap:0;padding:0 4px;font-weight:800;letter-spacing:.05em;color:var(--orange);font-size:15px}
+.btn-envoyer img{width:62px;height:auto;margin-bottom:-6px}
+.btn-envoyer.arreter{color:var(--rouge)}
+.btn-envoyer:disabled{opacity:.35;cursor:default}
+.rang.bas{margin-top:10px;gap:14px}
+.btn-plus{width:52px;height:52px;border-radius:50%;border:1.5px solid #3a3a3a;font-size:30px;font-weight:300;display:grid;place-items:center;flex:none}
+.pilule{display:flex;align-items:center;gap:6px;border:1.5px solid #3a3a3a;border-radius:999px;padding:0 34px 0 18px;height:50px;font-weight:700;font-size:17px;position:relative;max-width:100%;min-width:0;white-space:nowrap;overflow:hidden}
+.pilule select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font-weight:700;font-size:17px;outline:0;cursor:pointer;min-width:0;flex:1;text-overflow:ellipsis;overflow:hidden}
+.pilule select option{background:#1a1a1a;color:#fff}
+.pilule::after{content:"⌄";position:absolute;right:14px;top:9px;font-size:18px;pointer-events:none}
+.pieces{display:flex;gap:8px;flex-wrap:wrap}
+.pieces:empty{display:none}
+.pieces{margin-bottom:10px}
+.piece{position:relative;border:1px solid var(--ligne);border-radius:12px;overflow:hidden;font-size:13px;display:flex;align-items:center}
+.piece img{height:64px;display:block}
+.piece .f{padding:8px 26px 8px 10px;font-family:var(--mono)}
+.piece button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:12px}
+
+/* ── Bouton flottant + onglet TRAVAIL ─────── */
+#fab{position:fixed;right:22px;bottom:210px;width:76px;height:76px;border-radius:50%;background:var(--orange);display:grid;place-items:center;font-size:34px;box-shadow:0 0 28px rgba(255,122,0,.55);z-index:20}
+#onglet-travail{position:fixed;right:0;top:46%;background:var(--orange);color:#111;border-radius:18px 0 0 18px;padding:14px 8px;writing-mode:vertical-rl;font-weight:800;letter-spacing:.12em;font-size:17px;z-index:20;display:flex;align-items:center;gap:10px}
+#onglet-travail .dossier{writing-mode:horizontal-tb;font-size:22px}
+#travail{position:fixed;top:66px;bottom:0;right:0;width:min(460px,92vw);background:var(--panneau);border-left:1px solid var(--ligne);z-index:26;transform:translateX(102%);transition:transform .25s;display:flex;flex-direction:column}
+#travail.ouvert{transform:none}
+#travail .tete-travail{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ligne)}
+#travail .tete-travail h3{flex:1;letter-spacing:.12em;color:var(--orange)}
+#travail .contenu{flex:1;overflow:auto;padding:12px 14px}
+#travail .contenu[hidden]{display:none}
+
+/* ── Codex (style CodexLocal) ─────────────── */
+.barre-local{background:#111;color:var(--orange);font-size:15px;padding:9px 18px;border-bottom:1px solid #1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+:root[data-theme=jour] .barre-local{background:var(--fond2);border-color:var(--ligne)}
+.accueil.codex img{width:min(300px,60vw)}
+.accueil.codex h1{color:var(--orange);font-size:42px;font-weight:600;font-style:italic}
+.accueil.codex p{font-style:italic;font-size:17px}
+.accueil .aide{color:var(--gris2);font-size:14px;margin-top:28px}
+.compo-codex{max-width:880px;margin:0 auto;display:flex;align-items:flex-end;gap:14px;border-top:1px solid #1f1f1f;padding-top:12px}
+.compo-codex .plus{color:var(--orange);font-size:34px;width:40px}
+.compo-codex textarea{flex:1;resize:none;background:transparent;border:0;border-bottom:2px solid var(--orange);outline:0;font-size:18px;padding:8px 2px;max-height:200px;font-style:italic}
+.btn-code{width:74px;height:74px;border-radius:50%;background:var(--orange);color:#111;font-size:28px;font-weight:900;font-family:var(--mono);flex:none}
+.btn-code.arreter{background:var(--rouge);color:#fff}
+
+/* ── Équipe IA ─────────────────────────────── */
+.barre-equipe{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:var(--fond2)}
+.role{display:flex;align-items:center;gap:6px;border:1.5px solid var(--c);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:700;color:var(--c);white-space:nowrap}
+.role select{background:var(--carte);border:0;border-radius:999px;color:var(--texte);padding:5px 8px;font-size:12.5px;max-width:150px;outline:0}
+.trio{display:flex;justify-content:center;gap:14px}
+.trio span{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-size:28px;border:2px solid var(--c);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}
+.avatar-agent{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:20px;border:2px solid var(--c);margin-top:2px}
+.qui{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--c);margin-bottom:4px}
+.qui span{color:var(--gris2);font-weight:400;letter-spacing:0;margin-left:6px}
+.verdict{border-radius:14px;padding:12px 16px;font-weight:700;text-align:center}
+.verdict.ok{border:1.5px solid var(--vert);color:var(--vert)}
+.verdict.ko{border:1.5px solid var(--jaune);color:var(--jaune)}
+
+/* ── Projets ──────────────────────────────── */
+.projets{flex:1;display:flex;min-height:0}
+.p-gauche{width:300px;flex:none;border-right:1px solid var(--ligne);padding:12px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.p-ligne{display:flex;gap:8px}
+.p-ligne select{flex:1;min-width:0;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:8px 10px;font-weight:700}
+.p-titre{font-size:12px;letter-spacing:.14em;color:var(--gris);margin-top:6px}
+.p-github{border:1px solid var(--ligne);border-radius:14px;padding:10px 12px;font-size:13px;color:var(--gris);display:flex;flex-direction:column;gap:8px}
+.p-github .gh-url{color:var(--texte);font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.p-github .rang-gh{display:flex;gap:6px;flex-wrap:wrap}
+.p-fichiers{display:flex;flex-direction:column;gap:2px}
+.p-fichiers button{display:flex;align-items:center;gap:8px;text-align:left;padding:7px 10px;border-radius:10px;font-family:var(--mono);font-size:13px;color:var(--gris);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.p-fichiers button:hover{background:rgba(255,255,255,.04);color:var(--texte)}
+.p-fichiers button.actif{background:rgba(255,122,0,.14);color:var(--orange2)}
+.p-fichiers .pt{width:9px;height:9px;border-radius:50%;flex:none}
+.p-editeur{flex:1;display:flex;flex-direction:column;padding:12px;gap:10px;min-width:0}
+.p-tete{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p-nom{flex:1;font-family:var(--mono);color:var(--orange2);min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-nom.modifie::after{content:" ●";color:var(--jaune)}
+.editeur{position:relative;flex:1;min-height:280px;background:#0d0d0d;border:1px solid #2e2e2e;border-radius:14px;overflow:hidden}
+.editeur pre,.editeur textarea{position:absolute;inset:0;margin:0;padding:14px;font-family:var(--mono);font-size:14px;line-height:1.5;white-space:pre;tab-size:2;border:0;outline:0;letter-spacing:0;word-wrap:normal;overflow-wrap:normal}
+.editeur pre{overflow:hidden;pointer-events:none;color:#e9e9e9}
+.editeur pre code{background:none;padding:0;font:inherit}
+.editeur textarea{background:transparent;color:transparent;caret-color:#FF7A00;resize:none;overflow:auto}
+.editeur textarea::selection{background:rgba(255,122,0,.3)}
+.editeur textarea::placeholder{color:#555}
+.p-journal{font-family:var(--mono);font-size:12px;background:#0d0d0d;border:1px solid #2e2e2e;border-radius:10px;padding:10px;max-height:180px;overflow:auto;white-space:pre-wrap;color:#bdbdbd}
+.p-journal .astuce{color:var(--jaune)}
+@media (max-width:760px){
+  .projets{flex-direction:column;overflow:auto}
+  .p-gauche{width:auto;border-right:0;border-bottom:1px solid var(--ligne);overflow:visible}
+  .p-editeur .editeur{min-height:55vh;flex:none}
+}
+/* ── Schémas (Mermaid, animés) ────────────── */
+.schema{border:1px solid #2e2e2e;border-radius:14px;overflow:hidden;margin:.6em 0;background:#0d0d0d}
+.schema .tete{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#161616;font-size:13px;color:var(--orange2);flex-wrap:wrap}
+.schema .tete .nom{flex:1;font-family:var(--mono)}
+.schema .tete button{border:1px solid #333;border-radius:8px;padding:3px 10px;font-size:12px;color:#ddd}
+.schema .tete button:hover{border-color:var(--orange);color:var(--orange)}
+.schema .dessin{padding:14px;overflow:auto;display:flex;justify-content:center}
+.schema .dessin svg{max-width:100%;height:auto}
+.schema .attente{color:var(--gris);font-style:italic;font-family:var(--mono);font-size:13px;white-space:pre-wrap}
+.schema .erreur-schema{color:var(--jaune);font-size:13px;margin-bottom:8px}
+.schema .anim{opacity:0}
+.feuille{width:100%;max-width:900px;align-self:flex-start;background:#0b0b0b;border:1px solid #222;border-radius:14px;padding:18px 22px;color:#eee;line-height:1.6}
+.feuille h4{color:var(--orange2)}
+
+/* ── Studio (aperçu) ──────────────────────── */
+#travail .onglets{display:flex;gap:4px;background:var(--carte);border-radius:999px;padding:3px}
+#travail .onglets button{padding:6px 12px;border-radius:999px;font-size:13px;color:var(--gris)}
+#travail .onglets button.actif{background:var(--orange);color:#111;font-weight:700}
+.contenu-apercu{flex:1;display:flex;flex-direction:column;min-height:0}
+.contenu-apercu[hidden]{display:none}
+.barre-apercu{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--ligne);font-size:13px}
+.barre-apercu span{flex:1;color:var(--gris);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.barre-apercu button{border:1px solid var(--ligne);border-radius:8px;padding:4px 9px}
+.cadre{flex:1;display:flex;justify-content:center;background:repeating-conic-gradient(#151515 0 25%,#101010 0 50%) 0 0/24px 24px;overflow:auto;padding:12px}
+.cadre iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.cadre.tel iframe{width:390px;max-width:100%;border-radius:28px;border:8px solid #222}
+.cadre .vide{align-self:center;text-align:center;max-width:300px}
+
+/* ── CodexTerminal ─────────────────────────── */
+.barre-term{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ligne);background:var(--fond2);flex-wrap:wrap}
+.barre-term input{flex:1;min-width:180px;background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:8px 12px;font-family:var(--mono);font-size:14px}
+.barre-term button,.btn-petit{border:1px solid var(--ligne);border-radius:10px;padding:8px 14px;background:var(--carte);font-size:14px}
+.interrupteur{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--gris)}
+.interrupteur input{accent-color:var(--orange);width:18px;height:18px}
+.carte-cmd{border:1.5px solid var(--orange);border-radius:16px;overflow:hidden;background:#0c0c0c}
+.carte-cmd .titre{background:rgba(255,122,0,.12);color:var(--orange);padding:8px 14px;font-size:13px;letter-spacing:.08em;font-weight:700}
+.carte-cmd textarea{width:100%;background:transparent;border:0;outline:0;resize:vertical;font-family:var(--mono);font-size:14.5px;padding:12px 14px;color:#fff;min-height:44px}
+.carte-cmd .actions{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid #222;align-items:center}
+.carte-cmd .actions button{border-radius:10px;padding:8px 14px;font-weight:600;font-size:14px;border:1px solid #333}
+.carte-cmd .go{background:var(--orange);color:#111;border-color:var(--orange)!important}
+.carte-cmd .go:disabled{opacity:.35}
+.carte-cmd .danger{color:var(--jaune);font-size:14px;padding:8px 14px 0}
+.carte-cmd .oui{width:110px;background:#111;border:1px solid var(--jaune);border-radius:8px;padding:6px 10px;color:var(--jaune);font-family:var(--mono)}
+.carte-cmd.fini{border-color:#2a2a2a;opacity:.85}
+.sortie{font-family:var(--mono);font-size:13px;white-space:pre-wrap;color:#bdbdbd;padding:10px 14px;border-top:1px solid #222;max-height:320px;overflow:auto}
+.code-sortie{padding:4px 14px 10px;font-size:13px;font-family:var(--mono)}
+.ok{color:var(--vert-term)}.ko{color:var(--rouge)}
+.puces{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
+.puce{border:1px solid var(--ligne);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--gris)}
+.puce:hover{border-color:var(--orange);color:var(--orange)}
+.puce.gros{border-color:var(--orange);color:var(--orange);font-weight:600}
+
+/* ── Cerveau (modèles) ─────────────────────── */
+.cerveau{padding:22px 18px 40px}
+.cerveau h2{font-size:28px;letter-spacing:.08em;margin-bottom:6px}
+.cerveau .info{color:var(--gris);margin-bottom:20px}
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.modele{border:1px solid var(--ligne);border-radius:18px;padding:16px;background:var(--carte);display:flex;flex-direction:column;gap:10px}
+.modele .nom{font-weight:700;font-size:18px;font-family:var(--mono)}
+.modele .meta{color:var(--gris);font-size:14px;display:flex;gap:8px;flex-wrap:wrap}
+.badge{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#262626}
+.badge.orange{background:rgba(255,122,0,.18);color:var(--orange2)}
+.badge.vert{background:rgba(34,197,94,.15);color:var(--vert)}
+.modele .boutons{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.modele .boutons button{border:1px solid var(--ligne);border-radius:10px;padding:6px 12px;font-size:13px}
+.modele .boutons button.choisi{background:var(--orange);color:#111;border-color:var(--orange)}
+.telecharger{margin-top:26px;border:1px dashed var(--ligne);border-radius:18px;padding:18px}
+.telecharger .rang{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.telecharger input{flex:1;min-width:200px;background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:10px 12px;font-family:var(--mono)}
+.btn-orange{background:var(--orange);color:#111;font-weight:700;border-radius:12px;padding:10px 18px}
+.progres{height:10px;border-radius:5px;background:#222;margin-top:12px;overflow:hidden}
+.progres div{height:100%;width:0;background:var(--orange);transition:width .3s}
+
+/* ── Téléphone ─────────────────────────────── */
+html.telephone .pc-seulement{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;display:none;place-items:center;padding:16px}
+.modal.vu{display:grid}
+.modal .boite{position:relative;background:var(--panneau);border:1.5px solid var(--orange);border-radius:22px;padding:22px;max-width:440px;width:100%;max-height:92vh;overflow:auto}
+.modal h3{font-size:21px;margin-bottom:14px;padding-right:30px}
+.modal .fermer{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--carte2)}
+.qr{background:#fff;border-radius:16px;padding:8px;width:min(280px,80vw);margin:0 auto 14px;aspect-ratio:1}
+.qr svg{width:100%;height:100%;display:block}
+.modal ol{margin:0 0 12px 20px;line-height:1.55;font-size:15px}
+.lien-tel{font-family:var(--mono);font-size:12px;color:var(--gris);word-break:break-all;background:var(--fond2);border-radius:10px;padding:8px 10px}
+.garde{color:var(--gris);font-size:13px;margin:12px 0;line-height:1.5}
+.actions-tel{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── REA : outils utilisés ─────────────────── */
+.rea-outils{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.rea-outils:empty{display:none}
+.outil{display:flex;align-items:center;gap:10px;font-size:13.5px;border:1px solid var(--ligne);border-left:3px solid var(--orange);border-radius:10px;padding:7px 12px;background:rgba(255,122,0,.04);animation:apparait .3s ease}
+.outil .ico{font-size:16px}
+.outil .nom{font-weight:700;color:var(--orange2);white-space:nowrap}
+.outil code{font-family:var(--mono);font-size:12px;color:var(--gris);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;background:none;padding:0}
+.rea-outils .carte-cmd{animation:apparait .3s ease}
+.rea-outils .carte-cmd pre{margin:0;padding:12px 14px;font-family:var(--mono);font-size:14px;white-space:pre-wrap;color:#fff}
+@keyframes apparait{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── Mode réflexion animé ─────────────────── */
+.pensee{margin-bottom:8px}
+.pensee-tete{display:inline-flex;align-items:center;gap:10px;font-size:14px;color:var(--gris);padding:5px 12px 5px 10px;border-radius:999px;border:1px solid var(--ligne);background:rgba(255,122,0,.05)}
+.pensee-titre{font-style:italic;background:linear-gradient(90deg,#8a8a8a 0%,#8a8a8a 35%,#fff 45%,#FF9A3D 50%,#8a8a8a 60%,#8a8a8a 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:reflet 2.4s linear infinite}
+:root[data-theme=jour] .pensee-titre{background-image:linear-gradient(90deg,#555 0%,#555 35%,#000 45%,#FF7A00 50%,#555 60%,#555 100%)}
+.pensee.finie .pensee-titre{animation:none;background:none;color:var(--gris)}
+.chrono{font-family:var(--mono);font-size:12px;color:var(--gris2)}
+.fleche{font-size:11px;color:var(--gris2);transition:transform .2s}
+.pensee:not(.a-pense) .fleche{display:none}
+.pensee.ouverte .fleche{transform:rotate(180deg)}
+.onde{display:inline-flex;gap:3px;align-items:center;height:16px}
+.onde i{display:block;width:3px;height:4px;border-radius:2px;background:var(--orange);animation:onde 1s ease-in-out infinite}
+.onde i:nth-child(2){animation-delay:.12s}.onde i:nth-child(3){animation-delay:.24s}.onde i:nth-child(4){animation-delay:.36s}
+.pensee.finie .onde{display:none}
+.pensee-texte{display:none;margin-top:8px;padding:8px 12px;border-left:2px solid var(--orange);color:var(--gris);font-style:italic;font-size:13.5px;line-height:1.5;white-space:pre-wrap;max-height:170px;overflow:auto;background:rgba(255,122,0,.03);border-radius:0 10px 10px 0}
+.pensee.ouverte .pensee-texte{display:block}
+.pensee.finie.ouverte .pensee-texte{max-height:380px}
+.points{display:inline-flex;gap:6px;padding:8px 2px}
+.points i{width:8px;height:8px;border-radius:50%;background:var(--orange);animation:point 1.2s infinite ease-in-out}
+.points i:nth-child(2){animation-delay:.2s}.points i:nth-child(3){animation-delay:.4s}
+.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:halo 1.3s ease-out infinite;border-radius:50%}
+@keyframes onde{0%,100%{height:4px;opacity:.45}50%{height:16px;opacity:1}}
+@keyframes point{0%,80%,100%{transform:scale(.5);opacity:.35}40%{transform:scale(1);opacity:1}}
+@keyframes reflet{0%{background-position:100% 0}100%{background-position:0 0}}
+@keyframes halo{0%{box-shadow:0 0 0 0 rgba(255,122,0,.6)}100%{box-shadow:0 0 0 13px rgba(255,122,0,0)}}
+/* ─── Images (Z-Image Turbo) ─── */
+.img-compo{border:1px solid var(--ligne);border-radius:var(--rayon);background:var(--carte);padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.img-compo textarea{width:100%;min-height:92px;resize:vertical;background:transparent;border:0;outline:0;color:var(--texte);font:inherit;font-size:17px;line-height:1.5}
+.img-options{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.img-options .format{border:1px solid var(--ligne);border-radius:999px;padding:7px 13px;font-size:14px;color:var(--gris);display:flex;align-items:center;gap:6px}
+.img-options .format i{display:inline-block;border:2px solid currentColor;border-radius:3px}
+.img-options .format.choisi{border-color:var(--orange);color:var(--orange);background:rgba(255,122,0,.08)}
+.img-options .graine{display:flex;align-items:center;gap:6px;color:var(--gris);font-size:14px;margin-left:auto}
+.img-options .graine input{width:120px;background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:7px 10px;color:var(--texte);font:inherit;font-size:14px}
+.img-creer{margin-left:4px;display:flex;align-items:center;gap:8px}
+.img-encours{margin-top:18px;border:1px solid var(--orange);border-radius:var(--rayon);overflow:hidden;background:var(--carte);display:grid;grid-template-columns:minmax(0,1fr);}
+.img-encours[hidden],.img-absent[hidden]{display:none}
+.img-toile{position:relative;aspect-ratio:1;margin:0 auto;width:100%;max-width:420px;background:
+  radial-gradient(circle at 30% 30%,rgba(255,122,0,.22),transparent 55%),radial-gradient(circle at 70% 70%,rgba(255,154,61,.14),transparent 50%),#101010;overflow:hidden}
+.img-toile::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.07) 50%,transparent 70%);animation:balayage 1.8s linear infinite}
+.img-toile .pinceau{position:absolute;inset:0;display:grid;place-items:center;font-size:56px;animation:flotte 2.4s ease-in-out infinite}
+@keyframes balayage{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes flotte{50%{transform:translateY(-8px) rotate(-6deg)}}
+.img-etat{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.img-etat .phase{font-weight:600}
+.img-etat .phase small{color:var(--gris);font-weight:400;margin-left:6px}
+.img-etat .progres{margin-top:0}
+.galerie{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:18px}
+.vignette{border:1px solid var(--ligne);border-radius:18px;overflow:hidden;background:var(--carte);display:flex;flex-direction:column}
+.vignette img{width:100%;aspect-ratio:1;object-fit:cover;background:#111;cursor:zoom-in;display:block}
+.vignette .legende{padding:10px 12px 4px;font-size:14px;line-height:1.35;color:var(--texte);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vignette .meta{padding:0 12px;color:var(--gris);font-size:12px}
+.vignette .actions{display:flex;gap:6px;padding:10px 12px 12px;flex-wrap:wrap}
+.vignette .actions button{border:1px solid var(--ligne);border-radius:10px;padding:6px 9px;font-size:13px;background:var(--carte2)}
+.vignette .actions button:hover{border-color:var(--orange);color:var(--orange)}
+.img-absent{margin-top:18px;border:1px dashed var(--orange);border-radius:var(--rayon);padding:18px;line-height:1.6}
+.img-absent code{background:var(--fond2);padding:3px 7px;border-radius:7px;font-family:var(--mono);font-size:13px;word-break:break-all}
+.img-grande{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.88);display:grid;place-items:center;padding:24px;cursor:zoom-out}
+.img-grande img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 0 0 1px #333}
+.msg .image-chat{max-width:min(100%,420px);border-radius:14px;display:block;margin-top:8px;border:1px solid var(--ligne)}
+@media (max-width:640px){.img-options .graine{margin-left:0}.img-creer{width:100%;justify-content:center}}
+@media (prefers-reduced-motion:reduce){.img-toile::after,.img-toile .pinceau,.onde i,.points i,.pensee-titre,.msg.travaille .avatar,.msg.travaille .avatar-agent{animation:none}}
+
+/* ── Mémoire ───────────────────────────────── */
+.memo-barre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.memo-compte{flex:1;color:var(--gris);font-size:14px}
+.memo-ajout{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.memo-ajout select,.memo-ajout input{background:var(--fond2);border:1px solid var(--ligne);border-radius:10px;padding:10px 12px}
+.memo-ajout input{flex:1;min-width:200px}
+.souvenir{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--ligne);border-radius:14px;padding:12px 14px;background:var(--carte);margin-bottom:8px}
+.souvenir .ico{font-size:20px;line-height:1.3}
+.souvenir .txt{flex:1;line-height:1.45}
+.souvenir .meta{color:var(--gris2);font-size:12px;margin-top:4px}
+.souvenir button{opacity:.55}.souvenir button:hover{opacity:1;color:var(--rouge)}
+.col-ia{display:flex;flex-direction:column;min-width:0;max-width:min(720px,88%)}
+.col-ia .bulle{max-width:100%}
+.avis{display:flex;gap:6px;margin-top:4px;opacity:0;transition:opacity .2s}
+.msg.ia:hover .avis,.avis:focus-within{opacity:1}
+.avis button{font-size:12px;color:var(--gris);border:1px solid var(--ligne);border-radius:999px;padding:3px 10px}
+.avis button:hover{color:var(--orange);border-color:var(--orange)}
+@media (hover:none){.avis{opacity:.8}}
+
+/* ── Notifications ─────────────────────────── */
+#notifs{position:fixed;top:72px;right:12px;width:min(380px,92vw);max-height:60vh;overflow:auto;background:var(--panneau);border:1px solid var(--ligne);border-radius:18px;z-index:40;padding:10px;display:none;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+#notifs.ouvert{display:block}
+#notifs .n{padding:10px 12px;border-bottom:1px solid var(--ligne);font-size:14px}
+#notifs .n:last-child{border:0}
+#notifs .n time{color:var(--gris2);font-size:12px;display:block}
+#toast{position:fixed;left:50%;top:80px;transform:translateX(-50%) translateY(20px);background:#222;border:1px solid var(--orange);color:#fff;padding:10px 18px;border-radius:14px;opacity:0;transition:.25s;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
+#toast.vu{opacity:1;transform:translateX(-50%)}
+#fin{position:fixed;inset:0;background:var(--fond);z-index:100;display:none;place-items:center;text-align:center}
+#fin.vu{display:grid}
+#fin img{width:160px}
+
+/* ── Grand écran : menu fixe à gauche, STUDIO = 2 panneaux ── */
+@media (min-width:1200px){
+  body.tiroir-fixe aside#tiroir{transform:none}
+  body.tiroir-fixe main{left:var(--tiroir)}
+  body.tiroir-fixe #voile{display:none}
+  body.studio main{right:min(460px,36vw)}
+  body.studio #travail{transform:none;width:min(460px,36vw)}
+  body.studio #onglet-travail{display:none}
+  body.studio #fab{right:calc(min(460px,36vw) + 22px)}
+}
+@media (max-width:640px){
+  header{gap:8px;padding:0 10px}
+  .btn-studio{padding:0 14px;font-size:12px}
+  .btn-rond{width:40px;height:40px;font-size:18px}
+  .entete-agent h2{font-size:19px}
+  .entete-agent img{width:56px}
+  .accueil h1{font-size:42px}
+  .compo textarea{font-size:17px}
+  #fab{width:64px;height:64px;font-size:28px;bottom:190px;right:16px}
+  .tiroir-titre{font-size:36px}
+  .nav{font-size:19px}
+  .barre-equipe{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .barre-equipe::-webkit-scrollbar{display:none}
+  .role{flex:none}
+  #onglet-travail{font-size:12px;padding:10px 4px;gap:6px;opacity:.92}
+  #onglet-travail .dossier{font-size:16px}
+  .pilule{font-size:15px;height:46px;padding:0 30px 0 14px}
+  .pilule select{font-size:15px}
+  .defile{padding-right:28px}
+}
+</style>
+</head>
+<body>
+<header>
+  <button class="btn-menu" id="btn-menu" aria-label="Menu"><span></span></button>
+  <img class="petit-logo" src="images/tilexal.png" alt="TI-LEX-AL">
+  <button class="btn-studio" id="btn-studio" title="Studio : conversation + panneau de code côte à côte"><span class="eclair">⚡</span>STUDIO</button>
+  <button class="btn-rond" id="btn-theme" title="Jour / nuit">🌙</button>
+  <button class="btn-rond" id="btn-cloche" title="Notifications">🔔<span class="pastille" id="pastille" hidden>0</span></button>
+</header>
+
+<div id="voile"></div>
+<aside id="tiroir">
+  <img class="tiroir-logo logo-badge" src="images/tilexal.png" alt="">
+  <div class="tiroir-titre">TI-LEX-AL</div>
+  <div class="section">NAVIGATION</div>
+  <button class="nav actif" data-vue="chat"><span class="ico">💬</span>Chat</button>
+  <button class="nav" data-vue="codex"><span class="ico">💻</span>Codex</button>
+  <button class="nav" data-vue="equipe"><span class="ico">👥</span>Équipe IA</button>
+  <button class="nav" data-vue="rea"><span class="ico">🤖</span>REA</button>
+  <button class="nav" data-vue="images"><span class="ico">🎨</span>Images</button>
+  <button class="nav" data-vue="projets"><span class="ico">📁</span>Projets</button>
+  <button class="nav" data-vue="terminal"><span class="ico">⌨️</span>CodexTerminal</button>
+  <button class="nav" data-vue="cerveau"><span class="ico">🧠</span>Cerveau</button>
+  <div class="section pc-seulement">OUTILS</div>
+  <button class="nav pc-seulement" id="btn-telephone"><span class="ico">📱</span>Téléphone</button>
+  <button class="nav pc-seulement" data-ouvrir="textes"><span class="ico">📝</span>LexOS Textes</button>
+  <button class="nav pc-seulement" data-ouvrir="terminal"><span class="ico">🖥️</span>Terminal IA</button>
+  <button class="nav pc-seulement" data-ouvrir="conversations"><span class="ico">📂</span>Mes fichiers</button>
+  <div class="section">CONVERSATIONS</div>
+  <div id="liste-convs"><div class="vide">Aucune conversation sauvegardée.</div></div>
+  <div class="pied-tiroir">
+    <button class="btn-quitter pc-seulement" id="btn-quitter">⏻ Arrêter les IA</button>
+    <div class="qc">⚜ Produit du Québec · IA 100 % locale sur ta clé</div>
+  </div>
+</aside>
+
+<main>
+  <!-- ═══ CHAT ═══ -->
+  <section class="vue active" id="vue-chat" data-mode="chat">
+    <div class="defile"><div class="colonne">
+      <div class="recentes" id="recentes">Aucune conversation sauvegardée.</div>
+      <div class="entete-agent">
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <div>
+          <h2>TI-LEX-AL · AGENT AL</h2>
+          <div class="sous"><span class="point" id="point-etat"></span> <span id="etat-court">Sur la clé</span> · Mémoire active · 🛡 <span class="securisee">IA Sécurisée</span></div>
+        </div>
+      </div>
+      <div class="accueil" data-accueil>
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <h1 id="bonjour">Bonjour</h1>
+      </div>
+      <div class="carte-etat" data-accueil>
+        <span class="point" id="point-moteur"></span>
+        <span class="txt" id="txt-moteur">Connexion au moteur IA de la clé…</span>
+        <button class="btn-config" data-aller="cerveau">⚙️ Config</button>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="compo">
+        <div class="pieces" data-pieces></div>
+        <div class="rang">
+          <textarea rows="1" data-saisie placeholder="Discuter avec Agent AL…"></textarea>
+          <button class="btn-envoyer" data-envoyer><img src="images/tilexal.png" alt=""><span>ENVOYER</span></button>
+        </div>
+        <div class="rang bas">
+          <button class="btn-plus" data-plus title="Ajouter une photo">+</button>
+          <label class="pilule">TI-LEX-AL ·&nbsp;<select data-modele="chat" title="Choisir l'IA"></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CODEX ═══ -->
+  <section class="vue" id="vue-codex" data-mode="codex">
+    <div class="barre-local" id="barre-codex">Local : …</div>
+    <div class="defile"><div class="colonne">
+      <div class="accueil codex" data-accueil>
+        <img class="logo-badge" src="images/marceau.png" alt="">
+        <h1>CodexLocal</h1>
+        <p>Assistant de code avec IA locale — fonctionne sans réseau</p>
+        <p class="aide">« + » ajoute un fichier de code · Cerveau → choisir ou télécharger un modèle</p>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="pieces colonne" data-pieces style="max-width:880px;margin:0 auto 8px"></div>
+      <div class="compo-codex">
+        <button class="plus" data-plus title="Ajouter un fichier">+</button>
+        <textarea rows="1" data-saisie placeholder="Demande du code, une correction, une explication…"></textarea>
+        <button class="btn-code" data-envoyer title="Envoyer">&lt;/&gt;</button>
+      </div>
+      <div style="max-width:880px;margin:8px auto 0;display:flex;justify-content:flex-end">
+        <label class="pilule" style="height:40px;font-size:14px">Codex ·&nbsp;<select data-modele="codex"></select></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ÉQUIPE IA ═══ -->
+  <section class="vue" id="vue-equipe" data-mode="equipe">
+    <div class="barre-local" id="barre-equipe">Local : Équipe IA · sur la clé USB-C · hors ligne</div>
+    <div class="barre-equipe">
+      <label class="role" style="--c:#4FC3F7">🧭 Architecte <select data-role="architecte"></select></label>
+      <label class="role" style="--c:#FF7A00">💻 Codeur <select data-role="codeur"></select></label>
+      <label class="role" style="--c:#35D64C">🔍 Réviseur <select data-role="reviseur"></select></label>
+      <label class="role" style="--c:#C792EA">🔁 Révisions <select id="tours"><option>0</option><option>1</option><option selected>2</option><option>3</option></select></label>
+    </div>
+    <div class="defile"><div class="colonne">
+      <div class="accueil codex" data-accueil>
+        <img class="logo-badge" src="images/marceau.png" alt="">
+        <h1>CodexLocal · Équipe</h1>
+        <p>Plusieurs IA locales codent ensemble — fonctionne sans réseau</p>
+        <div class="trio" style="margin-top:22px"><span style="--c:#4FC3F7">🧭</span><span style="--c:#FF7A00">💻</span><span style="--c:#35D64C">🔍</span></div>
+        <p class="aide" style="margin-top:14px"><b style="color:#4FC3F7">Architecte</b> planifie · <b style="color:#FF7A00">Codeur</b> écrit · <b style="color:#35D64C">Réviseur</b> vérifie et fait corriger<br>« + » ajoute un fichier de code · le même modèle pour les 3 rôles va plus vite</p>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="pieces colonne" data-pieces style="max-width:880px;margin:0 auto 8px"></div>
+      <div class="compo-codex">
+        <button class="plus" data-plus title="Ajouter un fichier">+</button>
+        <textarea rows="1" data-saisie placeholder="Donne un projet à l'équipe : code, correction, explication…"></textarea>
+        <button class="btn-code" data-envoyer title="Lancer l'équipe">&lt;/&gt;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CODEXTERMINAL ═══ -->
+  <section class="vue" id="vue-terminal" data-mode="terminal">
+    <div class="barre-term">
+      <span>📁</span>
+      <input id="dossier" spellcheck="false" title="Dossier de travail">
+      <button id="btn-dossier">Aller</button>
+      <label class="interrupteur"><input type="checkbox" id="auto"> Auto <span title="Exécute sans demander, sauf les commandes sensibles">ⓘ</span></label>
+    </div>
+    <div class="defile"><div class="colonne">
+      <div class="accueil" data-accueil>
+        <img class="logo-badge" src="images/tilexal.png" alt="" style="width:110px">
+        <h1 style="font-size:40px">CodexTerminal</h1>
+        <p>Donne une tâche : l'IA propose une commande à la fois, tu approuves chacune.</p>
+        <div class="puces">
+          <button class="puce">crée un projet Python avec un venv et un hello world</button>
+          <button class="puce">montre les 10 plus gros fichiers de mon dossier Téléchargements</button>
+          <button class="puce">fais un script qui affiche l'espace libre des disques</button>
+          <button class="puce">crée une page index.html avec le logo LexOS en orange sur noir</button>
+        </div>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="compo">
+        <div class="rang">
+          <textarea rows="1" data-saisie placeholder="Donne une tâche à CodexTerminal…"></textarea>
+          <button class="btn-envoyer" data-envoyer><img src="images/tilexal.png" alt=""><span>ENVOYER</span></button>
+        </div>
+        <div class="rang bas">
+          <label class="pilule">Agent ·&nbsp;<select data-modele="terminal"></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CERVEAU ═══ -->
+  <!-- ═══ REA : agent ti-lex ═══ -->
+  <section class="vue" id="vue-rea" data-mode="rea">
+    <div class="barre-local" id="barre-rea">Local : REA · agent ti-lex · sur la clé USB-C</div>
+    <div class="defile"><div class="colonne">
+      <div class="entete-agent">
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <div>
+          <h2>TI-LEX-AL · REA</h2>
+          <div class="sous"><span class="point" id="point-rea"></span> 🔍 web · 👁 vision · 📁 fichiers · ⌨️ commandes · 🛡 <span class="securisee">avec ta permission</span></div>
+        </div>
+      </div>
+      <div class="accueil" data-accueil>
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <h1>REA</h1>
+        <p>L'agent ti-lex travaille dans ton projet : il cherche sur le web, regarde les images,<br>lit et écrit les fichiers et lance des commandes — toujours avec ta permission.</p>
+        <div class="puces">
+          <button class="puce">liste les fichiers du projet et explique-moi à quoi ils servent</button>
+          <button class="puce">cherche la dernière version de Python et dis-moi ce qui a changé</button>
+          <button class="puce">crée un site météo dans ce projet puis teste-le</button>
+        </div>
+        <p class="aide" id="rea-dispo"></p>
+      </div>
+      <div class="fil" data-fil></div>
+    </div></div>
+    <div class="compo-zone">
+      <div class="compo">
+        <div class="rang">
+          <textarea rows="1" data-saisie placeholder="Donne une tâche à REA…"></textarea>
+          <button class="btn-envoyer" data-envoyer><img src="images/tilexal.png" alt=""><span>ENVOYER</span></button>
+        </div>
+        <div class="rang bas">
+          <button class="btn-plus" id="rea-oublier" title="Nouvelle conversation avec REA">⟲</button>
+          <label class="pilule">REA ·&nbsp;<select data-modele="rea" title="Modèle (doit savoir utiliser des outils)"></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ IMAGES ═══ -->
+  <section class="vue" id="vue-images">
+    <div class="barre-local">Local : Z-Image Turbo · sur la clé USB-C · gratuit · hors ligne</div>
+    <div class="defile"><div class="colonne">
+      <div class="entete-agent">
+        <img class="logo-badge" src="images/tilexal.png" alt="">
+        <div>
+          <h2>TI-LEX-AL · IMAGES</h2>
+          <div class="sous"><span class="point" id="point-images"></span> 🎨 Z-Image Turbo · tes images restent sur la clé · <span class="securisee">libres de droits (Apache 2.0)</span></div>
+        </div>
+      </div>
+      <div id="img-absent" class="img-absent" hidden></div>
+      <div class="img-compo">
+        <textarea id="img-texte" placeholder="Décris l'image… ex. : un logo de loup orange sur fond noir, style néon, avec le texte « TI-LEX »"></textarea>
+        <div class="img-options">
+          <button class="format choisi" data-format="carre"><i style="width:12px;height:12px"></i>Carré</button>
+          <button class="format" data-format="portrait"><i style="width:9px;height:13px"></i>Portrait</button>
+          <button class="format" data-format="paysage"><i style="width:14px;height:9px"></i>Paysage</button>
+          <button class="format" data-format="rapide" title="512 × 512 : 4 fois plus rapide, pour essayer une idée"><i style="width:8px;height:8px"></i>Rapide</button>
+          <label class="graine" title="Même graine + même texte = même image. Vide = surprise.">🎲 Graine <input id="img-graine" inputmode="numeric" placeholder="au hasard"></label>
+          <button class="btn-orange img-creer" id="img-creer">🎨 Créer</button>
+        </div>
+      </div>
+      <div class="puces" style="justify-content:flex-start;margin-top:12px">
+        <button class="puce" data-idee>un loup orange en néon sur fond noir, logo, texte « TI-LEX »</button>
+        <button class="puce" data-idee>le lac Saint-Jean au coucher du soleil, photo réaliste, en hiver</button>
+        <button class="puce" data-idee>icône d'application ronde, clé USB-C avec un cerveau lumineux, style 3D</button>
+      </div>
+      <div id="img-encours" class="img-encours" hidden>
+        <div class="img-toile" id="img-toile"><div class="pinceau">🖌️</div></div>
+        <div class="img-etat">
+          <div class="phase" id="img-phase">Préparation…</div>
+          <div class="progres"><div id="img-barre"></div></div>
+        </div>
+      </div>
+      <div class="galerie" id="galerie"></div>
+    </div></div>
+  </section>
+
+  <!-- ═══ PROJETS ═══ -->
+  <section class="vue" id="vue-projets">
+    <div class="barre-local" id="barre-projets">Projets · sur la clé USB-C</div>
+    <div class="projets">
+      <div class="p-gauche">
+        <div class="p-ligne">
+          <select id="choix-projet" title="Projet actif"></select>
+          <button class="btn-petit" id="p-nouveau" title="Nouveau projet">＋</button>
+        </div>
+        <button class="btn-petit" id="p-cloner">⬇ Cloner depuis GitHub</button>
+        <div class="p-github" id="p-github"></div>
+        <div class="p-titre">FICHIERS</div>
+        <div class="p-fichiers" id="p-fichiers"><div class="vide">Crée ou choisis un projet.</div></div>
+        <button class="btn-petit" id="p-nouveau-fichier">＋ Nouveau fichier</button>
+        <button class="btn-petit" id="p-schema">🗺 Schéma du projet</button>
+      </div>
+      <div class="p-editeur">
+        <div class="p-tete">
+          <span class="p-nom" id="p-nom-fichier">Aucun fichier ouvert</span>
+          <button class="btn-petit" id="p-enregistrer" title="Ctrl+S">💾 Enregistrer</button>
+          <button class="btn-petit" id="p-apercu">👁 Aperçu</button>
+          <button class="btn-petit" id="p-codex">🤖 Codex</button>
+          <button class="btn-petit" id="p-suppr" title="Supprimer le fichier">🗑</button>
+        </div>
+        <div class="editeur"><pre aria-hidden="true"><code class="hljs" id="p-couleurs"></code></pre><textarea id="p-texte" spellcheck="false" placeholder="Ouvre un fichier à gauche…" disabled></textarea></div>
+        <div class="p-journal" id="p-journal" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="vue" id="vue-cerveau">
+    <div class="defile"><div class="colonne cerveau">
+      <h2>🧠 CERVEAU</h2>
+      <div class="info" id="info-cerveau">Les modèles IA installés sur ta clé.</div>
+      <div class="grille" id="grille-modeles"></div>
+      <h2 style="margin-top:34px">🧠 MÉMOIRE</h2>
+      <div class="info">Ce que tes IA ont appris de leurs erreurs et de tes corrections. C'est rappelé à l'IA quand ça concerne ta demande. Tout reste sur la clé.</div>
+      <div class="memo-barre">
+        <label class="interrupteur"><input type="checkbox" id="memo-auto" checked> Apprendre automatiquement de leurs erreurs</label>
+        <span id="memo-compte" class="memo-compte"></span>
+        <button class="btn-petit" id="memo-vider">Tout effacer</button>
+      </div>
+      <div class="memo-ajout">
+        <select id="memo-type"><option value="fait">📌 Fait</option><option value="preference">⭐ Préférence</option><option value="lecon">🧩 Leçon</option></select>
+        <input id="memo-texte" placeholder="Ex. : Mon PC roule Kali Linux · Réponds-moi en joual · Mes projets sont en Python">
+        <button class="btn-orange" id="memo-ajouter">Retenir</button>
+      </div>
+      <div id="memo-liste"></div>
+      <div class="telecharger">
+        <strong>Ajouter un modèle sur la clé</strong> <span style="color:var(--gris)">(Internet requis)</span>
+        <div class="rang">
+          <input id="nom-modele" placeholder="ex. qwen2.5-coder:7b" spellcheck="false">
+          <button class="btn-orange" id="btn-telecharger">Télécharger</button>
+        </div>
+        <div class="puces" style="justify-content:flex-start">
+          <button class="puce" data-sugg>llama3.2:3b</button><button class="puce" data-sugg>qwen3:8b</button>
+          <button class="puce" data-sugg>qwen2.5-coder:7b</button><button class="puce" data-sugg>gemma3:4b</button>
+          <button class="puce" data-sugg>deepseek-r1:8b</button>
+          <button class="puce gros" data-sugg="gemma4:26b" title="Images, outils et réflexion · 32 Go de RAM conseillés">🦣 gemma4:26b · 18 Go</button>
+        </div>
+        <div class="progres" hidden id="progres"><div></div></div>
+        <div id="statut-telech" style="color:var(--gris);font-size:14px;margin-top:8px"></div>
+      </div>
+    </div></div>
+  </section>
+</main>
+
+<button id="fab" title="Nouvelle conversation">💬</button>
+<button id="onglet-travail" title="Le code des réponses"><span class="dossier">🗂️</span>TRAVAIL</button>
+<aside id="travail">
+  <div class="tete-travail"><h3>⚡ STUDIO</h3>
+    <div class="onglets"><button data-onglet="apercu">👁 Aperçu</button><button data-onglet="code" class="actif">🗂️ Code</button></div>
+    <button class="btn-petit" id="fermer-travail">✕</button></div>
+  <div class="contenu" id="contenu-travail"><div class="vide">Le code proposé par l'IA apparaîtra ici.</div></div>
+  <div class="contenu-apercu" id="contenu-apercu" hidden>
+    <div class="barre-apercu"><span id="titre-apercu">Aucun aperçu</span>
+      <button id="ap-tel" title="Format téléphone">📱</button><button id="ap-pc" title="Format ordinateur">💻</button>
+      <button id="ap-recharger" title="Recharger">⟳</button><button id="ap-fenetre" title="Ouvrir dans une fenêtre">↗</button></div>
+    <div class="cadre" id="cadre-apercu"><div class="vide" id="vide-apercu">Clique « 👁 Aperçu » sur un bloc de code HTML ou sur un fichier de projet : l'application créée s'affiche ici.</div></div>
+  </div>
+</aside>
+<div id="notifs"></div>
+<div id="toast"></div>
+<div id="modal-tel" class="modal"><div class="boite">
+  <button class="fermer" id="fermer-tel">✕</button>
+  <h3>📱 Ouvrir sur ton téléphone</h3>
+  <div id="qr-tel" class="qr"></div>
+  <ol>
+    <li>Ton téléphone doit être sur le <b>même Wi-Fi</b> que ce PC.</li>
+    <li>Scanne le code avec l'appareil photo : <b>CodexLocal</b> s'ouvre avec les IA et les projets de la clé.</li>
+    <li>Dans Chrome : <b>⋮ → Ajouter à l'écran d'accueil</b> pour l'avoir comme une app.</li>
+  </ol>
+  <div class="lien-tel" id="lien-tel"></div>
+  <p class="garde">🔒 À utiliser sur ton Wi-Fi à la maison : avec ce code, on peut utiliser tes IA et CodexTerminal sur ce PC. « Nouveau code » bloque les anciens.</p>
+  <div class="actions-tel">
+    <button class="btn-petit" id="nouveau-code">🔄 Nouveau code</button>
+    <button class="btn-petit" id="couper-tel">⛔ Couper l'accès téléphone</button>
+  </div>
+</div></div>
+<div id="fin"><div><img class="logo-badge" src="images/tilexal.png" alt=""><h2 style="margin-top:18px">Les IA sont arrêtées.</h2><p style="color:var(--gris);margin-top:8px">Tu peux fermer cette fenêtre et retirer la clé.</p></div></div>
+<input type="file" id="choix-photo" accept="image/*" multiple hidden>
+<input type="file" id="choix-fichier" multiple hidden>
+
+<script src="vendor/highlight.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script>
+"use strict";
+// ─── Jeton secret (dans l'adresse #t=…), jamais envoyé ailleurs ───
+// Sur le téléphone, l'adresse est celle du PC sur le Wi-Fi (pas 127.0.0.1).
+const TEL = !["127.0.0.1", "localhost"].includes(location.hostname);
+const JETON = (() => {
+  const m = location.hash.match(/t=([\w-]+)/), cle = TEL ? "lexos-jeton-tel" : "lexos-jeton";
+  const coffre = () => TEL ? localStorage : sessionStorage;  // téléphone : survit à la fermeture (raccourci)
+  try { if (m) coffre().setItem(cle, m[1]); } catch (e) {}
+  if (location.hash) history.replaceState(null, "", location.pathname);
+  try { return m ? m[1] : coffre().getItem(cle) || ""; } catch (e) { return m ? m[1] : ""; }
+})();
+if (TEL) document.documentElement.classList.add("telephone");
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const S = {
+  vue: "chat", modeles: [], defauts: {}, choix: {}, sensibles: [], langues: [], dossier: "",
+  convs: { chat: nouvelle("chat"), codex: nouvelle("codex"), terminal: nouvelle("terminal"), equipe: nouvelle("equipe"), rea: nouvelle("rea") },
+  pieces: { chat: [], codex: [], terminal: [], equipe: [], rea: [] }, enCours: null, notifs: [], nonLues: 0,
+  roles: {}, codeEquipe: "", projet: null, projetInfo: null, fichierOuvert: null, apercuUrl: null,
+};
+function nouvelle(mode) { return { id: null, mode, titre: "", messages: [] }; }
+
+async function api(chemin, corps) {
+  const r = await fetch(chemin, {
+    method: corps === undefined ? "GET" : "POST",
+    headers: { "X-LexOS-Jeton": JETON, "Content-Type": "application/json" },
+    body: corps === undefined ? undefined : JSON.stringify(corps),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    if (d.jeton && TEL) toast("Code expiré : rescanne le code QR sur le PC (menu → 📱 Téléphone)");
+    const e = new Error(d.erreur || ("erreur " + r.status)); e.donnees = d; e.statut = r.status; throw e;
+  }
+  return d;
+}
+async function flux(chemin, corps, surLigne, signal) {
+  const r = await fetch(chemin, { method: "POST", signal,
+    headers: { "X-LexOS-Jeton": JETON, "Content-Type": "application/json" }, body: JSON.stringify(corps) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || "erreur " + r.status);
+  const lecteur = r.body.getReader(), dec = new TextDecoder();
+  let tampon = "";
+  for (;;) {
+    const { value, done } = await lecteur.read();
+    if (done) break;
+    tampon += dec.decode(value, { stream: true });
+    let i;
+    while ((i = tampon.indexOf("\n")) >= 0) {
+      const ligne = tampon.slice(0, i).trim(); tampon = tampon.slice(i + 1);
+      if (ligne) surLigne(JSON.parse(ligne));
+    }
+  }
+}
+
+// ─── Petits outils ───
+function echap(t) { return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("vu"); clearTimeout(toast.m); toast.m = setTimeout(() => el.classList.remove("vu"), 3200); }
+function notifier(t) {
+  S.notifs.unshift({ t, quand: new Date() }); S.nonLues++;
+  const p = $("#pastille"); p.hidden = false; p.textContent = S.nonLues > 9 ? "9+" : S.nonLues;
+}
+function taille(o) { return o >= 1e9 ? (o / 1e9).toFixed(1) + " Go" : Math.round(o / 1e6) + " Mo"; }
+function telechargerTexte(nom, texte) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([texte], { type: "text/plain" })); a.download = nom; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const EXT = { python: "py", py: "py", javascript: "js", js: "js", typescript: "ts", html: "html", css: "css", bash: "sh", sh: "sh", shell: "sh", json: "json", markdown: "md", md: "md", java: "java", c: "c", cpp: "cpp", rust: "rs", go: "go", sql: "sql", yaml: "yml", php: "php", kotlin: "kt" };
+
+// ─── Couleurs du code (highlight.js, sur la clé : marche hors ligne) ───
+const COULEUR_LANG = { python: "#3776AB", javascript: "#F7DF1E", typescript: "#3178C6", bash: "#35D64C", shell: "#35D64C",
+  xml: "#E34F26", css: "#2965F1", scss: "#CC6699", json: "#FFB13B", rust: "#DEA584", go: "#00ADD8", java: "#B07219",
+  c: "#A8B9CC", cpp: "#F34B7D", csharp: "#178600", php: "#777BB4", ruby: "#CC342D", sql: "#E38C00", yaml: "#CB171E",
+  markdown: "#FF7A00", kotlin: "#A97BFF", swift: "#F05138", lua: "#000080" };
+const EXT_LANG = { py: "python", js: "javascript", mjs: "javascript", ts: "typescript", sh: "bash", html: "xml", htm: "xml",
+  css: "css", json: "json", rs: "rust", go: "go", java: "java", c: "c", h: "c", cpp: "cpp", cs: "csharp", php: "php",
+  rb: "ruby", sql: "sql", yml: "yaml", yaml: "yaml", md: "markdown", kt: "kotlin", swift: "swift", lua: "lua" };
+function langueDuNom(nom) { const e = (nom || "").split(".").pop().toLowerCase(); return EXT_LANG[e] || ""; }
+function colorer(code, langue) {
+  const h = window.hljs, id = EXT_LANG[langue] || langue;
+  if (!h || code.length > 60000) return { html: echap(code), langue: id };
+  try {
+    if (id && h.getLanguage(id)) return { html: h.highlight(code, { language: id, ignoreIllegals: true }).value, langue: id };
+    const r = h.highlightAuto(code, ["python", "javascript", "bash", "xml", "css", "json", "sql", "java", "cpp", "rust", "go", "php", "yaml", "typescript"]);
+    return { html: r.value, langue: r.language || id };
+  } catch (e) { return { html: echap(code), langue: id }; }
+}
+
+// ─── Markdown sûr (tout est échappé) ───
+const RE_BLOC = /(?:^|\n)[ \t]*(?:[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**[ \t]*\n+)?```([\w+.#-]*)[^\n]*\n([\s\S]*?)(?:```|$)/gi;
+function extraireBlocs(t) { const b = []; let m; RE_BLOC.lastIndex = 0; while ((m = RE_BLOC.exec(t))) b.push({ chemin: m[1] ? m[1].trim() : null, langue: (m[2] || "").toLowerCase(), code: m[3] }); return b; }
+function enLigne(t) {
+  return echap(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>");
+}
+function texteMd(t) {
+  const out = []; let liste = null;
+  const fermer = () => { if (liste) { out.push(`</${liste}>`); liste = null; } };
+  let para = [];
+  const vider = () => { if (para.length) { out.push("<p>" + para.map(enLigne).join("<br>") + "</p>"); para = []; } };
+  for (const ligne of t.split("\n")) {
+    let m;
+    if (!ligne.trim()) { vider(); fermer(); continue; }
+    if ((m = ligne.match(/^\s*#{1,6}\s+(.*)/))) { vider(); fermer(); out.push("<h4>" + enLigne(m[1]) + "</h4>"); continue; }
+    if ((m = ligne.match(/^\s*[-*•]\s+(.*)/)) || (m = ligne.match(/^\s*\d+[.)]\s+(.*)/))) {
+      vider(); const type = /^\s*\d/.test(ligne) ? "ol" : "ul";
+      if (liste !== type) { fermer(); out.push(`<${type}>`); liste = type; }
+      out.push("<li>" + enLigne(m[1]) + "</li>"); continue;
+    }
+    fermer(); para.push(ligne);
+  }
+  vider(); fermer();
+  return out.join("");
+}
+function md(t) {
+  let html = "", dernier = 0, m, n = 0;
+  const re = /```([\w+.#-]*)[^\n]*\n([\s\S]*?)(?:```|$)/g;
+  while ((m = re.exec(t))) {
+    const avant = t.slice(dernier, m.index);
+    const f = avant.match(/[*#>\- ]*(?:Fichier|File)\**\s*:\s*\**\s*`?([^\n`*]+?)`?\**\s*$/i);
+    html += texteMd(f ? avant.slice(0, f.index) : avant);
+    const langue = (m[1] || "").toLowerCase(), nom = f ? f[1].trim() : "";
+    if (langue === "mermaid" || /\.mmd$/i.test(nom)) {
+      html += blocSchema(m[2], nom);
+      dernier = re.lastIndex; n++;
+      continue;
+    }
+    const c = colorer(m[2], langue || langueDuNom(nom));
+    const lignes = m[2].replace(/\n$/, "").split("\n").length;
+    html += `<div class="bloc-code"><div class="tete"><span class="pastille-lang" style="background:${COULEUR_LANG[c.langue] || "#666"}"></span><span class="nom">${echap(nom || langue || c.langue || "code")}</span>` +
+      `<button data-copier="${n}">Copier</button><button data-telecharger="${n}" data-nom="${echap(nom || ("code." + (EXT[langue] || EXT[c.langue] || "txt")))}">Télécharger</button>` +
+      `${S.projet ? `<button data-projet="${n}" data-chemin="${echap(nom)}" title="Enregistrer dans le projet ${echap(S.projet)}">💾 Projet</button>` : ""}` +
+      `${c.langue === "xml" || langue === "html" ? `<button data-apercu="${n}" title="Voir l'application dans le Studio">👁 Aperçu</button>` : ""}</div>` +
+      `<div class="corps">${lignes > 1 ? `<div class="nums">${Array.from({ length: lignes }, (_, i) => i + 1).join("\n")}</div>` : ""}<pre><code class="hljs">${c.html}</code></pre></div></div>`;
+    dernier = re.lastIndex; n++;
+    if (m[0].length === 0) break;
+  }
+  return html + texteMd(t.slice(dernier));
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copier],[data-telecharger],[data-projet],[data-apercu]");
+  if (!b) return;
+  const code = b.closest(".bloc-code").querySelector("code").textContent;
+  if (b.dataset.copier !== undefined) { navigator.clipboard.writeText(code).then(() => toast("Copié ✔"), () => toast("Copie impossible")); }
+  else if (b.dataset.projet !== undefined) enregistrerDansProjet(b.dataset.chemin, code);
+  else if (b.dataset.apercu !== undefined) apercuHtml(code);
+  else telechargerTexte(b.dataset.nom, code);
+});
+
+// ─── Affichage des messages ───
+function fil(mode) { return $(`#vue-${mode} [data-fil]`); }
+function defiler(mode) { const d = $(`#vue-${mode} .defile`); d.scrollTop = d.scrollHeight; }
+function majAccueil(mode) {
+  const vide = S.convs[mode].messages.length === 0;
+  $$(`#vue-${mode} [data-accueil]`).forEach(el => el.style.display = vide ? "" : "none");
+}
+function bulleToi(mode, texte, images) {
+  const el = document.createElement("div"); el.className = "msg toi";
+  el.innerHTML = `<div class="bulle">${images && images.length ? `<div class="photos">${images.map(i => `<img src="${i}" alt="photo">`).join("")}</div>` : ""}${echap(texte)}</div>`;
+  fil(mode).appendChild(el); majAccueil(mode); defiler(mode); return el;
+}
+function bulleIA(mode, html) {
+  const el = document.createElement("div"); el.className = "msg ia";
+  el.innerHTML = `<img class="avatar logo-badge" src="images/${mode === "codex" ? "marceau" : "tilexal"}.png" alt=""><div class="col-ia"><div class="bulle">${html || ""}</div>` +
+    `<div class="avis"><button data-avis="${mode}" title="Dis à l'IA ce qui n'allait pas : elle s'en souviendra">👎 Erreur</button></div></div>`;
+  fil(mode).appendChild(el); majAccueil(mode); defiler(mode); return el.querySelector(".bulle");
+}
+function rendreConversation(mode) {
+  fil(mode).innerHTML = "";
+  for (const m of S.convs[mode].messages) {
+    if (m.cache) continue;
+    if (m.role === "user") bulleToi(mode, m.affiche || m.content, m.images);
+    else if (m.role === "assistant" && m.agent && ROLES[m.agent]) bulleAgent(m.agent, m.modele).innerHTML += md(m.content);
+    else if (m.role === "verdict") verdict(m.content, m.ok);
+    else if (m.role === "assistant") bulleIA(mode, md(mode === "terminal" ? pourTerminal(m.content) : m.content));
+  }
+  majAccueil(mode); majTravail(); rendreSchemas(fil(mode));
+}
+
+// ─── Modèles ───
+function modeleDe(mode) { return S.choix[mode] || (mode === "chat" ? S.defauts.chat : mode === "rea" ? (S.defauts.rea || S.defauts.chat) : S.defauts.codex) || (S.modeles[0] || {}).nom; }
+function voit(nom) { const m = S.modeles.find(x => x.nom === nom); return !!(m && m.capacites.includes("vision")); }
+async function chargerModeles() {
+  const d = await api("/api/modeles");
+  S.modeles = d.modeles; S.defauts = { chat: d.chat, codex: d.codex };
+  for (const sel of $$("select[data-modele]")) {
+    const mode = sel.dataset.modele;
+    sel.innerHTML = S.modeles.map(m => `<option value="${echap(m.nom)}">${echap(m.nom)}${m.capacites.includes("vision") ? " 👁" : ""}</option>`).join("") || "<option>aucun modèle</option>";
+    sel.value = modeleDe(mode) || "";
+  }
+  for (const sel of $$("select[data-role]")) {
+    sel.innerHTML = S.modeles.map(m => `<option value="${echap(m.nom)}">${echap(m.nom)}</option>`).join("") || "<option>aucun</option>";
+    sel.value = modeleRole(sel.dataset.role) || "";
+  }
+  majBarreCodex(); rendreCerveau();
+  return d;
+}
+$$("select[data-modele]").forEach(sel => sel.addEventListener("change", async () => {
+  const mode = sel.dataset.modele; S.choix[mode] = sel.value;
+  if (mode === "rea") { toast(`REA utilise ${sel.value}`); return; }
+  const role = mode === "chat" ? "chat" : "codex";
+  try { await api("/api/config", { [role]: sel.value }); S.defauts[role] = sel.value; } catch (e) {}
+  majBarreCodex(); toast(`${mode === "chat" ? "Agent AL" : "Codex"} utilise ${sel.value}`);
+}));
+function majBarreCodex() {
+  const p = S.projet ? ` · 📁 ${S.projet}` : "";
+  $("#barre-codex").textContent = `Local : ${modeleDe("codex") || "aucun modèle"}${p} · sur la clé USB-C · hors ligne`;
+  const noms = [...new Set(["architecte", "codeur", "reviseur"].map(modeleRole).filter(Boolean))];
+  $("#barre-equipe").textContent = `Local : Équipe · ${noms.join(" + ") || "aucun modèle"}${p} · sur la clé USB-C · hors ligne`;
+  $("#barre-projets").textContent = `Projets${p} · sur la clé USB-C${S.projetInfo && S.projetInfo.lie ? " · relié à GitHub" : ""}`;
+}
+
+// ─── Pièces jointes : photos (Chat) et fichiers (Codex) ───
+function reduirePhoto(fichier) {
+  return new Promise((ok, ko) => {
+    const lecteur = new FileReader();
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1280, r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        ok(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = ko; img.src = lecteur.result;
+    };
+    lecteur.onerror = ko; lecteur.readAsDataURL(fichier);
+  });
+}
+async function ajouterPhotos(fichiers) {
+  for (const f of fichiers) if (f.type.startsWith("image/")) {
+    try { S.pieces.chat.push({ type: "photo", nom: f.name, donnees: await reduirePhoto(f) }); } catch (e) { toast("Photo illisible : " + f.name); }
+  }
+  rendrePieces("chat");
+}
+async function ajouterFichiers(fichiers) {
+  const mode = S.vue === "equipe" ? "equipe" : "codex";
+  for (const f of fichiers) {
+    if (f.size > 400000) { toast(`${f.name} est trop gros (max 400 Ko)`); continue; }
+    S.pieces[mode].push({ type: "fichier", nom: f.name, donnees: await f.text() });
+  }
+  rendrePieces(mode);
+}
+function rendrePieces(mode) {
+  const zone = $(`#vue-${mode} [data-pieces]`); if (!zone) return;
+  zone.innerHTML = S.pieces[mode].map((p, i) => `<div class="piece">${p.type === "photo" ? `<img src="${p.donnees}" alt="">` : `<span class="f">📄 ${echap(p.nom)}</span>`}<button data-retirer="${i}" title="Retirer">✕</button></div>`).join("");
+  zone.querySelectorAll("[data-retirer]").forEach(b => b.onclick = () => { S.pieces[mode].splice(+b.dataset.retirer, 1); rendrePieces(mode); });
+}
+$("#vue-chat [data-plus]").onclick = () => $("#choix-photo").click();
+$("#vue-codex [data-plus]").onclick = () => $("#choix-fichier").click();
+$("#vue-equipe [data-plus]").onclick = () => $("#choix-fichier").click();
+$("#choix-photo").onchange = e => { ajouterPhotos([...e.target.files]); e.target.value = ""; };
+$("#choix-fichier").onchange = e => { ajouterFichiers([...e.target.files]); e.target.value = ""; };
+$("#vue-chat [data-saisie]").addEventListener("paste", e => {
+  const imgs = [...(e.clipboardData || {}).files || []].filter(f => f.type.startsWith("image/"));
+  if (imgs.length) { e.preventDefault(); ajouterPhotos(imgs); }
+});
+for (const id of ["vue-chat", "vue-codex", "vue-equipe"]) {
+  const v = $("#" + id);
+  v.addEventListener("dragover", e => e.preventDefault());
+  v.addEventListener("drop", e => { e.preventDefault(); const f = [...e.dataTransfer.files]; id === "vue-chat" ? ajouterPhotos(f) : ajouterFichiers(f); });
+}
+
+// ─── Envoyer (Chat / Codex) ───
+function boutonEnvoi(mode, enCours) {
+  const b = $(`#vue-${mode} [data-envoyer]`);
+  b.classList.toggle("arreter", enCours);
+  if (mode === "codex") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
+  else if (mode === "rea") b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
+  else if (mode === "equipe") b.innerHTML = enCours ? "■" : "&lt;/&gt;";
+  else b.querySelector("span").textContent = enCours ? "ARRÊTER" : "ENVOYER";
+}
+async function reponseIA(mode, modele) {
+  const bulle = bulleIA(mode, "");
+  const z = animationReflexion(bulle, mode);
+  const ctrl = new AbortController(); S.enCours = ctrl; boutonEnvoi(mode, true);
+  let texte = "", prevu = false, termine = false;
+  const montrer = t => mode === "terminal" ? md(pourTerminal(t)) : md(t);
+  const peindre = () => { prevu = false; if (termine) return; z.reponse.innerHTML = montrer(texte) + '<span class="curseur"></span>'; defiler(mode); };
+  try {
+    await flux("/api/chat", { mode, modele, messages: S.convs[mode].messages.map(m => ({ role: m.role, content: m.content, images: m.images })) }, o => {
+      if (o.pensee) { z.pensee(o.pensee); defiler(mode); }
+      if (o.t) { z.repondre(); texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
+      if (o.erreur) throw new Error(o.erreur);
+    }, ctrl.signal);
+  } catch (e) {
+    if (e.name === "AbortError") texte += " [coupé]";
+    else { z.reponse.innerHTML = `<span class="erreur">Erreur IA : ${echap(e.message)}</span>`; notifier("Erreur IA : " + e.message); texte = ""; }
+  } finally { termine = true; z.terminer(); S.enCours = null; boutonEnvoi(mode, false); }
+  if (texte) { z.reponse.innerHTML = montrer(texte); rendreSchemas(z.reponse); S.convs[mode].messages.push({ role: "assistant", content: texte }); majTravail(); sauver(mode); }
+  return texte;
+}
+async function envoyer(mode) {
+  if (S.enCours) { S.enCours.abort(); return; }
+  const zone = $(`#vue-${mode} [data-saisie]`);
+  const texte = zone.value.trim(), pieces = S.pieces[mode];
+  if (!texte && !pieces.length) return;
+  if (mode === "terminal") { zone.value = ""; ajuster(zone); return tache(texte); }
+  const aRetenir = texte.match(/^\/retiens\s+(.+)/is) || texte.match(/^(?:retiens|souviens-toi)\s+(?:que\s+|bien\s+que\s+)?(.+)/is);
+  if (aRetenir && (mode === "chat" || mode === "codex")) {
+    zone.value = ""; ajuster(zone); bulleToi(mode, texte);
+    const e = await retenir(aRetenir[1], /^(réponds|parle|écris|appelle|utilise toujours|préf)/i.test(aRetenir[1]) ? "preference" : "fait", mode);
+    bulleIA(mode, e ? `<p>🧠 C'est noté, je vais m'en souvenir :</p><p><strong>${echap(e.texte)}</strong></p><p style="color:var(--gris);font-size:14px">Cerveau → Mémoire pour voir ou effacer mes souvenirs.</p>` : "<p>Je n'ai pas pu le retenir.</p>");
+    return;
+  }
+  const aDessiner = texte.match(/^\/image\s+(.+)/is);
+  if (aDessiner && mode !== "terminal") { zone.value = ""; ajuster(zone); return imageDansChat(mode, aDessiner[1].trim()); }
+  if (mode === "rea") { zone.value = ""; ajuster(zone); return lancerRea(texte); }
+  if (mode === "equipe") {
+    const fichiers = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n");
+    const affiche = (texte || "Améliore ces fichiers.") + (pieces.length ? "\n📄 " + pieces.map(p => p.nom).join(", ") : "");
+    S.pieces.equipe = []; rendrePieces("equipe"); zone.value = ""; ajuster(zone);
+    return lancerEquipe(contexteProjet() + (fichiers ? fichiers + "\n\n" : "") + (texte || "Améliore ces fichiers."), affiche);
+  }
+  let modele = modeleDe(mode);
+  if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
+  const msg = { role: "user", content: texte, affiche: texte };
+  if (mode === "chat" && pieces.length) {
+    msg.images = pieces.map(p => p.donnees);
+    if (!msg.content) msg.content = msg.affiche = "Décris cette photo.";
+    if (!voit(modele)) {
+      const v = S.modeles.find(m => m.capacites.includes("vision"));
+      if (!v) { toast("Aucun modèle de la clé ne voit les photos. Installe gemma3:4b dans Cerveau."); return; }
+      modele = v.nom; notifier(`📷 Photo : Agent AL utilise ${v.nom}, qui voit les images.`); toast(`📷 ${v.nom} regarde ta photo`);
+    }
+  }
+  if (mode === "codex" && S.projet) msg.content = contexteProjet() + msg.content;
+  if (mode === "codex" && pieces.length) {
+    msg.content = pieces.map(p => `Fichier: ${p.nom}\n\`\`\`\n${p.donnees}\n\`\`\``).join("\n\n") + "\n\n" + (texte || "Explique ce code.");
+    msg.affiche = (texte || "Explique ce code.") + "\n📄 " + pieces.map(p => p.nom).join(", ");
+  }
+  S.pieces[mode] = []; rendrePieces(mode);
+  zone.value = ""; ajuster(zone);
+  if (!S.convs[mode].titre) S.convs[mode].titre = (texte || "Photo").slice(0, 60);
+  S.convs[mode].messages.push(msg);
+  bulleToi(mode, msg.affiche, msg.images);
+  await reponseIA(mode, modele);
+}
+function ajuster(t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
+for (const mode of ["chat", "codex", "terminal", "equipe", "rea"]) {
+  const zone = $(`#vue-${mode} [data-saisie]`);
+  zone.addEventListener("input", () => ajuster(zone));
+  zone.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(mode); } });
+  $(`#vue-${mode} [data-envoyer]`).onclick = () => envoyer(mode);
+}
+
+// ─── Équipe IA : Architecte → Codeur → Réviseur (→ corrections) ───
+const ROLES = {
+  architecte: { nom: "ARCHITECTE", ico: "🧭", c: "#4FC3F7", systeme:
+    "Tu es l'Architecte d'une équipe de développeurs IA (LexOS). Tu ne codes pas : tu écris un PLAN court et clair, en français, pour le Codeur : 1) ce qu'il faut construire, 2) les fichiers à créer avec leur nom, 3) les étapes, 4) les pièges à éviter. Maximum 15 lignes. Ajoute ensuite le schéma du plan dans un bloc ```mermaid (flowchart TD, maximum 12 blocs). Mets TOUJOURS chaque étiquette entre guillemets, par exemple : A[\"Créer index.html\"] --> B{\"Données ?\"}." },
+  codeur: { nom: "CODEUR", ico: "💻", c: "#FF7A00", systeme:
+    "Tu es le Codeur d'une équipe de développeurs IA (LexOS). Tu écris du code complet, propre et fonctionnel en suivant le plan de l'Architecte. Pour chaque fichier, écris une ligne « Fichier: chemin/du/fichier » puis le bloc de code complet, sans rien couper. Explications très courtes, en français." },
+  reviseur: { nom: "RÉVISEUR", ico: "🔍", c: "#35D64C", systeme:
+    "Tu es le Réviseur d'une équipe de développeurs IA (LexOS). Tu vérifies le code du Codeur : bugs, erreurs de syntaxe, oublis par rapport à la demande, sécurité. Si le code est bon, commence ta réponse par « APPROUVÉ » et explique en une phrase. Sinon, commence par « CORRECTIONS : » puis donne au maximum 5 corrections précises et numérotées. Ne réécris pas le code." },
+};
+function modeleRole(role) {
+  if (S.roles[role]) return S.roles[role];
+  if (role === "codeur") return S.defauts.codex;
+  if (role === "reviseur") { const r = S.modeles.find(m => m.nom.startsWith("deepseek-r1")); if (r) return r.nom; }
+  return S.defauts.chat;
+}
+$$("select[data-role]").forEach(sel => sel.addEventListener("change", () => { S.roles[sel.dataset.role] = sel.value; majBarreCodex(); toast(`${ROLES[sel.dataset.role].nom} → ${sel.value}`); }));
+function bulleAgent(role, modele) {
+  const r = ROLES[role], el = document.createElement("div"); el.className = "msg ia";
+  el.innerHTML = `<div class="avatar-agent" style="--c:${r.c}">${r.ico}</div><div class="bulle"><div class="qui" style="--c:${r.c}">${r.nom}<span>${echap(modele || "")}</span></div><div class="corps-agent"></div></div>`;
+  fil("equipe").appendChild(el); majAccueil("equipe"); defiler("equipe");
+  return el.querySelector(".corps-agent");
+}
+function verdict(texte, ok, blocs) {
+  const el = document.createElement("div"); el.className = "verdict " + (ok ? "ok" : "ko"); el.textContent = texte;
+  const nommes = (blocs || []).filter(b => b.chemin);
+  if (S.projet && nommes.length) {
+    const b = document.createElement("button"); b.className = "btn-orange"; b.style.marginTop = "10px";
+    b.textContent = `💾 Enregistrer ${nommes.length} fichier${nommes.length > 1 ? "s" : ""} dans 📁 ${S.projet}`;
+    b.onclick = async () => { for (const f of nommes) await enregistrerDansProjet(f.chemin, f.code, true); toast(`✔ ${nommes.length} fichier(s) dans ${S.projet}`); b.disabled = true; };
+    el.appendChild(document.createElement("br")); el.appendChild(b);
+  }
+  fil("equipe").appendChild(el); defiler("equipe");
+}
+function codeDe(messages) {
+  const codes = messages.filter(m => m.agent === "codeur");
+  const dernier = codes.length ? codes[codes.length - 1].content : "";
+  return extraireBlocs(dernier).map(b => (b.chemin ? `Fichier: ${b.chemin}\n` : "") + "```" + b.langue + "\n" + b.code + "```").join("\n\n");
+}
+async function diffuser(cible, modele, messages, ctrl, role) {
+  const z = animationReflexion(cible, role);
+  let texte = "", prevu = false, fini = false;
+  const peindre = () => { prevu = false; if (!fini) { z.reponse.innerHTML = md(texte) + '<span class="curseur"></span>'; defiler("equipe"); } };
+  try {
+    await flux("/api/chat", { mode: "equipe", modele, messages }, o => {
+      if (o.pensee) { z.pensee(o.pensee); defiler("equipe"); }
+      if (o.t) { z.repondre(); texte += o.t; if (!prevu) { prevu = true; requestAnimationFrame(peindre); } }
+      if (o.erreur) throw new Error(o.erreur);
+    }, ctrl.signal);
+  } finally { fini = true; z.terminer(); z.reponse.innerHTML = md(texte || "…"); rendreSchemas(z.reponse); }
+  return texte;
+}
+async function agent(role, contenu, ctrl) {
+  const modele = modeleRole(role);
+  if (!modele) throw new Error("aucun modèle sur la clé");
+  const texte = await diffuser(bulleAgent(role, modele), modele, [{ role: "system", content: ROLES[role].systeme }, { role: "user", content: contenu }], ctrl, role);
+  S.convs.equipe.messages.push({ role: "assistant", content: texte, agent: role, modele });
+  return texte;
+}
+async function lancerEquipe(demande, affiche) {
+  const conv = S.convs.equipe;
+  if (!conv.titre) conv.titre = affiche.slice(0, 60);
+  conv.messages.push({ role: "user", content: demande, affiche });
+  bulleToi("equipe", affiche);
+  const ctrl = new AbortController(); S.enCours = ctrl; boutonEnvoi("equipe", true);
+  const avant = S.codeEquipe ? `\n\nCODE ACTUEL DU PROJET :\n${S.codeEquipe}` : "";
+  try {
+    const plan = await agent("architecte", `DEMANDE :\n${demande}${avant}`, ctrl);
+    let code = await agent("codeur", `DEMANDE :\n${demande}\n\nPLAN DE L'ARCHITECTE :\n${plan}${avant}`, ctrl);
+    const tours = +$("#tours").value; let ok = false; const corrections = [];
+    for (let t = 0; t <= tours; t++) {
+      const revue = await agent("reviseur", `DEMANDE :\n${demande}\n\nCODE DU CODEUR :\n${code}`, ctrl);
+      if (/^[\s*#>_]*APPROUV/i.test(revue)) { ok = true; break; }
+      corrections.push(revue);
+      if (t === tours) break;
+      code = await agent("codeur", `DEMANDE :\n${demande}\n\nTON CODE PRÉCÉDENT :\n${code}\n\nCORRECTIONS DEMANDÉES PAR LE RÉVISEUR :\n${revue}\n\nRéécris le code complet corrigé.`, ctrl);
+    }
+    S.codeEquipe = codeDe(conv.messages);
+    const v = ok ? "✔ Code approuvé par le Réviseur — il est dans TRAVAIL" : "⚠ Le Réviseur demande encore des corrections : relis-les ou redemande à l'équipe";
+    const derniers = conv.messages.filter(m => m.agent === "codeur");
+    conv.messages.push({ role: "verdict", content: v, ok }); verdict(v, ok, extraireBlocs(derniers.length ? derniers[derniers.length - 1].content : ""));
+    notifier(ok ? "👥 Équipe IA : code approuvé" : "👥 Équipe IA : corrections à revoir");
+    if (ok && corrections.length) apprendre("equipe", modeleRole("reviseur"),
+      `DEMANDE : ${demande.slice(0, 600)}\nERREURS TROUVÉES PAR LE RÉVISEUR (puis corrigées) :\n${corrections.join("\n---\n").slice(0, 2500)}`);
+  } catch (e) {
+    if (e.name === "AbortError") toast("Équipe arrêtée");
+    else { verdict("Erreur IA : " + e.message, false); notifier("Erreur Équipe IA : " + e.message); }
+  } finally {
+    S.enCours = null; boutonEnvoi("equipe", false); majTravail(); sauver("equipe");
+  }
+}
+
+// ─── CodexTerminal : l'IA propose, tu approuves ───
+function extraireCommande(rep) {
+  if (/^\s*FINI/i.test(rep)) return null;
+  for (const b of extraireBlocs(rep)) if (S.langues.includes(b.langue) && b.code.trim()) return b.code.trim();
+  return null;
+}
+function pourTerminal(t) {
+  return t.replace(/```[\s\S]*?(?:```|$)/g, "").replace(/^\s*FINI\s*:?\s*/i, "✔ ").trim() || "…";
+}
+function sensible(cmd) { return S.sensibles.some(p => { try { return new RegExp(p, "i").test(cmd); } catch (e) { return false; } }); }
+function carteCommande(cmd) {
+  return new Promise(ok => {
+    const danger = sensible(cmd), carte = document.createElement("div");
+    carte.className = "carte-cmd";
+    carte.innerHTML = `<div class="titre">COMMANDE PROPOSÉE</div><textarea spellcheck="false" readonly>${echap(cmd)}</textarea>` +
+      (danger ? `<div class="danger">⚠ Commande sensible : tape <b>OUI</b> en majuscules pour l'exécuter.</div>` : "") +
+      `<div class="actions">${danger ? '<input class="oui" placeholder="OUI" spellcheck="false">' : ""}<button class="go">▶ Exécuter</button><button data-a="m">✎ Modifier</button><button data-a="n">✕ Refuser</button><button data-a="q">■ Arrêter</button></div>`;
+    fil("terminal").appendChild(carte); defiler("terminal");
+    const zone = carte.querySelector("textarea"), go = carte.querySelector(".go"), oui = carte.querySelector(".oui");
+    ajuster(zone);
+    if (oui) { go.disabled = true; oui.oninput = () => go.disabled = oui.value !== "OUI"; setTimeout(() => oui.focus(), 50); }
+    const finir = r => { carte.querySelectorAll("button,input").forEach(b => b.disabled = true); zone.readOnly = true; ok({ ...r, carte }); };
+    go.onclick = () => finir({ action: "o", commande: zone.value.trim(), confirme: oui ? oui.value : undefined });
+    carte.querySelector('[data-a="m"]').onclick = () => { zone.readOnly = false; zone.focus(); toast("Modifie la commande, puis Exécuter"); };
+    carte.querySelector('[data-a="n"]').onclick = () => finir({ action: "n" });
+    carte.querySelector('[data-a="q"]').onclick = () => finir({ action: "q" });
+    if ($("#auto").checked && !danger) setTimeout(() => go.onclick(), 150);
+  });
+}
+async function tache(texte) {
+  const conv = S.convs.terminal, modele = modeleDe("terminal");
+  if (!modele) { toast("Aucun modèle : va dans Cerveau"); return; }
+  if (!conv.titre) conv.titre = texte.slice(0, 60);
+  conv.messages.push({ role: "user", content: "TÂCHE : " + texte, affiche: texte });
+  bulleToi("terminal", texte);
+  const echecs = [], reussites = [];
+  for (let etape = 1; etape <= 15; etape++) {
+    const rep = await reponseIA("terminal", modele);
+    if (!rep || rep.endsWith("[coupé]")) return;
+    const cmd = extraireCommande(rep);
+    if (!cmd) {
+      toast("✔ Tâche terminée"); notifier("CodexTerminal : tâche terminée — " + texte.slice(0, 50));
+      if (echecs.length && reussites.length) apprendre("terminal", modele,
+        `TÂCHE : ${texte}\nCOMMANDES QUI ONT ÉCHOUÉ :\n${echecs.map(e => `$ ${e.commande}\n${e.sortie}`).join("\n")}\nCE QUI A FONCTIONNÉ ENSUITE :\n${reussites.map(c => "$ " + c).join("\n")}`);
+      return;
+    }
+    const d = await carteCommande(cmd);
+    if (d.action === "q") { conv.messages.push({ role: "user", content: "L'utilisateur a arrêté la tâche.", cache: true }); d.carte.classList.add("fini"); return; }
+    if (d.action === "n") {
+      conv.messages.push({ role: "user", content: "L'utilisateur a REFUSÉ cette commande. Propose autre chose ou termine avec FINI:.", cache: true });
+      d.carte.classList.add("fini"); continue;
+    }
+    let res;
+    try { res = await api("/api/exec", { commande: d.commande, confirme: d.confirme }); }
+    catch (e) { res = { code: 1, sortie: "Refusé : " + e.message, dossier: S.dossier }; }
+    S.dossier = res.dossier; $("#dossier").value = res.dossier;
+    if (res.code !== 0) echecs.push({ commande: d.commande, sortie: (res.sortie || "").slice(-400) });
+    else if (echecs.length) reussites.push(d.commande);
+    const sortie = document.createElement("div");
+    sortie.innerHTML = `<div class="sortie">${echap(res.sortie || "(aucune sortie)")}</div><div class="code-sortie ${res.code === 0 ? "ok" : "ko"}">code de sortie : ${res.code}</div>`;
+    d.carte.appendChild(sortie); d.carte.classList.add("fini"); defiler("terminal");
+    conv.messages.push({ role: "user", cache: true, content: `Commande exécutée : ${d.commande}\nDossier : ${res.dossier}\nCode de sortie : ${res.code}\nSortie :\n${(res.sortie || "(aucune)").slice(0, 8000)}` });
+    sauver("terminal");
+  }
+  toast("Arrêt après 15 étapes : redonne la tâche pour continuer.");
+}
+$$("#vue-terminal .puce").forEach(p => p.onclick = () => { const z = $("#vue-terminal [data-saisie]"); z.value = p.textContent; envoyer("terminal"); });
+$("#btn-dossier").onclick = async () => {
+  try { const d = await api("/api/dossier", { dossier: $("#dossier").value }); S.dossier = d.dossier; $("#dossier").value = d.dossier; toast("Dossier : " + d.dossier); }
+  catch (e) { toast(e.message); }
+};
+$("#dossier").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-dossier").click(); });
+
+// ─── Panneau TRAVAIL (tout le code des réponses) ───
+function majTravail() {
+  const blocs = [];
+  for (const mode of ["chat", "codex", "equipe", "rea"]) for (const m of S.convs[mode].messages) if (m.role === "assistant" && m.agent !== "reviseur") blocs.push(...extraireBlocs(m.content));
+  $("#contenu-travail").innerHTML = blocs.length ? blocs.map(b => "```" + b.langue + "\n" + b.code + "```").map((t, i) => md((blocs[i].chemin ? "Fichier: " + blocs[i].chemin + "\n" : "") + t)).join("")
+    : '<div class="vide">Le code proposé par l\'IA apparaîtra ici.</div>';
+  rendreSchemas($("#contenu-travail"));
+}
+function ouvrirStudio(onglet) {
+  $("#travail").classList.add("ouvert");
+  if (innerWidth >= 1200) { document.body.classList.add("studio"); $("#btn-studio").classList.add("actif"); }
+  ongletStudio(onglet || "code");
+}
+function ongletStudio(o) {
+  $$("#travail [data-onglet]").forEach(b => b.classList.toggle("actif", b.dataset.onglet === o));
+  $("#contenu-travail").hidden = o !== "code"; $("#contenu-apercu").hidden = o !== "apercu";
+}
+$$("#travail [data-onglet]").forEach(b => b.onclick = () => ongletStudio(b.dataset.onglet));
+function montrerApercu(url, titre) {
+  S.apercuUrl = url;
+  $("#titre-apercu").textContent = titre;
+  const cadre = $("#cadre-apercu");
+  cadre.innerHTML = "";
+  const f = document.createElement("iframe");
+  f.setAttribute("sandbox", "allow-scripts allow-forms allow-modals allow-popups");
+  f.title = "Aperçu"; f.src = url;
+  cadre.appendChild(f);
+  ouvrirStudio("apercu");
+}
+function montrerContenu(html, titre) {
+  S.apercuUrl = null;
+  $("#titre-apercu").textContent = titre;
+  const cadre = $("#cadre-apercu");
+  cadre.innerHTML = `<div class="feuille">${html}</div>`;
+  rendreSchemas(cadre);
+  ouvrirStudio("apercu");
+}
+async function apercuHtml(code) {
+  try { const d = await api("/api/apercu", { html: code }); montrerApercu(d.url, "Aperçu du code"); }
+  catch (e) { toast(e.message); }
+}
+async function apercuProjet(fichier) {
+  if (!S.projet) return toast("Choisis un projet");
+  try { const d = await api("/api/apercu", { projet: S.projet, fichier }); montrerApercu(d.url, `📁 ${S.projet}/${fichier}`); }
+  catch (e) { toast(e.message); }
+}
+$("#ap-tel").onclick = () => $("#cadre-apercu").classList.add("tel");
+$("#ap-pc").onclick = () => $("#cadre-apercu").classList.remove("tel");
+$("#ap-recharger").onclick = () => { if (S.apercuUrl) montrerApercu(S.apercuUrl, $("#titre-apercu").textContent); };
+$("#ap-fenetre").onclick = () => { if (S.apercuUrl) window.open(S.apercuUrl, "_blank", "noopener"); };
+$("#onglet-travail").onclick = () => ouvrirStudio("code");
+$("#fermer-travail").onclick = () => { $("#travail").classList.remove("ouvert"); document.body.classList.remove("studio"); $("#btn-studio").classList.remove("actif"); };
+$("#btn-studio").onclick = () => {
+  const on = !document.body.classList.contains("studio");
+  document.body.classList.toggle("studio", on); $("#btn-studio").classList.toggle("actif", on);
+  $("#travail").classList.toggle("ouvert", on);
+  if (on) ongletStudio(S.apercuUrl ? "apercu" : "code");
+  if (on && S.vue === "chat") aller("codex");
+};
+
+// ─── Conversations sauvegardées sur la clé ───
+async function sauver(mode) {
+  const c = S.convs[mode]; if (!c.messages.length) return;
+  try {
+    const d = await api("/api/conversations", { id: c.id, titre: c.titre, mode, modele: modeleDe(mode), messages: c.messages.filter(m => !m.cache).map(m => ({ role: m.role, content: m.affiche || m.content, images: m.images, agent: m.agent, modele: m.modele, ok: m.ok })) });
+    if (!c.id) { c.id = d.id; listerConvs(); }
+  } catch (e) {}
+}
+const ICONES = { chat: "💬", codex: "💻", terminal: "⌨️", equipe: "👥", rea: "🤖" };
+async function listerConvs() {
+  let convs = [];
+  try { convs = await api("/api/conversations"); } catch (e) {}
+  $("#liste-convs").innerHTML = convs.length ? "" : '<div class="vide">Aucune conversation sauvegardée.</div>';
+  for (const c of convs.slice(0, 40)) {
+    const b = document.createElement("div"); b.className = "conv";
+    b.innerHTML = `<span>${ICONES[c.mode] || "💬"}</span><button class="t" style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${echap(c.titre)}</button><button class="x" title="Supprimer">✕</button>`;
+    b.querySelector(".t").onclick = () => ouvrirConv(c.id);
+    b.querySelector(".x").onclick = async () => { await api("/api/supprimer-conversation", { id: c.id }); if (S.convs[c.mode] && S.convs[c.mode].id === c.id) S.convs[c.mode] = nouvelle(c.mode); listerConvs(); };
+    $("#liste-convs").appendChild(b);
+  }
+  const n = convs.filter(c => c.mode === "chat").length;
+  $("#recentes").innerHTML = n ? `${n} conversation${n > 1 ? "s" : ""} sauvegardée${n > 1 ? "s" : ""} — <button id="voir-convs">voir</button>` : "Aucune conversation sauvegardée.";
+  const v = $("#voir-convs"); if (v) v.onclick = ouvrirTiroir;
+}
+async function ouvrirConv(id) {
+  const d = await api("/api/conversation?id=" + encodeURIComponent(id));
+  const mode = d.mode in S.convs ? d.mode : "chat";
+  S.convs[mode] = { id, mode, titre: d.titre, messages: d.messages.map(m => ({ role: m.role, content: m.content, agent: m.agent, modele: m.modele, ok: m.ok })) };
+  if (mode === "equipe") S.codeEquipe = codeDe(S.convs.equipe.messages);
+  aller(mode); rendreConversation(mode); fermerTiroir();
+}
+$("#fab").onclick = () => {
+  const mode = S.convs[S.vue] ? S.vue : "chat";
+  S.convs[mode] = nouvelle(mode); rendreConversation(mode); aller(mode); toast("Nouvelle conversation");
+};
+
+// ─── Cerveau ───
+function rendreCerveau() {
+  $("#grille-modeles").innerHTML = S.modeles.map(m => `
+    <div class="modele">
+      <div class="nom">${echap(m.nom)}</div>
+      <div class="meta"><span>${taille(m.taille)}</span>${m.capacites.includes("vision") ? '<span class="badge vert">👁 voit les photos</span>' : ""}
+        ${S.defauts.chat === m.nom ? '<span class="badge orange">💬 Chat</span>' : ""}${S.defauts.codex === m.nom ? '<span class="badge orange">💻 Codex</span>' : ""}</div>
+      <div class="boutons">
+        <button data-role="chat" data-nom="${echap(m.nom)}" class="${S.defauts.chat === m.nom ? "choisi" : ""}">Pour le Chat</button>
+        <button data-role="codex" data-nom="${echap(m.nom)}" class="${S.defauts.codex === m.nom ? "choisi" : ""}">Pour Codex</button>
+        <button data-suppr="${echap(m.nom)}" title="Supprimer de la clé">🗑</button>
+      </div>
+    </div>`).join("") || '<div class="vide">Aucun modèle sur la clé. Télécharge-en un ci-dessous.</div>';
+  $$("#grille-modeles [data-role]").forEach(b => b.onclick = async () => {
+    await api("/api/config", { [b.dataset.role]: b.dataset.nom });
+    delete S.choix[b.dataset.role]; if (b.dataset.role === "codex") delete S.choix.terminal;
+    await chargerModeles(); toast(`${b.dataset.role === "chat" ? "Chat" : "Codex"} → ${b.dataset.nom}`);
+  });
+  $$("#grille-modeles [data-suppr]").forEach(b => b.onclick = async () => {
+    if (!confirm(`Supprimer ${b.dataset.suppr} de la clé ?`)) return;
+    try { await api("/api/supprimer-modele", { nom: b.dataset.suppr }); await chargerModeles(); toast("Supprimé"); } catch (e) { toast(e.message); }
+  });
+}
+$$("[data-sugg]").forEach(b => b.onclick = () => $("#nom-modele").value = b.dataset.sugg || b.textContent);
+$("#btn-telecharger").onclick = async () => {
+  const nom = $("#nom-modele").value.trim(); if (!nom) return;
+  const barre = $("#progres"), statut = $("#statut-telech"); barre.hidden = false;
+  try {
+    await flux("/api/telecharger-modele", { nom }, o => {
+      if (o.erreur) throw new Error(o.erreur);
+      if (o.total && o.completed) { barre.firstElementChild.style.width = (100 * o.completed / o.total).toFixed(1) + "%"; statut.textContent = `${o.status} · ${taille(o.completed)} / ${taille(o.total)}`; }
+      else if (o.status) statut.textContent = o.status;
+    });
+    statut.textContent = `${nom} installé sur la clé ✔`; notifier(`🧠 ${nom} installé sur la clé`); await chargerModeles();
+  } catch (e) { statut.textContent = "Téléchargement arrêté : " + e.message; }
+};
+
+// ─── Projets : fichiers sur la clé + GitHub ───
+function contexteProjet() {
+  if (!S.projet || !S.projetInfo) return "";
+  const noms = S.projetInfo.fichiers.slice(0, 80).map(f => f.chemin).join(", ");
+  return `(Projet actif : ${S.projet}. Fichiers : ${noms || "aucun"}. Pour un fichier, écris « Fichier: chemin » avant son bloc de code.)\n\n`;
+}
+function journal(texte, vider) {
+  const j = $("#p-journal"); j.hidden = false;
+  if (vider) j.innerHTML = "";
+  const l = document.createElement("div"); l.textContent = texte;
+  if (/could not read Username|Authentication failed|terminal prompts disabled|Permission denied|403/i.test(texte)) {
+    l.className = "astuce";
+    l.textContent += "\n→ GitHub demande une connexion : dans un terminal, tape une fois  gh auth login  (ou configure un jeton), puis réessaie.";
+  }
+  j.appendChild(l); j.scrollTop = j.scrollHeight;
+}
+async function chargerProjets(choisir) {
+  let d;
+  try { d = await api("/api/projets"); } catch (e) { toast(e.message); return; }
+  S.git = d.git;
+  try { S.projet = choisir || S.projet || localStorage.getItem("lexos-projet"); } catch (e) {}
+  if (S.projet && !d.projets.some(p => p.nom === S.projet)) S.projet = null;
+  if (!S.projet && d.projets.length) S.projet = d.projets[0].nom;
+  $("#choix-projet").innerHTML = d.projets.map(p => `<option value="${echap(p.nom)}">📁 ${echap(p.nom)}</option>`).join("") || "<option value=''>Aucun projet</option>";
+  $("#choix-projet").value = S.projet || "";
+  await ouvrirProjet(S.projet);
+}
+async function ouvrirProjet(nom) {
+  S.projet = nom || null; S.projetInfo = null;
+  try { if (nom) localStorage.setItem("lexos-projet", nom); } catch (e) {}
+  if (nom) { try { S.projetInfo = await api("/api/projet?nom=" + encodeURIComponent(nom)); } catch (e) { toast(e.message); } }
+  rendreGithub(); rendreFichiers(); majBarreCodex();
+  if (!S.projetInfo || !S.projetInfo.fichiers.some(f => f.chemin === S.fichierOuvert)) fermerFichier();
+}
+function couleurFichier(chemin) { return COULEUR_LANG[EXT_LANG[chemin.split(".").pop().toLowerCase()]] || "#666"; }
+function rendreFichiers() {
+  const zone = $("#p-fichiers");
+  if (!S.projetInfo) { zone.innerHTML = '<div class="vide">Crée ou choisis un projet.</div>'; return; }
+  zone.innerHTML = S.projetInfo.fichiers.map(f => `<button data-f="${echap(f.chemin)}" class="${f.chemin === S.fichierOuvert ? "actif" : ""}"><span class="pt" style="background:${couleurFichier(f.chemin)}"></span>${echap(f.chemin)}</button>`).join("") || '<div class="vide">Aucun fichier.</div>';
+  zone.querySelectorAll("[data-f]").forEach(b => b.onclick = () => ouvrirFichier(b.dataset.f));
+}
+function rendreGithub() {
+  const z = $("#p-github"), i = S.projetInfo;
+  if (!i) { z.innerHTML = '<span>Aucun projet ouvert.</span>'; return; }
+  if (S.git === false) { z.innerHTML = '<span>Installe git pour relier GitHub : <code>sudo apt install git</code></span>'; return; }
+  if (!i.lie) {
+    z.innerHTML = '<span>○ Pas relié à GitHub</span><div class="rang-gh"><button class="btn-petit" id="gh-lier">🔗 Relier à un dépôt GitHub</button></div>';
+    $("#gh-lier").onclick = lierGithub; return;
+  }
+  z.innerHTML = `<span><span class="point"></span> Relié à GitHub · ${echap(i.branche || "")}${i.modifs ? ` · <b style="color:var(--jaune)">${i.modifs} modif${i.modifs > 1 ? "s" : ""}</b>` : " · à jour"}</span>
+    <span class="gh-url">${echap(i.url.replace("https://", ""))}</span>
+    <div class="rang-gh"><button class="btn-petit" id="gh-recuperer">⟳ Récupérer</button><button class="btn-petit" id="gh-envoyer">⬆ Envoyer</button></div>`;
+  $("#gh-recuperer").onclick = () => git("/api/projet/github/recuperer", { nom: S.projet }, "Récupération depuis GitHub…");
+  $("#gh-envoyer").onclick = () => {
+    const message = prompt("Message pour décrire tes changements :", "Mise à jour depuis LexOS IA");
+    if (message !== null) git("/api/projet/github/envoyer", { nom: S.projet, message }, "Envoi vers GitHub…");
+  };
+}
+async function git(chemin, corps, titre, apres) {
+  journal(titre, true);
+  let code = null;
+  try {
+    await flux(chemin, corps, o => { if (o.l) journal(o.l); if (o.erreur) journal("Erreur : " + o.erreur); if ("fin" in o) code = o.fin; });
+  } catch (e) { journal("Erreur : " + e.message); }
+  journal(code === 0 ? "✔ Terminé" : "✖ Échec (voir ci-dessus)");
+  if (code === 0) { toast("✔ " + titre.replace("…", "")); if (apres) await apres(); }
+  await ouvrirProjet(S.projet);
+  return code;
+}
+async function lierGithub() {
+  const url = prompt("Adresse du dépôt GitHub (crée-le d'abord sur github.com) :", "https://github.com/alexmarceauprevost812-source/" + S.projet);
+  if (!url) return;
+  try { await api("/api/projet/github/lier", { nom: S.projet, url }); toast("🔗 Relié à GitHub"); await ouvrirProjet(S.projet); }
+  catch (e) { toast(e.message); }
+}
+$("#choix-projet").onchange = e => ouvrirProjet(e.target.value);
+$("#p-nouveau").onclick = async () => {
+  const nom = prompt("Nom du nouveau projet (minuscules, chiffres, - ou _) :", "mon-projet");
+  if (!nom) return;
+  try { const d = await api("/api/projet/creer", { nom: nom.trim().toLowerCase() }); await chargerProjets(d.nom); toast("📁 Projet créé"); }
+  catch (e) { toast(e.message); }
+};
+$("#p-cloner").onclick = async () => {
+  const url = prompt("Adresse du dépôt GitHub à copier sur la clé :", "https://github.com/alexmarceauprevost812-source/");
+  if (!url) return;
+  const nom = url.trim().replace(/\/$/, "").split("/").pop().replace(/\.git$/, "").toLowerCase();
+  await git("/api/projet/github/cloner", { url: url.trim(), nom }, "Copie du dépôt sur la clé…", () => chargerProjets(nom));
+};
+$("#p-nouveau-fichier").onclick = async () => {
+  if (!S.projet) return toast("Crée d'abord un projet");
+  const chemin = prompt("Nom du fichier (ex. index.html, src/app.py) :");
+  if (!chemin) return;
+  try { await api("/api/projet/ecrire", { nom: S.projet, chemin, contenu: "" }); await ouvrirProjet(S.projet); ouvrirFichier(chemin.replace(/^\/+/, "")); }
+  catch (e) { toast(e.message); }
+};
+// Éditeur avec couleurs : le texte coloré est derrière une zone de saisie transparente
+const ZONE = $("#p-texte"), COULEURS = $("#p-couleurs");
+function colorerEditeur() {
+  const c = colorer(ZONE.value + (ZONE.value.endsWith("\n") ? " " : ""), langueDuNom(S.fichierOuvert || ""));
+  COULEURS.innerHTML = c.html;
+  COULEURS.parentElement.scrollTop = ZONE.scrollTop; COULEURS.parentElement.scrollLeft = ZONE.scrollLeft;
+}
+ZONE.addEventListener("input", () => { colorerEditeur(); $("#p-nom-fichier").classList.add("modifie"); });
+ZONE.addEventListener("scroll", () => { COULEURS.parentElement.scrollTop = ZONE.scrollTop; COULEURS.parentElement.scrollLeft = ZONE.scrollLeft; });
+ZONE.addEventListener("keydown", e => {
+  if (e.key === "Tab") { e.preventDefault(); document.execCommand("insertText", false, "  "); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); enregistrerFichier(); }
+});
+function fermerFichier() {
+  S.fichierOuvert = null; ZONE.value = ""; ZONE.disabled = true; COULEURS.innerHTML = "";
+  $("#p-nom-fichier").textContent = "Aucun fichier ouvert"; $("#p-nom-fichier").classList.remove("modifie");
+}
+async function ouvrirFichier(chemin) {
+  if ($("#p-nom-fichier").classList.contains("modifie") && !confirm("Le fichier ouvert a des changements non enregistrés. Continuer ?")) return;
+  try {
+    const d = await api(`/api/projet/fichier?nom=${encodeURIComponent(S.projet)}&chemin=${encodeURIComponent(chemin)}`);
+    S.fichierOuvert = chemin; ZONE.disabled = false; ZONE.value = d.contenu; ZONE.scrollTop = 0;
+    $("#p-nom-fichier").textContent = chemin; $("#p-nom-fichier").classList.remove("modifie");
+    colorerEditeur(); rendreFichiers();
+  } catch (e) { toast(e.message); }
+}
+async function enregistrerFichier() {
+  if (!S.fichierOuvert) return;
+  try { await api("/api/projet/ecrire", { nom: S.projet, chemin: S.fichierOuvert, contenu: ZONE.value }); $("#p-nom-fichier").classList.remove("modifie"); toast("💾 Enregistré sur la clé"); if (S.projetInfo && S.projetInfo.git) ouvrirProjet(S.projet); }
+  catch (e) { toast(e.message); }
+}
+async function enregistrerDansProjet(chemin, code, silencieux) {
+  if (!S.projet) return toast("Choisis d'abord un projet (menu → Projets)");
+  chemin = chemin || prompt(`Nom du fichier dans 📁 ${S.projet} :`, "nouveau.txt");
+  if (!chemin) return;
+  try {
+    await api("/api/projet/ecrire", { nom: S.projet, chemin, contenu: code });
+    if (!silencieux) toast(`💾 ${chemin} → 📁 ${S.projet}`);
+    if (S.projetInfo) S.projetInfo = await api("/api/projet?nom=" + encodeURIComponent(S.projet));
+    rendreFichiers(); rendreGithub();
+  } catch (e) { toast(e.message); }
+}
+$("#p-enregistrer").onclick = enregistrerFichier;
+$("#p-apercu").onclick = () => {
+  const f = S.fichierOuvert || "";
+  if (/\.mmd$/i.test(f)) return montrerContenu(blocSchema(ZONE.value, f), `🗺 ${S.projet}/${f}`);
+  if (/\.(md|markdown)$/i.test(f)) return montrerContenu(md(ZONE.value), `📄 ${S.projet}/${f}`);
+  apercuProjet(/\.html?$/i.test(f) ? f : "index.html");
+};
+$("#p-codex").onclick = () => {
+  if (!S.fichierOuvert) return toast("Ouvre d'abord un fichier");
+  S.pieces.codex.push({ type: "fichier", nom: S.fichierOuvert, donnees: ZONE.value });
+  aller("codex"); rendrePieces("codex"); toast("Fichier joint à Codex : écris ta demande");
+};
+$("#p-suppr").onclick = async () => {
+  if (!S.fichierOuvert || !confirm(`Supprimer ${S.fichierOuvert} ? (une copie est gardée)`)) return;
+  try { await api("/api/projet/supprimer-fichier", { nom: S.projet, chemin: S.fichierOuvert }); fermerFichier(); await ouvrirProjet(S.projet); toast("🗑 Supprimé"); }
+  catch (e) { toast(e.message); }
+};
+
+// ─── Moteur de schémas : Mermaid (sur la clé), dessiné puis animé étape par étape ───
+let promesseMermaid = null;
+function chargerMermaid() {
+  if (!promesseMermaid) promesseMermaid = new Promise((ok, ko) => {
+    const sc = document.createElement("script"); sc.src = "vendor/mermaid.min.js";
+    sc.onload = () => {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", htmlLabels: false, flowchart: { curve: "basis", htmlLabels: false },
+        themeVariables: { background: "#0d0d0d", primaryColor: "#1b1b1b", primaryTextColor: "#f4f4f4", primaryBorderColor: "#FF7A00",
+          lineColor: "#FF9A3D", secondaryColor: "#141414", tertiaryColor: "#101010", clusterBkg: "#121212", clusterBorder: "#444",
+          noteBkgColor: "#1b1b1b", noteTextColor: "#f4f4f4", fontFamily: "Space Grotesk, sans-serif", fontSize: "15px" } });
+      ok(window.mermaid);
+    };
+    sc.onerror = () => ko(new Error("moteur de schémas introuvable"));
+    document.head.appendChild(sc);
+  });
+  return promesseMermaid;
+}
+function blocSchema(code, nom) {
+  return `<div class="schema" data-mermaid="${encodeURIComponent(code)}"><div class="tete"><span>🗺</span><span class="nom">${echap(nom || "schéma")}</span>` +
+    `<button data-rejouer>▶ Rejouer</button><button data-video>🎬 MP4</button><button data-image>⬇ Image</button><button data-voir-code>&lt;/&gt; Code</button>` +
+    `${S.projet ? `<button data-schema-projet data-chemin="${echap(nom || "")}">💾 Projet</button>` : ""}</div>` +
+    `<div class="dessin"><pre class="attente">✏️ dessin du schéma…</pre></div></div>`;
+}
+let numSchema = 0;
+async function rendreSchemas(racine) {
+  if (!racine) return;
+  const blocs = [...racine.querySelectorAll(".schema[data-mermaid]:not([data-fait])")];
+  if (!blocs.length) return;
+  let mm;
+  try { mm = await chargerMermaid(); } catch (e) { return; }
+  for (const b of blocs) {
+    b.dataset.fait = "1";
+    const code = decodeURIComponent(b.dataset.mermaid), zone = b.querySelector(".dessin"), id = "schema-" + (++numSchema);
+    try {
+      let aDessiner = code;
+      if (!(await mm.parse(code, { suppressErrors: true }))) {
+        aDessiner = reparerMermaid(code);
+        if (await mm.parse(aDessiner, { suppressErrors: true })) {
+          b.dataset.mermaid = encodeURIComponent(aDessiner);
+          if (!S.leconSchema) { S.leconSchema = true; retenir("Dans les schémas mermaid, mettre chaque étiquette entre guillemets, ex. A[\"Texte (détail)\"].", "lecon", "chat", true); }
+        }
+      }
+      const { svg } = await mm.render(id, aDessiner);
+      zone.innerHTML = svg;
+      animerSchema(zone.querySelector("svg"));
+    } catch (e) {
+      document.getElementById("d" + id)?.remove();
+      zone.innerHTML = `<div><div class="erreur-schema">⚠ Schéma illisible : l'IA a fait une erreur de syntaxe. Voici son code :</div><pre class="attente">${echap(code)}</pre></div>`;
+    }
+  }
+}
+function animerSchema(svg) {
+  if (!svg) return;
+  const noeuds = [...svg.querySelectorAll("g.node, g.cluster, g.actor, g.note, text.actor")];
+  const traits = [...svg.querySelectorAll("path.flowchart-link, .edgePaths path, path.messageLine0, path.messageLine1")];
+  // les étiquettes de flèche vides (mises par Mermaid en haut du schéma) ne comptent pas dans l'animation
+  const etiquettes = [...svg.querySelectorAll("g.edgeLabel, text.messageText")].filter(el => el.textContent.trim() && el.getBoundingClientRect().width > 0);
+  const tous = [...noeuds, ...traits, ...etiquettes];
+  if (!tous.length) return;
+  // Ordre de lecture : de haut en bas, puis de gauche à droite (un bloc avant la flèche qui en part)
+  const position = el => { const r = el.getBoundingClientRect(); return [r.top + (noeuds.includes(el) ? -2 : 1), r.left]; };
+  tous.map(el => [el, position(el)]).sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1])
+    .forEach(([el], i) => { el.dataset.ordre = i; });
+  for (const el of traits) {
+    if (el.getTotalLength) { const l = el.getTotalLength(); el.style.strokeDasharray = l; el.classList.add("trait"); }
+    if (el.getAttribute("marker-end")) el.dataset.fleche = el.getAttribute("marker-end");
+  }
+  for (const el of [...noeuds, ...etiquettes]) el.classList.add("anim");
+  jouerSchema(svg);
+}
+function elementsAnimes(svg) {
+  return [...svg.querySelectorAll(".anim, .trait")].sort((a, b) => (+a.dataset.ordre || 0) - (+b.dataset.ordre || 0));
+}
+// État de l'animation au temps t (ms) — sert à l'écran ET à la vidéo, pour un rendu identique
+const ANIM = { debut: 400, pas: 280, fondu: 450, trace: 650 };
+const doux = x => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+function poserSchema(els, t) {
+  els.forEach((el, i) => {
+    const t0 = ANIM.debut + i * ANIM.pas;
+    if (el.classList.contains("trait")) {
+      const L = parseFloat(el.style.strokeDasharray) || 0, p = doux((t - t0) / ANIM.trace);
+      el.style.strokeDashoffset = L * (1 - p);
+      if (el.dataset.fleche) { if (p >= 0.97) el.setAttribute("marker-end", el.dataset.fleche); else el.removeAttribute("marker-end"); }
+    } else el.style.opacity = doux((t - t0) / ANIM.fondu);
+  });
+}
+function dureeSchema(n) { return ANIM.debut + n * ANIM.pas + ANIM.trace + 150; }
+function jouerSchema(svg) {
+  const els = elementsAnimes(svg);
+  els.forEach(el => { el.style.transition = "none"; el.classList.remove("cache"); });
+  const fin = dureeSchema(els.length), t0 = performance.now();
+  if (svg._anim) cancelAnimationFrame(svg._anim);
+  const image = () => {
+    const t = performance.now() - t0;
+    poserSchema(els, t);
+    if (t < fin && svg.isConnected) svg._anim = requestAnimationFrame(image);
+  };
+  image();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-rejouer],[data-image],[data-voir-code],[data-schema-projet],[data-video]");
+  if (!b) return;
+  const bloc = b.closest(".schema"), code = decodeURIComponent(bloc.dataset.mermaid), svg = bloc.querySelector("svg");
+  if (b.dataset.video !== undefined) { videoSchema(bloc, b); return; }
+  if (b.dataset.rejouer !== undefined) { if (svg) jouerSchema(svg); }
+  else if (b.dataset.image !== undefined) { if (svg) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg.outerHTML], { type: "image/svg+xml" })); a.download = "schema.svg"; a.click(); } }
+  else if (b.dataset.voirCode !== undefined) { const z = bloc.querySelector(".dessin"); const vu = z.dataset.code === "1"; z.dataset.code = vu ? "" : "1"; if (vu) { delete bloc.dataset.fait; z.innerHTML = '<pre class="attente">✏️ dessin du schéma…</pre>'; rendreSchemas(bloc.parentElement); } else z.innerHTML = `<pre class="attente">${echap(code)}</pre>`; }
+  else enregistrerDansProjet(b.dataset.chemin || prompt(`Nom du schéma dans 📁 ${S.projet} :`, "schemas/plan.mmd"), code);
+});
+// Les petits modèles oublient souvent les guillemets : A[Texte (avec, virgule)] → A["Texte (avec, virgule)"]
+function reparerMermaid(code) {
+  const net = t => t.replace(/"/g, "'").trim();
+  return code.replace(/^\s*```\w*\s*$/gm, "").split("\n").map(l => {
+    if (/^\s*(flowchart|graph|classDef|class|style|linkStyle|click|%%)\b/.test(l)) return l;
+    return l
+      .replace(/\b([\w-]+)\[(?![\["(\/\\])([^\[\]"]*?)\](?!\))/g, (m, id, t) => `${id}["${net(t)}"]`)
+      .replace(/\b([\w-]+)\{(?![{"])([^{}"]*?)\}/g, (m, id, t) => `${id}{"${net(t)}"}`)
+      .replace(/\|([^|"]+)\|/g, (m, t) => `|"${net(t)}"|`);
+  }).join("\n");
+}
+
+// ─── Vidéo MP4 d'un schéma animé ───
+let policeB64 = null, logoImg = null;
+async function ressourcesVideo() {
+  if (policeB64 === null) {
+    try {
+      const o = new Uint8Array(await (await fetch("polices/space-grotesk.woff2")).arrayBuffer());
+      let t = ""; for (let i = 0; i < o.length; i += 0x8000) t += String.fromCharCode(...o.subarray(i, i + 0x8000));
+      policeB64 = btoa(t);
+    } catch (e) { policeB64 = ""; }
+  }
+  if (!logoImg) { logoImg = new Image(); logoImg.src = "images/tilexal.png"; await logoImg.decode().catch(() => {}); }
+}
+function chargerImage(url) { return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; }); }
+function base64De(blob) { return new Promise(ok => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.readAsDataURL(blob); }); }
+async function videoSchema(bloc, bouton) {
+  const svg = bloc.querySelector(".dessin svg");
+  if (!svg) return toast("Le schéma n'est pas dessiné");
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast("Ce navigateur ne peut pas créer de vidéo");
+  bouton.disabled = true; const texteBouton = bouton.textContent; bouton.textContent = "🎬 …";
+  try {
+    await ressourcesVideo();
+    const W = 1280, H = 720, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    const clone = svg.cloneNode(true);
+    const vb = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width ? svg.viewBox.baseVal : svg.getBBox();
+    clone.setAttribute("width", vb.width); clone.setAttribute("height", vb.height);
+    clone.removeAttribute("style"); clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    if (policeB64) { const st = document.createElementNS("http://www.w3.org/2000/svg", "style"); st.textContent = `@font-face{font-family:"Space Grotesk";src:url(data:font/woff2;base64,${policeB64}) format("woff2")}`; clone.prepend(st); }
+    const els = elementsAnimes(clone);
+    els.forEach(el => { el.classList.remove("anim", "cache"); el.style.transition = "none"; });
+    const FIN = dureeSchema(els.length), TOTAL = FIN + 2000;
+    const poser = t => poserSchema(els, t);
+    const zoneW = W - 140, zoneH = H - 190, ech = Math.min(zoneW / vb.width, zoneH / vb.height, 3);
+    const dw = vb.width * ech, dh = vb.height * ech, dx = (W - dw) / 2, dy = 110 + (zoneH - dh) / 2;
+    const dessiner = async t => {
+      poser(t);
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: "image/svg+xml" }));
+      const img = await chargerImage(url); URL.revokeObjectURL(url);
+      ctx.fillStyle = "#0A0A0A"; ctx.fillRect(0, 0, W, H);
+      const g = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, W * 0.7); g.addColorStop(0, "rgba(255,122,0,0.06)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      if (logoImg && logoImg.naturalWidth) ctx.drawImage(logoImg, 40, 22, 80, 80 * logoImg.naturalHeight / logoImg.naturalWidth);
+      ctx.fillStyle = "#FF7A00"; ctx.font = "700 30px 'Space Grotesk', sans-serif"; ctx.fillText("TI-LEX-AL · Schéma", 140, 62);
+      ctx.fillStyle = "#9b9b9b"; ctx.font = "18px 'Space Grotesk', sans-serif"; ctx.fillText(bloc.querySelector(".nom").textContent, 142, 90);
+      ctx.fillStyle = "#6d6d6d"; ctx.font = "15px 'Space Grotesk', sans-serif"; ctx.fillText("LexOS IA · IA locale sur clé USB-C · ⚜ Produit du Québec", 40, H - 26);
+      ctx.drawImage(img, dx, dy, dw, dh);
+    };
+    let video, ext;
+    if (S.ffmpeg) {
+      // Image par image : rien n'est perdu, ffmpeg assemble un vrai MP4 H.264
+      const IPS = 24, n = Math.ceil(TOTAL / 1000 * IPS) + 1, images = [];
+      for (let i = 0; i < n; i++) {
+        await dessiner(i * 1000 / IPS);
+        images.push(canvas.toDataURL("image/jpeg", 0.88).split(",")[1]);
+        if (i % 6 === 0) { bouton.textContent = `🎬 ${Math.round(100 * i / n)} %`; await new Promise(r => setTimeout(r, 0)); }
+      }
+      bouton.textContent = "🎬 MP4…";
+      const d = await api("/api/video-images", { images, ips: IPS });
+      const brut = atob(d.mp4), octets = new Uint8Array(brut.length);
+      for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
+      video = new Blob([octets], { type: "video/mp4" }); ext = "mp4";
+    } else {
+      // Sans ffmpeg : le navigateur enregistre lui-même (MP4 si possible, sinon WebM)
+      const type = ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
+      const enregistrer = async () => {
+        await dessiner(0);
+        const piste = canvas.captureStream(30), track = piste.getVideoTracks()[0];
+        const rec = new MediaRecorder(piste, { mimeType: type, videoBitsPerSecond: 5_000_000 });
+        const morceaux = []; rec.ondataavailable = e => { if (e.data.size) morceaux.push(e.data); };
+        const fini = new Promise(ok => rec.onstop = ok);
+        rec.start(250);
+        const t0 = performance.now();
+        for (;;) {
+          const t = performance.now() - t0;
+          await dessiner(Math.min(t, TOTAL));
+          if (track.requestFrame) track.requestFrame();
+          if (t >= TOTAL) break;
+          await new Promise(r => setTimeout(r, 16));
+        }
+        rec.stop(); await fini; track.stop();
+        return new Blob(morceaux, { type });
+      };
+      video = await enregistrer();
+      if (video.size < 20000) video = await enregistrer();
+      if (video.size < 20000) throw new Error("le navigateur n'a pas pu enregistrer la vidéo (installe ffmpeg : sudo apt install ffmpeg)");
+      ext = type.startsWith("video/mp4") ? "mp4" : "webm";
+    }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(video); a.download = `schema-lexos.${ext}`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(ext === "mp4" ? "🎬 Vidéo MP4 téléchargée" : "🎬 Vidéo WebM téléchargée (installe ffmpeg pour le MP4)");
+    notifier(`🎬 Vidéo du schéma créée (${ext.toUpperCase()}, ${(video.size / 1e6).toFixed(1)} Mo)`);
+  } catch (e) { toast("Vidéo impossible : " + e.message); }
+  finally { bouton.disabled = false; bouton.textContent = texteBouton; }
+}
+
+function schemaDuProjet() {
+  if (!S.projetInfo) return toast("Choisis un projet");
+  const etiquette = t => String(t).replace(/"/g, "'");
+  const lignes = ["flowchart LR", `  racine(["📁 ${etiquette(S.projet)}"])`, "  style racine fill:#2a1400,stroke:#FF7A00,stroke-width:2px"];
+  const vus = new Map(); let n = 0;
+  for (const f of S.projetInfo.fichiers.slice(0, 60)) {
+    const parts = f.chemin.split("/"); let parent = "racine", chemin = "";
+    parts.forEach((part, i) => {
+      chemin += (chemin ? "/" : "") + part;
+      if (!vus.has(chemin)) {
+        const k = "n" + (n++), fichier = i === parts.length - 1; vus.set(chemin, k);
+        lignes.push(fichier ? `  ${k}["${etiquette(part)}"]` : `  ${k}[/"📂 ${etiquette(part)}"/]`);
+        lignes.push(`  ${parent} --> ${k}`);
+        lignes.push(`  style ${k} stroke:${fichier ? couleurFichier(part) : "#888"},stroke-width:2px`);
+      }
+      parent = vus.get(chemin);
+    });
+  }
+  return lignes.join("\n");
+}
+$("#p-schema").onclick = () => { const c = schemaDuProjet(); if (c) montrerContenu(blocSchema(c, "schemas/projet.mmd"), `🗺 Schéma de ${S.projet}`); };
+
+// ─── REA : l'agent ti-lex dans l'interface TI-LEX-AL ───
+const OUTILS_REA = {
+  web_search: ["🔍", "Recherche web"], fetch_page: ["🌐", "Lit la page"], describe_image: ["👁", "Regarde l'image"],
+  list_files: ["📂", "Liste les fichiers"], read_file: ["📄", "Lit le fichier"], write_file: ["✏️", "Écrit le fichier"],
+  run_command: ["⌨️", "Lance la commande"],
+};
+async function etatRea() {
+  try {
+    const d = await api("/api/rea");
+    $("#point-rea").classList.toggle("rouge", !d.disponible);
+    if (!d.disponible) { $("#rea-dispo").innerHTML = "⚠ REA n'est pas encore sur la clé : relance l'installateur avec <code>--sans-moteur --sans-modeles</code>."; return; }
+    S.defauts.rea = d.modele; S.reaVision = d.vision;
+    const sel = $("select[data-modele=rea]"); if (sel && !S.choix.rea) sel.value = d.modele;
+    $("#rea-dispo").textContent = `Modèle : ${d.modele} · vision : ${d.vision} · projet : ${S.projet || "rea"}`;
+    majBarreRea({ modele: modeleDe("rea"), vision: d.vision, projet: S.projet || "rea" });
+  } catch (e) {}
+}
+function majBarreRea(i) { $("#barre-rea").textContent = `Local : REA · ${i.modele} · vision ${i.vision} · 📁 ${i.projet} · sur la clé USB-C`; }
+function carteOutil(zone, texte) {
+  const m = String(texte).match(/^\W*(\w+)\((.*)\)\s*$/s), nom = m ? m[1] : "", args = m ? m[2] : texte;
+  const [ico, libelle] = OUTILS_REA[nom] || ["🔧", nom || "Outil"];
+  const el = document.createElement("div"); el.className = "outil";
+  el.innerHTML = `<span class="ico">${ico}</span><span class="nom">${echap(libelle)}</span><code>${echap(args)}</code>`;
+  zone.appendChild(el);
+}
+function cartePermission(zone, o, attentes) {
+  attentes.add(o.id);
+  const carte = document.createElement("div"); carte.className = "carte-cmd";
+  carte.innerHTML = `<div class="titre">REA DEMANDE TA PERMISSION</div><pre>${echap(o.confirmer)}</pre>` +
+    `<div class="actions"><button class="go">✔ Oui</button><button data-non>✕ Non</button></div>`;
+  zone.appendChild(carte); defiler("rea");
+  notifier("🤖 REA demande ta permission");
+  const repondre = async oui => {
+    carte.querySelectorAll("button").forEach(b => b.disabled = true); carte.classList.add("fini");
+    carte.querySelector(".titre").textContent = oui ? "✔ PERMISSION DONNÉE" : "✕ PERMISSION REFUSÉE";
+    attentes.delete(o.id);
+    try { await api("/api/rea/repondre", { id: o.id, oui }); } catch (e) { toast(e.message); }
+  };
+  carte.querySelector(".go").onclick = () => repondre(true);
+  carte.querySelector("[data-non]").onclick = () => repondre(false);
+}
+async function lancerRea(texte) {
+  if (S.enCours) { S.enCours.abort(); return; }
+  const conv = S.convs.rea;
+  if (!conv.titre) conv.titre = texte.slice(0, 60);
+  conv.messages.push({ role: "user", content: texte, affiche: texte });
+  bulleToi("rea", texte);
+  const bulle = bulleIA("rea", ""), z = animationReflexion(bulle, "rea");
+  const outils = document.createElement("div"); outils.className = "rea-outils"; z.reponse.before(outils);
+  const ctrl = new AbortController(), attentes = new Set(); S.enCours = ctrl; boutonEnvoi("rea", true);
+  let reponse = "";
+  try {
+    await flux("/api/rea/demander", { texte, projet: S.projet || "rea", modele: S.choix.rea || "" }, o => {
+      if (o.info) majBarreRea(o.info);
+      if (o.outil) { carteOutil(outils, o.outil); defiler("rea"); }
+      if (o.confirmer) cartePermission(outils, o, attentes);
+      if (o.t) { z.repondre(); reponse = o.t; }
+      if (o.erreur) throw new Error(o.erreur);
+    }, ctrl.signal);
+  } catch (e) {
+    if (e.name === "AbortError") { for (const id of attentes) api("/api/rea/repondre", { id, oui: false }).catch(() => {}); reponse = reponse || "(arrêté)"; }
+    else { z.reponse.innerHTML = `<span class="erreur">Erreur : ${echap(e.message)}</span>`; notifier("Erreur REA : " + e.message); }
+  } finally { z.terminer(); S.enCours = null; boutonEnvoi("rea", false); }
+  if (reponse) {
+    z.reponse.innerHTML = md(reponse); rendreSchemas(z.reponse);
+    conv.messages.push({ role: "assistant", content: reponse }); majTravail(); sauver("rea");
+    if (S.projet) ouvrirProjet(S.projet).catch(() => {});  // REA a peut-être créé des fichiers
+  }
+}
+$$("#vue-rea .puce").forEach(p => p.onclick = () => { const z = $("#vue-rea [data-saisie]"); z.value = p.textContent; envoyer("rea"); });
+$("#rea-oublier").onclick = async () => {
+  try { await api("/api/rea/oublier", { projet: S.projet || "rea" }); } catch (e) {}
+  S.convs.rea = nouvelle("rea"); rendreConversation("rea"); toast("🤖 Nouvelle conversation avec REA");
+};
+
+// ─── Mode réflexion animé : on voit l'IA travailler ───
+const PENSEES = {
+  chat: ["Agent AL réfléchit", "analyse ta demande", "cherche la meilleure réponse", "met ses idées en ordre"],
+  codex: ["Codex réfléchit", "lit ton code", "prépare la solution", "écrit le code"],
+  terminal: ["planifie la prochaine étape", "choisit la commande", "vérifie le résultat"],
+  architecte: ["L'Architecte réfléchit", "découpe le travail", "dessine le plan"],
+  codeur: ["Le Codeur réfléchit", "écrit le code", "assemble les fichiers"],
+  reviseur: ["Le Réviseur réfléchit", "relit le code", "cherche les bugs"],
+  rea: ["REA réfléchit", "choisit ses outils", "travaille dans le projet", "vérifie le résultat"],
+};
+function animationReflexion(zone, cle) {
+  zone.innerHTML = `<div class="pensee"><button class="pensee-tete" type="button"><span class="onde"><i></i><i></i><i></i><i></i></span>` +
+    `<span class="pensee-titre"></span><span class="chrono">0 s</span><span class="fleche">▾</span></button><div class="pensee-texte"></div></div>` +
+    `<div class="reponse"><span class="points"><i></i><i></i><i></i></span></div>`;
+  const msg = zone.closest(".msg"), libelles = PENSEES[cle] || PENSEES.chat;
+  if (msg) msg.classList.add("travaille");
+  const z = { el: zone.querySelector(".pensee"), titre: zone.querySelector(".pensee-titre"), texte: zone.querySelector(".pensee-texte"),
+    chrono: zone.querySelector(".chrono"), reponse: zone.querySelector(".reponse"), pense: "", debut: performance.now(), n: 0, repond: false };
+  const secondes = () => Math.max(1, Math.round((performance.now() - z.debut) / 1000));
+  const changer = () => { if (!z.repond) z.titre.textContent = libelles[z.n++ % libelles.length] + "…"; };
+  changer();
+  z.boucle = setInterval(() => { if (!z.repond) { z.chrono.textContent = secondes() + " s"; if (secondes() % 3 === 0) changer(); } }, 1000);
+  z.el.querySelector(".pensee-tete").onclick = () => z.el.classList.toggle("ouverte");
+  z.pensee = t => {
+    z.pense += t;
+    z.el.classList.add("a-pense");
+    if (!z.repond) z.el.classList.add("ouverte");
+    z.texte.textContent = z.pense.trimStart().slice(-4000);
+    z.texte.scrollTop = z.texte.scrollHeight;
+  };
+  z.repondre = () => {
+    if (z.repond) return;
+    z.repond = true; z.duree = secondes();
+    z.el.classList.remove("ouverte"); z.el.classList.add("finie");
+    z.titre.textContent = z.pense ? `💭 A réfléchi ${z.duree} s` : ""; z.chrono.textContent = "";
+    if (!z.pense) z.el.style.display = "none";
+  };
+  z.terminer = () => { clearInterval(z.boucle); if (msg) msg.classList.remove("travaille"); z.repondre(); };
+  return z;
+}
+
+// ─── Mémoire : les IA apprennent de leurs erreurs ───
+async function retenir(texte, type, source, silencieux) {
+  try {
+    const d = await api("/api/memoire/ajouter", { texte, type, source });
+    if (!silencieux) notifier(`🧠 Retenu : ${d.entree.texte}`);
+    if (S.vue === "cerveau") chargerMemoire();
+    return d.entree;
+  } catch (e) { if (!silencieux) toast(e.message); return null; }
+}
+async function apprendre(source, modele, contexte) {
+  try {
+    const d = await api("/api/memoire/apprendre", { source, modele, contexte });
+    if (d.lecon && d.nouveau) { toast("🧠 Leçon apprise : " + d.lecon); notifier("🧠 Leçon apprise : " + d.lecon); }
+  } catch (e) {}
+}
+async function chargerMemoire() {
+  let d;
+  try { d = await api("/api/memoire"); } catch (e) { return; }
+  $("#memo-auto").checked = d.apprendre !== false;
+  const n = d.entrees.length;
+  $("#memo-compte").textContent = n ? `${n} souvenir${n > 1 ? "s" : ""}` : "";
+  const source = { terminal: "CodexTerminal", equipe: "Équipe IA", chat: "Chat", codex: "Codex", manuel: "toi" };
+  $("#memo-liste").innerHTML = n ? d.entrees.map(e => `
+    <div class="souvenir"><span class="ico">${d.types[e.type] || "🧩"}</span>
+      <div class="txt">${echap(e.texte)}<div class="meta">${{ lecon: "Leçon", correction: "Ta correction", fait: "Fait", preference: "Préférence" }[e.type] || ""} · appris par ${echap(source[e.source] || e.source)} · ${new Date(e.date * 1000).toLocaleDateString("fr-CA")}${e.utilisations ? ` · rappelé ${e.utilisations} fois` : ""}</div></div>
+      <button data-oublier="${e.id}" title="Oublier">✕</button></div>`).join("")
+    : '<div class="vide">Aucun souvenir pour l\'instant. Tes IA apprendront de leurs erreurs, et tu peux leur dire « /retiens … » dans le Chat.</div>';
+  $$("#memo-liste [data-oublier]").forEach(b => b.onclick = async () => { await api("/api/memoire/supprimer", { id: b.dataset.oublier }); chargerMemoire(); });
+}
+$("#memo-ajouter").onclick = async () => {
+  const t = $("#memo-texte").value.trim(); if (!t) return;
+  if (await retenir(t, $("#memo-type").value, "manuel", true)) { $("#memo-texte").value = ""; toast("🧠 Retenu"); chargerMemoire(); }
+};
+$("#memo-texte").addEventListener("keydown", e => { if (e.key === "Enter") $("#memo-ajouter").click(); });
+$("#memo-auto").onchange = e => api("/api/memoire/reglage", { apprendre: e.target.checked }).then(() => toast(e.target.checked ? "Apprentissage automatique activé" : "Apprentissage automatique désactivé"));
+$("#memo-vider").onclick = async () => { if (confirm("Effacer TOUTE la mémoire des IA ?")) { await api("/api/memoire/supprimer", { tout: true }); chargerMemoire(); toast("Mémoire effacée"); } };
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-avis]"); if (!b) return;
+  let question = "", m = b.closest(".msg");
+  while ((m = m.previousElementSibling)) if (m.classList.contains("toi")) { question = m.textContent.trim(); break; }
+  const quoi = prompt("Qu'est-ce qui n'allait pas dans cette réponse ? L'IA va s'en souvenir pour la prochaine fois :");
+  if (!quoi || !quoi.trim()) return;
+  const ent = await retenir(`À éviter : ${quoi.trim()}${question ? ` (à propos de « ${question.slice(0, 80)} »)` : ""}`, "correction", b.dataset.avis);
+  if (ent) { b.textContent = "🧠 Retenu"; b.disabled = true; toast("🧠 Merci, je m'en souviendrai"); }
+});
+
+// ─── Navigation, tiroir, thème, notifications ───
+// ─── Images : Z-Image Turbo sur la clé ───
+const PHASES_IMAGE = { chargement: "Chargement de Z-Image Turbo depuis la clé…", dessin: "Je dessine", finition: "Finition de l'image…" };
+S.images = { format: "carre", liste: [], urls: {}, etat: null, enCours: false };
+async function urlImage(nom) {  // l'image passe par l'API (jeton) puis devient une URL blob
+  if (S.images.urls[nom]) return S.images.urls[nom];
+  const r = await fetch("/api/image?nom=" + encodeURIComponent(nom), { headers: { "X-LexOS-Jeton": JETON } });
+  if (!r.ok) throw new Error("image introuvable");
+  return (S.images.urls[nom] = URL.createObjectURL(await r.blob()));
+}
+async function chargerImages() {
+  try {
+    const d = await api("/api/images");
+    S.images.etat = d.etat; S.images.liste = d.images;
+  } catch (e) { S.images.etat = { pret: false, manque: ["serveur"] }; S.images.liste = []; }
+  const absent = $("#img-absent"), pret = S.images.etat.pret;
+  $("#point-images").classList.toggle("eteint", !pret);
+  absent.hidden = pret;
+  if (!pret) absent.innerHTML = `<strong>🎨 Le moteur d'images n'est pas encore sur ta clé.</strong><br>
+    Sur le PC, avec Internet, tape (≈ 8 Go) :<br><code>bash usb/installer-sur-cle.sh /media/$USER/LEXOS --sans-moteur --sans-modeles --images</code>`;
+  rendreGalerie();
+}
+function rendreGalerie() {
+  const g = $("#galerie");
+  if (!S.images.liste.length) { g.innerHTML = S.images.etat?.pret ? '<div class="vide">Tes images apparaîtront ici.</div>' : ""; return; }
+  g.innerHTML = S.images.liste.map(i => `
+    <div class="vignette" data-nom="${echap(i.nom)}">
+      <img alt="${echap(i.texte)}">
+      <div class="legende">${echap(i.texte || i.nom)}</div>
+      <div class="meta">${i.largeur ? i.largeur + "×" + i.hauteur : ""}${i.secondes ? " · " + i.secondes + " s" : ""}${i.graine != null ? " · 🎲 " + i.graine : ""}</div>
+      <div class="actions">
+        <button data-act="dl" title="Télécharger">⬇</button>
+        <button data-act="projet" title="Mettre dans le projet actif (dossier images/)">📁 Projet</button>
+        <button data-act="refaire" title="Reprendre le texte et la graine pour la modifier">✏️ Modifier</button>
+        <button data-act="suppr" title="Supprimer de la clé">🗑</button>
+      </div>
+    </div>`).join("");
+  $$("#galerie .vignette").forEach(async v => {
+    const nom = v.dataset.nom, info = S.images.liste.find(i => i.nom === nom), img = v.querySelector("img");
+    urlImage(nom).then(u => img.src = u).catch(() => {});
+    img.onclick = () => agrandir(img.src);
+    v.querySelectorAll("[data-act]").forEach(b => b.onclick = async () => {
+      const act = b.dataset.act;
+      if (act === "dl") { const a = document.createElement("a"); a.href = await urlImage(nom); a.download = nom; a.click(); }
+      if (act === "refaire") { $("#img-texte").value = info.texte; $("#img-graine").value = info.graine ?? ""; $("#img-texte").focus(); toast("Change le texte, garde la graine : l'image restera proche"); }
+      if (act === "projet") {
+        if (!S.projet) return toast("Choisis d'abord un projet dans 📁 Projets");
+        try { const r = await api("/api/image/projet", { nom, projet: S.projet }); toast(`Ajoutée à ${S.projet}/${r.chemin}`); } catch (e) { toast(e.message); }
+      }
+      if (act === "suppr") {
+        if (!confirm("Supprimer cette image de la clé ?")) return;
+        await api("/api/image/supprimer", { nom }).catch(e => toast(e.message));
+        URL.revokeObjectURL(S.images.urls[nom]); delete S.images.urls[nom]; chargerImages();
+      }
+    });
+  });
+}
+function agrandir(src) {
+  const f = document.createElement("div"); f.className = "img-grande"; f.innerHTML = `<img src="${src}" alt="">`;
+  f.onclick = () => f.remove(); document.body.appendChild(f);
+}
+// Crée une image ; surEtat(texte, pourcentage) suit l'avancement. Retourne l'info de l'image.
+async function dessiner(texte, options, surEtat) {
+  if (S.images.enCours) throw new Error("une image est déjà en cours");
+  S.images.enCours = true; let info = null, erreur = null;
+  try {
+    await flux("/api/image/creer", { texte, ...options }, o => {
+      if (o.erreur) erreur = o.erreur;
+      if (o.info) surEtat(o.info, null);
+      if (o.progres) {
+        const p = o.progres, nom = PHASES_IMAGE[p.phase] || "";
+        if (p.phase === "dessin" && p.total) surEtat(`${nom} <small>étape ${p.etape} / ${p.total}</small>`, 10 + 80 * p.etape / p.total);
+        else if (p.phase === "finition") surEtat(nom, 92);
+        else surEtat(nom, 5);
+      }
+      if (o.image) info = o.image;
+    });
+  } finally { S.images.enCours = false; }
+  if (erreur || !info) throw new Error(erreur || "aucune image reçue");
+  return info;
+}
+async function creerImage() {
+  const texte = $("#img-texte").value.trim();
+  if (!texte) return toast("Décris d'abord l'image à créer");
+  const boite = $("#img-encours"), phase = $("#img-phase"), barre = $("#img-barre"), bouton = $("#img-creer");
+  const [l, h] = (S.images.etat?.formats || {})[S.images.format] || [1, 1];
+  $("#img-toile").style.aspectRatio = `${l} / ${h}`; $("#img-toile").style.maxWidth = `min(100%, ${Math.round(420 * l / h)}px)`;
+  boite.hidden = false; bouton.disabled = true; bouton.textContent = "⏳ En cours…";
+  boite.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  try {
+    const info = await dessiner(texte, { format: S.images.format, graine: $("#img-graine").value.trim() || null },
+      (html, pct) => { phase.innerHTML = html; if (pct != null) barre.style.width = pct + "%"; });
+    barre.style.width = "100%";
+    notifier(`🎨 Image créée en ${info.secondes} s`);
+    await chargerImages();
+  } catch (e) { toast("Image non créée : " + e.message); }
+  finally { boite.hidden = true; barre.style.width = "0"; bouton.disabled = false; bouton.textContent = "🎨 Créer"; }
+}
+$("#img-creer").onclick = creerImage;
+$("#img-texte").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) creerImage(); });
+$$("#vue-images [data-format]").forEach(b => b.onclick = () => {
+  S.images.format = b.dataset.format; $$("#vue-images [data-format]").forEach(x => x.classList.toggle("choisi", x === b));
+});
+$$("#vue-images [data-idee]").forEach(b => b.onclick = () => { $("#img-texte").value = b.textContent; $("#img-texte").focus(); });
+// « /image … » dans le Chat : l'image apparaît dans la conversation
+async function imageDansChat(mode, texte) {
+  bulleToi(mode, "/image " + texte);
+  const id = "ic" + Date.now();
+  bulleIA(mode, `<p id="${id}">🎨 <span>Je prépare ton image…</span></p>`);
+  const etat = () => document.getElementById(id)?.querySelector("span");
+  try {
+    const info = await dessiner(texte, { format: "carre" }, (html) => { const s = etat(); if (s) s.innerHTML = html; });
+    const p = document.getElementById(id);
+    if (p) p.outerHTML = `<p>🎨 Voici ton image (${info.secondes} s · 🎲 ${info.graine}) :</p><img class="image-chat" src="${await urlImage(info.nom)}" alt="${echap(texte)}">
+      <p style="color:var(--gris);font-size:14px">Elle est sur la clé : menu 🎨 Images pour la télécharger ou la mettre dans un projet.</p>`;
+    const defile = $(`#vue-${mode} .defile`), img = $(`#vue-${mode} .fil .image-chat:last-of-type`);
+    const enBas = () => defile && defile.scrollTo({ top: defile.scrollHeight, behavior: "smooth" });
+    if (img) img.onload = enBas; enBas();
+    S.images.liste = []; // la galerie se recharge à la prochaine visite
+  } catch (e) { const s = etat(); if (s) s.textContent = "Image non créée : " + e.message; }
+}
+function aller(vue) {
+  S.vue = vue;
+  $$(".vue").forEach(v => v.classList.toggle("active", v.id === "vue-" + vue));
+  $$(".nav[data-vue]").forEach(n => n.classList.toggle("actif", n.dataset.vue === vue));
+  $("#fab").style.display = ["cerveau", "projets", "images"].includes(vue) ? "none" : "";
+  if (vue === "cerveau") { chargerModeles().catch(() => {}); chargerMemoire(); }
+  if (vue === "projets") chargerProjets();
+  if (vue === "rea") etatRea();
+  if (vue === "images") chargerImages();
+  const z = $(`#vue-${vue} [data-saisie]`); if (z && matchMedia("(pointer:fine)").matches) z.focus();
+  if (innerWidth < 1200) fermerTiroir();
+}
+function ouvrirTiroir() { $("#tiroir").classList.add("ouvert"); $("#voile").classList.add("ouvert"); }
+function fermerTiroir() { $("#tiroir").classList.remove("ouvert"); $("#voile").classList.remove("ouvert"); }
+$("#btn-menu").onclick = () => {
+  if (innerWidth >= 1200) document.body.classList.toggle("tiroir-fixe");
+  else ($("#tiroir").classList.contains("ouvert") ? fermerTiroir() : ouvrirTiroir());
+};
+$("#voile").onclick = fermerTiroir;
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  fermerTiroir(); $("#notifs").classList.remove("ouvert");
+  if (!document.body.classList.contains("studio")) $("#travail").classList.remove("ouvert");
+});
+$$(".nav[data-vue]").forEach(n => n.onclick = () => aller(n.dataset.vue));
+$$("[data-aller]").forEach(n => n.onclick = () => aller(n.dataset.aller));
+$$(".nav[data-ouvrir]").forEach(n => n.onclick = async () => {
+  try {
+    const d = await api("/api/ouvrir", { quoi: n.dataset.ouvrir, projet: S.projet });
+    toast(d.ok ? (n.dataset.ouvrir === "rea" ? `🤖 REA s'ouvre dans un terminal${S.projet ? ` · 📁 ${S.projet}` : ""}` : "Ouverture…") : "Impossible d'ouvrir ici");
+  } catch (e) { toast(e.message); }
+});
+function appliquerTheme(t) { document.documentElement.dataset.theme = t; $("#btn-theme").textContent = t === "jour" ? "☀️" : "🌙"; }
+$("#btn-theme").onclick = () => {
+  const t = document.documentElement.dataset.theme === "jour" ? "nuit" : "jour"; appliquerTheme(t);
+  try { localStorage.setItem("lexos-theme", t); } catch (e) {}
+};
+try { appliquerTheme(localStorage.getItem("lexos-theme") || "nuit"); } catch (e) { appliquerTheme("nuit"); }
+$("#btn-cloche").onclick = () => {
+  const p = $("#notifs"); p.classList.toggle("ouvert");
+  p.innerHTML = S.notifs.length ? S.notifs.map(n => `<div class="n">${echap(n.t)}<time>${n.quand.toLocaleTimeString("fr-CA")}</time></div>`).join("") : '<div class="n">Aucune notification.</div>';
+  S.nonLues = 0; $("#pastille").hidden = true;
+};
+document.addEventListener("click", e => { if (!e.target.closest("#notifs,#btn-cloche")) $("#notifs").classList.remove("ouvert"); });
+$("#btn-quitter").onclick = async () => {
+  if (!confirm("Arrêter les IA de la clé ?")) return;
+  try { await api("/api/quitter", {}); } catch (e) {}
+  $("#fin").classList.add("vu");
+};
+
+// ─── Téléphone : code QR à scanner ───
+function montrerTelephone(e) {
+  $("#modal-tel").classList.add("vu");
+  if (!e.actif) { $("#qr-tel").innerHTML = ""; $("#lien-tel").textContent = "Accès téléphone coupé."; return; }
+  let svg = "";
+  try { const q = qrcode(0, "M"); q.addData(e.url); q.make(); svg = q.createSvgTag({ cellSize: 6, margin: 3 }); } catch (err) {}
+  $("#qr-tel").innerHTML = svg || "<p>Code QR indisponible : utilise le lien ci-dessous.</p>";
+  $("#lien-tel").textContent = e.url;
+}
+async function activerTelephone(nouveau) {
+  try { montrerTelephone(await api("/api/telephone", { actif: true, nouveau })); if (nouveau) toast("Nouveau code : les anciens raccourcis sont bloqués"); }
+  catch (e) { toast(e.message); }
+}
+$("#btn-telephone").onclick = () => { fermerTiroir(); activerTelephone(false); };
+$("#nouveau-code").onclick = () => activerTelephone(true);
+$("#couper-tel").onclick = async () => { try { montrerTelephone(await api("/api/telephone", { actif: false })); toast("Accès téléphone coupé"); } catch (e) { toast(e.message); } };
+$("#fermer-tel").onclick = () => $("#modal-tel").classList.remove("vu");
+$("#modal-tel").onclick = e => { if (e.target.id === "modal-tel") $("#modal-tel").classList.remove("vu"); };
+
+// ─── Démarrage ───
+async function demarrer() {
+  const h = new Date().getHours();
+  $("#bonjour").textContent = h < 5 ? "Bonne nuit" : h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
+  if (innerWidth >= 1200) document.body.classList.add("tiroir-fixe");
+  if (TEL) aller("codex");
+  if (!JETON) { $("#txt-moteur").textContent = TEL ? "Scanne le code QR affiché sur le PC (menu → 📱 Téléphone)." : "Lien incomplet : relance APP-IA depuis la clé."; $("#point-moteur").classList.add("rouge"); if (TEL) toast("Scanne le code QR du PC"); return; }
+  try {
+    const e = await api("/api/etat");
+    S.sensibles = e.sensibles; S.langues = e.langues_shell; S.ffmpeg = !!e.ffmpeg; S.dossier = e.dossier; $("#dossier").value = e.dossier;
+    const d = await chargerModeles();
+    const ok = e.moteur && S.modeles.length;
+    $("#point-moteur").classList.toggle("rouge", !ok); $("#point-etat").classList.toggle("rouge", !e.moteur);
+    $("#etat-court").textContent = e.moteur ? "En ligne sur la clé" : "Moteur arrêté";
+    $("#txt-moteur").textContent = ok ? `Moteur IA de la clé prêt · ${S.modeles.length} modèle${S.modeles.length > 1 ? "s" : ""} · Agent AL : ${d.chat}`
+      : e.moteur ? "Aucun modèle sur la clé — ouvre Config" : "Moteur IA arrêté";
+    notifier(ok ? `⚡ IA de la clé prêtes (${S.modeles.length} modèles)` : "Moteur IA : aucun modèle");
+    S.nonLues = 0; $("#pastille").hidden = true;
+  } catch (e) {
+    $("#txt-moteur").textContent = "Moteur IA inaccessible : " + e.message; $("#point-moteur").classList.add("rouge");
+  }
+  listerConvs();
+  chargerProjets().catch(() => {});
+  ["chat", "codex", "terminal", "equipe", "rea"].forEach(majAccueil);
+  setInterval(() => { api("/api/ping", {}).catch(() => {}); listerConvs(); }, 20000);  // PC et téléphone voient les mêmes conversations
+}
+demarrer();
+</script>
+</body>
+</html>
