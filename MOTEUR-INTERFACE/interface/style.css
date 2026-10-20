@@ -1253,3 +1253,39 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 @media (max-width: 900px) { .bu-code { left: 30%; width: 70%; } }
 .bu-code [class^="tk-"] { opacity: .6; font-style: normal; } .bu-code .tk-mot { opacity: .9; }
 .bu-embleme.large .bu-embleme-img img { mix-blend-mode: normal; }
+
+/* ═══════════════ 🌐 Mon abonnement en ligne ═══════════════ */
+#abo { position: fixed; inset: 0; z-index: 86; display: grid; place-items: center; background: rgba(0,0,0,.65); backdrop-filter: blur(8px); animation: apparait .3s; }
+#abo[hidden], .vers-abo[hidden] { display: none !important; }
+.abo-boite { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 50px); overflow-y: auto; background: var(--noir-2); border: 1px solid rgba(var(--acc-rgb),.55); border-radius: 22px; padding: 22px; box-shadow: 0 30px 90px rgba(0,0,0,.7), 0 0 60px rgba(var(--acc-rgb),.15); animation: pop .5s cubic-bezier(.2,1.5,.4,1); display: flex; flex-direction: column; gap: 14px; }
+.abo-boite.sort { animation: toast-out .3s forwards; }
+.abo-icone.tourne { animation: abo-globe 1.2s cubic-bezier(.3,1.4,.5,1); }
+@keyframes abo-globe { from { transform: rotateY(0) scale(.6); } to { transform: rotateY(720deg) scale(1); } }
+.abo-reseau { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 6px 12px; border-radius: 20px; background: var(--noir-3); border: 1px solid var(--ligne); white-space: nowrap; }
+.abo-reseau i { width: 9px; height: 9px; border-radius: 50%; background: #888; position: relative; }
+.abo-reseau.oui i { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; } .abo-reseau.oui i::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #2ecc71; animation: pouls 1.6s infinite; }
+.abo-reseau.non i { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; }
+.abo-reseau + .btn-icone { margin-left: 0 !important; }
+.abo-question { display: flex; flex-direction: column; gap: 6px; }
+.abo-question textarea { width: 100%; resize: vertical; background: #070707; border: 1.5px solid var(--ligne); border-radius: 14px; padding: 12px 14px; color: var(--blanc); font: inherit; font-size: 14px; outline: none; transition: border-color .3s, box-shadow .3s; }
+.abo-question textarea:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(var(--acc-rgb),.14); }
+.abo-option { font-size: 12.5px; color: var(--gris); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.abo-option input { accent-color: var(--orange); }
+.abo-services { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.abo-carte { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 16px; background: var(--noir-3); border: 1px solid var(--ligne); text-align: left; color: var(--blanc); cursor: pointer; overflow: hidden; animation: monte .5s cubic-bezier(.2,1.3,.4,1) both; transition: transform .35s cubic-bezier(.3,1.5,.5,1), border-color .3s, box-shadow .3s; }
+.abo-carte:hover { transform: translateY(-5px) scale(1.02); border-color: var(--c, var(--orange)); box-shadow: 0 14px 34px rgba(0,0,0,.5), 0 0 26px color-mix(in srgb, var(--c, var(--orange)) 35%, transparent); }
+.abo-carte::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--c, var(--orange)) 22%, transparent), transparent 60%); opacity: .6; transition: opacity .3s; pointer-events: none; }
+.abo-carte:hover::before { opacity: 1; }
+.abo-carte-tete { display: flex; align-items: center; gap: 10px; position: relative; }
+.abo-logo { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; font-size: 21px; background: color-mix(in srgb, var(--c, var(--orange)) 18%, #0b0b0b); border: 1px solid color-mix(in srgb, var(--c, var(--orange)) 60%, transparent); }
+.abo-carte:hover .abo-logo { animation: sautille .6s; }
+.abo-carte b { font-size: 15px; } .abo-carte small { display: block; color: var(--gris); font-size: 11.5px; }
+.abo-carte .abo-go { position: relative; align-self: flex-start; font-size: 12.5px; color: var(--c, var(--orange)); font-weight: 600; transition: transform .3s; }
+.abo-carte:hover .abo-go { transform: translateX(6px); }
+.abo-carte.part { animation: abo-part .7s cubic-bezier(.5,0,.3,1); }
+@keyframes abo-part { 40% { transform: scale(.94); } 70% { transform: translateY(-14px) scale(1.04); box-shadow: 0 0 50px var(--c, var(--orange)); } }
+#abo.hors-ligne .abo-carte { opacity: .45; filter: grayscale(.7); }
+.vers-abo { font-size: 17px; }
+.puce-reseau { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--gris); padding: 0 6px; cursor: pointer; }
+.puce-reseau i { width: 8px; height: 8px; border-radius: 50%; background: #888; }
+.puce-reseau.oui i { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; } .puce-reseau.non i { background: #ff3b3b; }

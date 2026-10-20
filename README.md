@@ -170,6 +170,11 @@ Sur le Bureau, l'icône **☁️ IA en ligne** permet d'utiliser **Claude (Anthr
 - **Compteur du mois** : les jetons envoyés et reçus, et une **estimation en $** avec les prix que tu entres (en $ par million de jetons). Tu peux mettre une **limite en jetons et/ou en $**. Rendu à 80 %, tu reçois un avertissement. À 100 %, LexOS n'envoie plus rien jusqu'au mois suivant.
 - **🎨 Images avec ChatGPT** : avec une clé OpenAI, « ☁️ ChatGPT Images » (gpt-image-1) apparaît dans l'onglet 🎨 Images. Les images sont comptées aussi.
 
+### 🌐 Mon abonnement en ligne (ChatGPT Plus, Claude Pro…)
+Quand il y a du réseau (pastille 🟢 dans la barre du Bureau), l'icône **🌐 Mon abonnement** ouvre le **site officiel** de ChatGPT, Claude, Gemini, Le Chat (Mistral), Copilot ou Perplexity dans une fenêtre. Tu te connectes toi-même avec ton compte et ton abonnement. LexOS ne voit jamais ton mot de passe.
+- Ta question est copiée et envoyée directement quand le site le permet (ChatGPT, Claude, Le Chat, Perplexity). Tu peux aussi joindre la conversation du chat.
+- Dans le Chat, le bouton **🌐** à côté d'« Envoyer » apparaît quand t'es en ligne.
+
 ### ☰ Menu de gauche
 S'ouvre et se ferme en douceur, avec le bouton ☰ ou **Ctrl+B**.
 

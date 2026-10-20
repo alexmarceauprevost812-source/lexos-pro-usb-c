@@ -428,6 +428,7 @@ const LANCEURS = {
   parametres: { nom: "Paramètres", icone: "⚙️", vue: "parametres" },
   variables: { nom: "Variables", icone: "🔑", action: () => ouvrirEnv() },
   nuage: { nom: "IA en ligne", icone: "☁️", action: () => ouvrirNuage() },
+  abo: { nom: "Mon abonnement", icone: "🌐", action: () => ouvrirAbo() },
 };
 function lancer(id) {
   const l = LANCEURS[id];

@@ -132,6 +132,7 @@
             📎<input type="file" id="fichier" accept="image/*" multiple hidden>
           </label>
           <textarea id="saisie" rows="1" placeholder="Écris à ton IA…  (Entrée = envoyer · Maj+Entrée = ligne)"></textarea>
+          <button type="button" id="vers-abo" class="btn-icone vers-abo" title="Demander à mon abonnement en ligne (ChatGPT, Claude…)" hidden>🌐</button>
           <button type="button" id="stop" class="btn btn-contour" hidden>■ Stop</button>
           <button type="submit" id="envoyer" class="btn btn-plein rond" aria-label="Envoyer">
             <svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.2-7.3z"/></svg>
@@ -476,6 +477,7 @@
   <div class="bu-barre">
     <button id="bu-demarrer" class="bu-demarrer" title="Toutes les applications"><img src="logo.png" alt=""><span>LexOS</span></button>
     <div id="bu-taches" class="bu-taches-barre"></div>
+    <span class="puce-reseau" id="bu-reseau" title="Réseau · clique pour ton abonnement en ligne"><i></i><span>…</span></span>
     <span class="bu-modele" id="bu-modele"></span>
     <div class="bu-horloge"><b id="bu-heure">--:--</b><small id="bu-date"></small></div>
     <button id="bu-sortir" class="btn btn-plein mini bu-sortir">⏏ Sortir du bureau</button>
@@ -574,6 +576,24 @@
   </div>
 </div>
 
+<!-- ═══════════════ 🌐 MON ABONNEMENT EN LIGNE ═══════════════ -->
+<div id="abo" hidden>
+  <div class="abo-boite">
+    <div class="env-tete">
+      <div class="env-cle abo-icone">🌐</div>
+      <div><h3>Mon abonnement en ligne</h3><small>ChatGPT Plus, Claude Pro, Gemini… avec ton propre compte, sur le site officiel</small></div>
+      <span class="abo-reseau" id="abo-reseau"><i></i><b>…</b></span>
+      <button class="btn-icone" id="abo-fermer" title="Fermer">✕</button>
+    </div>
+    <div class="abo-question">
+      <textarea id="abo-texte" rows="3" placeholder="Ta question (optionnel) : elle est copiée et envoyée au site que tu choisis"></textarea>
+      <label class="abo-option"><input type="checkbox" id="abo-contexte"> ajouter la conversation du chat</label>
+    </div>
+    <div class="abo-services" id="abo-services"></div>
+    <p class="nu-note">🔒 Tu te connectes <b>directement sur le site officiel</b> avec ton compte et ton abonnement. LexOS ne voit jamais ton mot de passe et ne touche pas à ton compte. Ça prend du réseau ; hors ligne, tes IA locales restent là.</p>
+  </div>
+</div>
+
 <!-- ═══════════════ CLONER UN DÉPÔT GITHUB ═══════════════ -->
 <div id="clone" hidden>
   <form class="clone-boite" id="clone-form" autocomplete="off">
@@ -634,6 +654,7 @@
 <script src="variables.js"></script>
 <script src="cloner.js"></script>
 <script src="nuage.js"></script>
+<script src="abonnement.js"></script>
 <script src="bureau.js"></script>
 </body>
 </html>
