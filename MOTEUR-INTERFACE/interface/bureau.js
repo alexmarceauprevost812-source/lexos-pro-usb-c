@@ -439,14 +439,21 @@ function lancer(id) {
 function construireBureau() {
   let k = 0;
   const icone = (type, id, a) => `<button class="bu-icone ${type === "lanceur" ? "lanceur" : ""}" data-${type}="${id}" style="animation-delay:${k++ * 40}ms"><span>${a.icone}</span><b>${a.nom}</b></button>`;
-  $("#bu-icones").innerHTML = `<h5 class="bu-groupe">ti-lex IA</h5>` + Object.entries(LANCEURS).map(([id, a]) => icone("lanceur", id, a)).join("")
-    + `<h5 class="bu-groupe">Outils</h5>` + Object.entries(APPS).map(([id, a]) => icone("app", id, a)).join("");
+  // L'ordre et le côté de chaque icône sont gardés (on peut les déplacer à la souris)
+  const tous = { ...Object.fromEntries(Object.keys(LANCEURS).map((id) => ["lanceur:" + id, "g"])), ...Object.fromEntries(Object.keys(APPS).map((id) => ["app:" + id, "d"])) };
+  let o = {}; try { o = JSON.parse(mem.lire("lexos-bureau-ordre", "{}")) || {}; } catch {}
+  const g = (o.g || []).filter((k) => k in tous), d = (o.d || []).filter((k) => k in tous && !g.includes(k));
+  for (const [k, cote] of Object.entries(tous)) if (!g.includes(k) && !d.includes(k)) (cote === "g" ? g : d).push(k);
+  const rendu = (k) => { const [type, id] = k.split(":"); return icone(type, id, (type === "lanceur" ? LANCEURS : APPS)[id]); };
+  $("#bu-icones").innerHTML = `<div class="bu-cote"><h5 class="bu-groupe">ti-lex IA</h5><div class="bu-grille" data-cote="g">${g.map(rendu).join("")}</div></div>`
+    + `<div class="bu-cote droite"><h5 class="bu-groupe">Outils</h5><div class="bu-grille" data-cote="d">${d.map(rendu).join("")}</div></div>`;
   $("#bu-menu-apps").innerHTML = `<h5>ti-lex IA</h5>` + Object.entries(LANCEURS).map(([id, a]) => `<button data-lanceur="${id}"><span>${a.icone}</span>${a.nom}</button>`).join("")
     + `<h5>Outils</h5>` + Object.entries(APPS).map(([id, a]) => `<button data-app="${id}"><span>${a.icone}</span>${a.nom}</button>`).join("");
 }
 function ouvrirBureau() {
   const b = $("#bureau");
   b.hidden = false; BU.ouvert = true;
+  setTimeout(() => typeof majFondus === "function" && majFondus(), 60);
   b.classList.remove("sort"); void b.offsetWidth; b.classList.add("entre");
   $("#app").classList.add("cache-bureau");
   $("#bu-modele").textContent = "🧠 " + (modeleTexte() || "aucun modèle");
@@ -569,7 +576,7 @@ mouvement: str = "doux"`,
     zone.innerHTML = html;
   };
   const taper = () => {
-    const visible = !$("#bureau").hidden && !document.hidden && $("#bu-embleme").classList.contains("large");
+    const visible = !$("#bureau").hidden && !document.hidden && $("#bu-embleme").classList.contains("large") && !$("#bureau").classList.contains("sans-code");
     if (!visible) { minuteur = setTimeout(taper, 800); return; }
     if (attente > 0) { attente--; minuteur = setTimeout(taper, 90); return; }
     const texte = MORCEAUX[morceau];
@@ -599,4 +606,108 @@ mouvement: str = "doux"`,
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { lignes = MORCEAUX.slice(0, 3).join("\n\n").split("\n"); peindre(); return; }
   lignes = (MORCEAUX[0] + "\n\n" + MORCEAUX[1] + "\n").split("\n"); morceau = 2;   // on commence avec du code déjà écrit
   peindre(); taper();
+})();
+
+/* ⌨️ Activer / désactiver le code qui s'écrit (Paramètres + bouton de la barre) */
+function codeBureau(actif) {
+  $("#bureau").classList.toggle("sans-code", !actif);
+  $("#bu-bascule-code").classList.toggle("eteint", !actif);
+  $("#code-bureau").checked = actif;
+  mem.ecrire("lexos-code-bureau", actif ? "1" : "0");
+}
+codeBureau(mem.lire("lexos-code-bureau", "1") === "1");
+$("#code-bureau").addEventListener("change", (e) => codeBureau(e.target.checked));
+$("#bu-bascule-code").addEventListener("click", () => {
+  const actif = $("#bureau").classList.contains("sans-code");
+  codeBureau(actif); toast(actif ? "⌨️ Code sur le Bureau : activé" : "⌨️ Code sur le Bureau : désactivé");
+});
+/* Les icônes défilent si elles ne rentrent pas : le fondu du bas part quand on est rendu au bout */
+function majFondus() { $$(".bu-grille").forEach((g) => g.classList.toggle("tout-voit", g.scrollTop + g.clientHeight >= g.scrollHeight - 4)); }
+$("#bu-icones").addEventListener("scroll", majFondus, true);
+addEventListener("resize", majFondus);
+setTimeout(majFondus, 500);
+
+/* ✋ Déplacer les applications à la souris (ou au doigt) : glisser une icône, la lâcher où on veut.
+   On peut changer l'ordre ET passer d'un côté à l'autre. Tout est gardé. */
+(() => {
+  const zone = $("#bu-icones");
+  let G = null, sansClic = false;
+  const cle = (b) => b.dataset.lanceur ? "lanceur:" + b.dataset.lanceur : "app:" + b.dataset.app;
+  const sauverOrdre = () => {
+    const lire = (c) => $$(`.bu-grille[data-cote="${c}"] .bu-icone`).map(cle);
+    mem.ecrire("lexos-bureau-ordre", JSON.stringify({ g: lire("g"), d: lire("d") }));
+  };
+  const flip = (grilles, bouger) => {                       // anime les autres icônes qui se tassent
+    const els = grilles.flatMap((gr) => [...gr.children]);
+    const avant = new Map(els.map((e) => [e, e.getBoundingClientRect()]));
+    bouger();
+    for (const e of els) {
+      const a = avant.get(e), n = e.getBoundingClientRect();
+      const dx = a.left - n.left, dy = a.top - n.top;
+      if (dx || dy) e.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 260, easing: "cubic-bezier(.3,1.3,.5,1)" });
+    }
+  };
+  zone.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest(".bu-icone");
+    if (!b || e.button !== 0) return;
+    G = { b, x: e.clientX, y: e.clientY, actif: false, id: e.pointerId };
+  });
+  addEventListener("pointermove", (e) => {
+    if (!G || e.pointerId !== G.id) return;
+    if (!G.actif) {
+      if (Math.hypot(e.clientX - G.x, e.clientY - G.y) < 7) return;
+      G.actif = true;
+      const r = G.b.getBoundingClientRect();
+      G.dx = G.x - r.left; G.dy = G.y - r.top;
+      G.clone = G.b.cloneNode(true);
+      G.clone.className = "bu-icone bu-volante" + (G.b.classList.contains("lanceur") ? " lanceur" : "");
+      Object.assign(G.clone.style, { width: r.width + "px", height: r.height + "px", left: r.left + "px", top: r.top + "px", animationDelay: "0ms" });
+      $("#bureau").appendChild(G.clone);
+      G.b.classList.add("bu-fantome");
+      $("#bureau").classList.add("deplace");
+    }
+    e.preventDefault();
+    G.clone.style.left = e.clientX - G.dx + "px"; G.clone.style.top = e.clientY - G.dy + "px";
+    // la grille sous la souris
+    const grilles = $$(".bu-grille");
+    const sous = grilles.find((gr) => { const r = gr.closest(".bu-cote").getBoundingClientRect(); return e.clientX >= r.left - 30 && e.clientX <= r.right + 30 && e.clientY >= r.top && e.clientY <= r.bottom; });
+    grilles.forEach((gr) => gr.classList.toggle("cible", gr === sous));
+    if (!sous) return;
+    const autres = [...sous.querySelectorAll(".bu-icone:not(.bu-fantome)")];
+    let proche = null, dist = 1e9;
+    for (const ic of autres) {
+      const r = ic.getBoundingClientRect(), d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      if (d < dist) { dist = d; proche = ic; }
+    }
+    if (!proche) { if (G.b.parentElement !== sous) flip(grilles, () => sous.appendChild(G.b)); return; }
+    const r = proche.getBoundingClientRect();
+    const rtl = getComputedStyle(sous).direction === "rtl";
+    const centreX = r.left + r.width / 2;
+    let apres = e.clientY > r.bottom - r.height * .15 ? true : e.clientY < r.top + r.height * .15 ? false : (rtl ? e.clientX < centreX : e.clientX > centreX);
+    const cible = apres ? proche.nextElementSibling : proche;
+    if (cible === G.b || (apres && proche.nextElementSibling === G.b) || (!apres && proche.previousElementSibling === G.b && G.b.parentElement === sous)) return;
+    flip(grilles, () => sous.insertBefore(G.b, cible));
+  }, { passive: false });
+  const finir = () => {
+    if (!G) return;
+    const g = G; G = null;
+    if (!g.actif) return;
+    sansClic = true; setTimeout(() => { sansClic = false; }, 50);
+    $$(".bu-grille").forEach((gr) => gr.classList.remove("cible"));
+    const r = g.b.getBoundingClientRect();
+    const a = g.clone.animate([{ left: g.clone.style.left, top: g.clone.style.top, transform: "scale(1.12) rotate(-4deg)" }, { left: r.left + "px", top: r.top + "px", transform: "scale(1)" }], { duration: 280, easing: "cubic-bezier(.3,1.4,.5,1)" });
+    a.onfinish = () => {
+      g.clone.remove(); g.b.classList.remove("bu-fantome"); $("#bureau").classList.remove("deplace");
+      g.b.classList.remove("rebond"); void g.b.offsetWidth; g.b.classList.add("rebond");
+      sauverOrdre(); if (typeof majFondus === "function") majFondus();
+    };
+  };
+  addEventListener("pointerup", finir);
+  addEventListener("pointercancel", finir);
+  zone.addEventListener("click", (e) => { if (sansClic) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  zone.addEventListener("dragstart", (e) => e.preventDefault());
+  // Paramètres : remettre les icônes comme au début
+  $("#bu-remettre-icones")?.addEventListener("click", () => {
+    mem.ecrire("lexos-bureau-ordre", "{}"); construireBureau(); toast("↩️ Icônes du Bureau remises en place");
+  });
 })();

@@ -387,6 +387,7 @@
           <div class="sec-col">
             <h3>Au démarrage</h3>
             <label class="interrupteur"><input type="checkbox" id="depart-bureau" checked><i></i><span>Ouvrir sur le Bureau LexOS</span></label>
+            <label class="interrupteur"><input type="checkbox" id="code-bureau" checked><i></i><span>Code qui s'écrit tout seul sur le Bureau</span></label>
             <h3>Verrouillage automatique</h3>
             <label class="sec-ligne">Verrouiller après
               <select id="auto-verrou"><option value="0">jamais</option><option value="5">5 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 heure</option></select>
@@ -477,6 +478,7 @@
   <div class="bu-barre">
     <button id="bu-demarrer" class="bu-demarrer" title="Toutes les applications"><img src="logo.png" alt=""><span>LexOS</span></button>
     <div id="bu-taches" class="bu-taches-barre"></div>
+    <button class="bu-bascule-code" id="bu-bascule-code" title="Activer / désactiver le code qui s'écrit sur le Bureau">⌨️</button>
     <span class="puce-reseau" id="bu-reseau" title="Réseau · clique pour ton abonnement en ligne"><i></i><span>…</span></span>
     <span class="bu-modele" id="bu-modele"></span>
     <div class="bu-horloge"><b id="bu-heure">--:--</b><small id="bu-date"></small></div>

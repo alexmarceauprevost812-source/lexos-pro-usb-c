@@ -977,7 +977,6 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 #bureau.sort { animation: bu-sort .45s cubic-bezier(.6,0,.4,1) forwards; }
 @keyframes bu-entre { from { opacity: 0; transform: scale(1.08); filter: blur(10px); } }
 @keyframes bu-sort { to { opacity: 0; transform: scale(1.08); filter: blur(10px); } }
-.bu-icones { position: absolute; top: 18px; left: 18px; bottom: 76px; display: grid; grid-auto-flow: column; grid-template-rows: repeat(auto-fill, 96px); gap: 8px; align-content: start; z-index: 1; }
 .bu-icone { width: 92px; height: 92px; border: 1px solid transparent; background: transparent; border-radius: 16px; color: var(--blanc); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; transition: background .2s, border-color .2s, transform .25s cubic-bezier(.3,1.6,.5,1); }
 .bu-icone span { font-size: 34px; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 16px; background: rgba(14,14,15,.75); border: 1px solid rgba(var(--acc-rgb),.35); box-shadow: 0 8px 24px rgba(0,0,0,.5); transition: box-shadow .3s, transform .3s cubic-bezier(.3,1.6,.5,1); }
 .bu-icone b { font-size: 12px; font-weight: 500; text-shadow: 0 1px 4px #000; text-align: center; line-height: 1.2; }
@@ -1117,8 +1116,6 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 .btn-bureau-mini:hover { background: var(--orange); box-shadow: var(--lueur); transform: scale(1.1) rotate(-6deg); }
 .onglet[hidden] { display: none; }
 .bu-groupe { width: 100%; grid-column: 1 / -1; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--orange); text-shadow: 0 1px 4px #000; margin: 2px 0 -2px 6px; height: 14px; }
-.bu-icones { grid-auto-flow: row !important; grid-template-rows: none !important; grid-template-columns: repeat(2, 92px); bottom: auto !important; max-height: calc(100% - 96px); overflow-y: auto; padding-right: 4px; }
-.bu-icone { height: 86px !important; }
 .bu-icone.lanceur span { background: linear-gradient(145deg, rgba(var(--acc-rgb),.35), rgba(14,14,15,.85)); border-color: rgba(var(--acc-rgb),.7); }
 .bu-menu-apps h5 { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--orange); margin: 6px 4px 2px; }
 .bu-accueil { position: absolute; top: 40px; right: 48px; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; animation: monte .7s .2s both cubic-bezier(.2,1.2,.4,1); pointer-events: none; }
@@ -1130,7 +1127,6 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 .bu-demande input { flex: 1; background: none; border: 0; outline: none; color: var(--blanc); font: inherit; font-size: 15px; }
 .bu-demande .rond { width: 40px !important; height: 40px !important; }
 @media (max-width: 900px) { .bu-accueil { display: none; } }
-.bu-icones { grid-template-columns: repeat(3, 92px) !important; }
 
 /* ═══════════════ ☁️ IA en ligne ═══════════════ */
 #nuage { position: fixed; inset: 0; z-index: 85; display: grid; place-items: center; background: rgba(0,0,0,.65); backdrop-filter: blur(8px); animation: apparait .3s; }
@@ -1289,3 +1285,44 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 .puce-reseau { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--gris); padding: 0 6px; cursor: pointer; }
 .puce-reseau i { width: 8px; height: 8px; border-radius: 50%; background: #888; }
 .puce-reseau.oui i { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; } .puce-reseau.non i { background: #ff3b3b; }
+
+/* ═══════════════ Bureau qui remplit l'écran : IA à gauche, Outils à droite, tout plus gros ═══════════════ */
+#bureau { --ic: clamp(92px, 11.5vh, 136px); --ic-img: clamp(52px, 6.6vh, 80px); }
+.bu-icones { position: absolute; top: 16px; left: 18px; right: 18px; bottom: 74px; display: flex; justify-content: space-between; gap: 24px; z-index: 1; pointer-events: none; }
+.bu-cote { flex: none; display: flex; flex-direction: column; min-height: 0; pointer-events: none; }
+.bu-cote.droite { align-items: flex-end; }
+.bu-cote .bu-groupe { margin: 0 6px 6px; height: auto; pointer-events: none; }
+.bu-grille { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 3), var(--ic)); grid-auto-rows: var(--ic); gap: 6px 10px; align-content: start; pointer-events: auto; overflow-y: auto; overflow-x: hidden; padding: 2px 6px 10px 2px; scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: rgba(var(--acc-rgb),.5) transparent; -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); }
+.bu-grille::-webkit-scrollbar { width: 6px; } .bu-grille::-webkit-scrollbar-thumb { background: rgba(var(--acc-rgb),.5); border-radius: 6px; }
+.bu-grille.tout-voit { -webkit-mask-image: none; mask-image: none; }
+@media (max-width: 1500px) { #bureau { --cols: 2; } }
+.bu-cote.droite .bu-grille { direction: rtl; }
+.bu-grille > * { direction: ltr; pointer-events: auto; }
+.bu-icone { width: var(--ic); height: var(--ic); gap: 8px; }
+.bu-icone span { width: var(--ic-img); height: var(--ic-img); font-size: calc(var(--ic-img) * .6); border-radius: calc(var(--ic-img) * .3); }
+.bu-icone b { font-size: clamp(12px, 1.45vh, 15px); }
+.bu-cote.droite .bu-groupe { text-align: right; }
+/* l'heure et la demande au centre, en haut */
+.bu-accueil { left: 0; right: 0 !important; margin: 0 auto; width: fit-content; top: 26px !important; align-items: center !important; text-align: center; }
+.bu-grande-heure { font-size: clamp(60px, 9vh, 104px) !important; }
+.bu-demande { width: min(560px, 40vw) !important; }
+.bu-embleme { top: calc(50% + 70px) !important; }
+.bu-embleme.large { --t: min(46vw, 82vh) !important; }
+.bu-embleme:not(.large) { --t: min(44vh, 32vw) !important; }
+@media (max-width: 1100px) { #bureau { --ic: 92px; --ic-img: 52px; } .bu-embleme.large { --t: min(40vw, 70vh) !important; } }
+@media (max-width: 900px) { .bu-icones { flex-direction: column; overflow-y: auto; pointer-events: auto; } .bu-grille { grid-auto-flow: row; grid-template-rows: none; grid-template-columns: repeat(auto-fill, var(--ic)); direction: ltr !important; } .bu-cote.droite { align-items: stretch; } .bu-embleme { display: none; } }
+
+.bu-bascule-code { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--ligne); background: transparent; cursor: pointer; font-size: 16px; transition: all .3s cubic-bezier(.3,1.6,.5,1); }
+.bu-bascule-code:hover { border-color: var(--orange); transform: scale(1.1); }
+.bu-bascule-code.eteint { opacity: .4; filter: grayscale(1); }
+#bureau.sans-code .bu-code { display: none !important; }
+
+/* ✋ Déplacer les icônes */
+.bu-icone { touch-action: none; user-select: none; -webkit-user-select: none; }
+.bu-icone.bu-fantome { opacity: .3; border: 1.5px dashed rgba(var(--acc-rgb),.8) !important; background: rgba(var(--acc-rgb),.06) !important; }
+.bu-icone.bu-fantome span { transform: scale(.85); }
+.bu-volante { position: fixed !important; z-index: 9999; pointer-events: none; margin: 0; animation: none !important; transform: scale(1.12) rotate(-4deg); background: rgba(var(--acc-rgb),.14) !important; border: 1px solid rgba(var(--acc-rgb),.6) !important; box-shadow: 0 20px 50px rgba(0,0,0,.6), 0 0 30px rgba(var(--acc-rgb),.35); backdrop-filter: blur(6px); transition: none; }
+.bu-volante span { animation: none !important; }
+#bureau.deplace .bu-grille { outline: 1.5px dashed rgba(var(--acc-rgb),.18); outline-offset: 4px; border-radius: 14px; transition: outline-color .3s, background .3s; }
+#bureau.deplace .bu-grille.cible { outline-color: rgba(var(--acc-rgb),.7); background: rgba(var(--acc-rgb),.05); }
+#bureau.deplace, #bureau.deplace * { cursor: grabbing !important; }
