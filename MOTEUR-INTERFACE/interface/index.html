@@ -60,10 +60,10 @@
     <div class="logo">
       <div class="logo-icone"><img src="logo.png" alt="LexOS"></div>
       <div>
-        <b>LexOS</b><small>Moteur portable</small>
+        <b>ti-lex IA</b><small>LexOS · portable</small>
       </div>
+      <button id="ouvrir-bureau" class="btn-bureau-mini" title="Retour au Bureau LexOS"><span class="bu-ic-btn">🖥️</span></button>
     </div>
-
     <button id="nouveau" class="btn btn-plein brille"><span class="plus">＋</span> Nouvelle conversation</button>
 
     <nav class="onglets">
@@ -74,7 +74,7 @@
       <button class="onglet" data-vue="schemas"><span>🎬</span> Schémas animés</button>
       <button class="onglet" data-vue="modeles"><span>🧠</span> Modèles</button>
       <button class="onglet" data-vue="cle"><span>🔌</span> La clé</button>
-      <button class="onglet" data-vue="parametres"><span>⚙️</span> Paramètres</button>
+      <button class="onglet" data-vue="parametres" hidden><span>⚙️</span> Paramètres</button>
       <div class="onglet-indicateur"></div>
     </nav>
 
@@ -102,6 +102,7 @@
         <button class="btn btn-contour mini btn-env" id="ouvrir-env" title="Variables d'environnement (clés API…)"><span class="cle-ic">🔑</span> Variables</button>
         <span class="puce" id="puce-version">Ollama —</span>
         <span class="puce chaud" id="puce-vitesse">0 mots/s</span>
+        <button class="puce" id="puce-nuage" hidden title="Compteur de l'IA en ligne">☁️</button>
       </div>
     </header>
 
@@ -149,6 +150,7 @@
           <button class="btn btn-contour mini" id="cx-nouveau-fichier">＋ Fichier</button>
           <button class="btn btn-contour mini" id="cx-chemin" title="Copie la commande cd pour aller dans ce projet">📂 Chemin du projet</button>
           <button class="btn btn-plein mini brille" id="cx-studio" title="Voir tous tes projets">🎛️ Studio</button>
+          <button class="btn btn-contour mini" data-cloner title="Copier un dépôt GitHub sur la clé">📦 Cloner</button>
           <button class="btn btn-contour mini btn-env" data-env title="Variables d'environnement du projet">🔑 Variables</button>
         </div>
         <div class="cx-groupe">
@@ -214,6 +216,7 @@
         <div class="studio-tete">
           <div><h2>🎛️ Studio <small>tous tes projets, sur la clé</small></h2></div>
           <input id="studio-cherche" placeholder="🔎 Chercher un projet…">
+          <button class="btn btn-contour mini" data-cloner>📦 Cloner un dépôt</button>
           <button class="btn btn-contour mini" id="studio-nouveau">＋ Nouveau projet</button>
           <button class="btn btn-plein mini" id="studio-fermer">⌨️ Retour au code</button>
         </div>
@@ -281,6 +284,13 @@
           </div>
           <button class="btn btn-plein brille im-go" id="im-go">✨ Créer l'image</button>
           <p class="im-casses" id="im-casses" hidden></p>
+          <div class="im-installer im-sd" id="im-sd" hidden>
+            <h4>🎨 Ton Z-Image est prêt à marcher !</h4>
+            <p>Ton modèle d'image <b>.gguf</b> est sur la clé. Ollama ne peut pas le lire sur Linux, mais <b>stable-diffusion.cpp</b> oui (carte NVIDIA via Vulkan). Il manque seulement :</p>
+            <ul id="im-sd-manque"></ul>
+            <button type="button" class="btn btn-plein brille" id="im-sd-installer">⬇ Installer le moteur d'images sur la clé</button>
+            <div class="im-tirage" id="im-sd-tirage" hidden><div class="force-barre"><i id="im-sd-i"></i></div><span id="im-sd-txt"></span></div>
+          </div>
           <div class="im-installer" id="im-installer" hidden>
             <h4>Aucun modèle d'image sur la clé</h4>
             <p>Ollama sait créer des images en local (fonction <b>expérimentale</b> : Linux avec carte NVIDIA, ou Mac). Télécharge un modèle directement <b>sur la clé</b> :</p>
@@ -374,6 +384,8 @@
             <button class="btn btn-plein mini">🔑 Changer</button>
           </form>
           <div class="sec-col">
+            <h3>Au démarrage</h3>
+            <label class="interrupteur"><input type="checkbox" id="depart-bureau" checked><i></i><span>Ouvrir sur le Bureau LexOS</span></label>
             <h3>Verrouillage automatique</h3>
             <label class="sec-ligne">Verrouiller après
               <select id="auto-verrou"><option value="0">jamais</option><option value="5">5 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 heure</option></select>
@@ -438,6 +450,37 @@
   </main>
 </div>
 
+<!-- ═══════════════ 🖥️ BUREAU LEXOS ═══════════════ -->
+<div id="bureau" hidden>
+  <div id="bu-icones" class="bu-icones"></div>
+  <div class="bu-embleme" id="bu-embleme">
+    <div class="bu-halo"></div>
+    <svg class="bu-anneaux" viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="96" class="a1"/><circle cx="100" cy="100" r="88" class="a2"/><circle cx="100" cy="100" r="80" class="a3"/>
+    </svg>
+    <button class="bu-embleme-img" id="bu-embleme-btn" title="Clique pour changer de logo"><img id="bu-embleme-img" src="logo.png" alt="LexOS"></button>
+    <div class="bu-embleme-nom">Lex<span>OS</span></div>
+    <small class="bu-embleme-sous">ti-lex IA · tout en local sur ta clé USB-C</small>
+  </div>
+  <div class="bu-accueil">
+    <b class="bu-grande-heure" id="bu-grande-heure">--:--</b>
+    <span class="bu-salut" id="bu-salut">Salut Alex 👋</span>
+    <form class="bu-demande" id="bu-demande"><img src="logo.png" alt=""><input placeholder="Demande à ti-lex IA…" autocomplete="off"><button class="btn btn-plein rond" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.2-7.3z"/></svg></button></form>
+  </div>
+  <div id="bu-fenetres" class="bu-fenetres"></div>
+  <div id="bu-menu" class="bu-menu">
+    <div class="bu-menu-tete"><img src="logo.png" alt=""><div><b>LexOS</b><small>outils IA locaux · sur la clé</small></div></div>
+    <div id="bu-menu-apps" class="bu-menu-apps"></div>
+  </div>
+  <div class="bu-barre">
+    <button id="bu-demarrer" class="bu-demarrer" title="Toutes les applications"><img src="logo.png" alt=""><span>LexOS</span></button>
+    <div id="bu-taches" class="bu-taches-barre"></div>
+    <span class="bu-modele" id="bu-modele"></span>
+    <div class="bu-horloge"><b id="bu-heure">--:--</b><small id="bu-date"></small></div>
+    <button id="bu-sortir" class="btn btn-plein mini bu-sortir">⏏ Sortir du bureau</button>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <!-- ═══════════════ VARIABLES D'ENVIRONNEMENT ═══════════════ -->
@@ -480,6 +523,88 @@
   </div>
 </div>
 
+<!-- ═══════════════ ☁️ IA EN LIGNE (clé API de chacun + compteur) ═══════════════ -->
+<div id="nuage" hidden>
+  <div class="nu-boite">
+    <div class="env-tete">
+      <div class="env-cle nu-icone">☁️</div>
+      <div><h3>IA en ligne</h3><small>ta propre clé API · gardée chiffrée dans le coffre · compteur pour ne pas dépasser</small></div>
+      <button class="btn-icone" id="nu-fermer" title="Fermer">✕</button>
+    </div>
+
+    <section class="nu-compteur">
+      <div class="nu-jauge" id="nu-jauge-jetons"></div>
+      <div class="nu-jauge" id="nu-jauge-dollars"></div>
+      <div class="nu-droite">
+        <h4>Compteur de <span id="nu-mois"></span></h4>
+        <p class="nu-etat" id="nu-etat"></p>
+        <form id="nu-limites" class="nu-limites">
+          <label>Limite jetons / mois<input type="number" id="nu-lim-jetons" min="0" step="1000" placeholder="0 = aucune"></label>
+          <label>Limite $ / mois<input type="number" id="nu-lim-dollars" min="0" step="0.5" placeholder="0 = aucune"></label>
+          <button class="btn btn-plein mini">🛡️ Garder</button>
+        </form>
+        <small class="nu-note">Une fois la limite atteinte, LexOS n'envoie plus rien jusqu'au mois suivant. Le $ est une estimation avec les prix que tu entres ; ta vraie facture est chez le fournisseur.
+          <button type="button" class="lien" id="nu-remettre">🔄 remettre à zéro</button></small>
+      </div>
+    </section>
+
+    <form id="nu-verrou" class="nu-verrou" onsubmit="return false">
+      🔒 <input type="password" id="nu-mdp" placeholder="Mot de passe maître (pour ajouter ou retirer une clé)" autocomplete="current-password">
+    </form>
+
+    <h4 class="nu-titre">Fournisseurs</h4>
+    <p class="nu-aide">« Se connecter » ouvre la page de ton compte chez le fournisseur : connecte-toi, crée une clé API, puis colle-la ici. Chaque personne utilise <b>son</b> compte et paie <b>sa</b> consommation.</p>
+    <div class="nu-fournisseurs" id="nu-fournisseurs"></div>
+
+    <h4 class="nu-titre">Mes modèles en ligne <small>— prix en $ par million de jetons (regarde la page de prix du fournisseur)</small></h4>
+    <ul id="nu-mes" class="nu-mes"></ul>
+    <form id="nu-ajout-manuel" class="nu-manuel" autocomplete="off">
+      <input id="nu-manuel" placeholder="ou écris-le : openai/gpt-4o-mini" spellcheck="false">
+      <button class="btn btn-contour mini">＋ Ajouter</button>
+    </form>
+
+    <h4 class="nu-titre">🎨 Créer des images avec ChatGPT</h4>
+    <form id="nu-images" class="nu-limites">
+      <label>Modèle d'image OpenAI<input id="nu-im-modele" placeholder="gpt-image-1" spellcheck="false"></label>
+      <label>Prix par image ($)<input type="number" id="nu-im-prix" min="0" step="0.01" placeholder="ex. 0.04"></label>
+      <button class="btn btn-plein mini">💾 Garder</button>
+    </form>
+    <small class="nu-note">Avec une clé OpenAI, « ☁️ ChatGPT Images » apparaît dans l'onglet 🎨 Images. Il n'est jamais choisi tout seul.</small>
+  </div>
+</div>
+
+<!-- ═══════════════ CLONER UN DÉPÔT GITHUB ═══════════════ -->
+<div id="clone" hidden>
+  <form class="clone-boite" id="clone-form" autocomplete="off">
+    <div class="env-tete">
+      <div class="clone-boite-ic"><span>📦</span></div>
+      <div><h3>Cloner un dépôt GitHub</h3><small>copié sur la clé, sans git · dépôts publics (privés avec GITHUB_TOKEN)</small></div>
+      <button type="button" class="btn-icone" id="clone-fermer" title="Fermer">✕</button>
+    </div>
+    <label class="clone-champ">Adresse du dépôt
+      <input id="clone-url" placeholder="https://github.com/proprio/depot" spellcheck="false"></label>
+    <div class="clone-ligne">
+      <label class="clone-champ">Branche <small>(optionnel)</small><input id="clone-branche" placeholder="main" spellcheck="false"></label>
+      <label class="clone-champ">Nom du projet<input id="clone-nom" placeholder="auto" spellcheck="false"></label>
+    </div>
+    <div class="env-envs clone-ou" id="clone-ou">
+      <button type="button" data-ou="nouveau" class="actif">✨ Nouveau projet</button>
+      <button type="button" data-ou="dans">📁 Dans le projet actuel</button>
+      <i class="env-envs-glisse"></i>
+    </div>
+    <div class="clone-progres" id="clone-progres" hidden>
+      <div class="clone-anim"><span>📦</span><i></i><i></i><i></i></div>
+      <div class="force-barre"><i id="clone-barre"></i></div>
+      <p id="clone-etat">connexion à GitHub…</p>
+    </div>
+    <div class="clone-fini" id="clone-fini" hidden></div>
+    <div class="clone-btns">
+      <span class="clone-prive" id="clone-prive"></span>
+      <button class="btn btn-plein brille" id="clone-go">📦 Cloner</button>
+    </div>
+  </form>
+</div>
+
 <div id="modal" hidden>
   <div class="modal-boite">
     <div class="modal-icone">⏻</div>
@@ -506,5 +631,8 @@
 <script src="schema.js"></script>
 <script src="images.js"></script>
 <script src="variables.js"></script>
+<script src="cloner.js"></script>
+<script src="nuage.js"></script>
+<script src="bureau.js"></script>
 </body>
 </html>

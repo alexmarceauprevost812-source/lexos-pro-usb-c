@@ -48,6 +48,16 @@ python3 coffre.py liste               # affiche le NOM des clés
 
 Quand tu déverrouilles l'interface, le coffre s'ouvre aussi. Les clés vont **en mémoire seulement**, jamais en clair sur le disque.
 
+### 📦 Cloner un dépôt GitHub
+
+Le bouton **📦 Cloner** est dans le Codex, dans le Studio et dans le menu ＋. Il marche **sans git et sans IA**.
+
+- Tu colles l'adresse (`https://github.com/proprio/depot`, ou simplement `proprio/depot`), avec une branche si tu veux.
+- Le dépôt va dans un **✨ nouveau projet**, ou dans un sous-dossier du **📁 projet actuel**.
+- Une animation montre la progression, puis tu peux **ouvrir le projet dans le Codex** ou le **voir dans le Studio**.
+- **Dépôts privés** : ajoute la variable globale `GITHUB_TOKEN` dans 🔑 Variables. Si le jeton est refusé, le moteur réessaie comme un dépôt public.
+- Les fichiers piégés (« zip slip ») sont bloqués.
+
 ### 🔑 Variables d'environnement (façon Vercel)
 
 Le bouton **🔑 Variables** est en haut de l'écran, dans le Codex, et sur chaque carte du Studio.
@@ -111,6 +121,7 @@ Le bouton **Enregistrer tout** met les fichiers dans le projet.
 - Pendant la création, une animation « je peins » avec le pourcentage. À la fin, l'image se révèle.
 - Une **galerie** sur la clé (`MOTEUR-INTERFACE/images`) et un bouton « Mettre en fond d'écran ».
 - Les modèles se téléchargent **directement sur la clé**, depuis l'onglet : `x/z-image-turbo` (environ 13 Go) ou `x/flux2-klein:4b`.
+- **Sur Linux, le moteur d'images est stable-diffusion.cpp** (version Vulkan pour la carte graphique, avec une version processeur en secours). Il lit directement les fichiers de `lexos-ia/images-ia/` : `z_image_turbo-*.gguf`, `Qwen3-4B-*.gguf` et `ae.safetensors`. Il faut `--offload-to-cpu` pour les cartes de 8 Go, et c'est déjà activé. S'il manque une pièce, un bouton l'installe sur la clé.
 - ⚠️ La création d'images d'Ollama est **expérimentale** : il faut Linux avec une carte NVIDIA (CUDA), ou un Mac, et une version récente d'Ollama. Les gros modèles demandent beaucoup de mémoire vidéo.
 
 ### 🎬 Schémas animés
@@ -118,12 +129,46 @@ Le bouton **Enregistrer tout** met les fichiers dans le projet.
 - L'animation se construit comme un montage vidéo : boîtes qui rebondissent, flèches qui se dessinent, billes qui circulent dans les liens.
 - **Export vidéo `.webm` 1920×1080** et image PNG, gardés sur la clé (`MOTEUR-INTERFACE/schemas`).
 
+### 🖥️ Bureau LexOS
+
+**Le Bureau est la page d'accueil**, juste après le mot de passe. On peut changer ça dans ⚙️ Paramètres → « Au démarrage ».
+
+- **Les icônes « ti-lex IA »** ouvrent l'interface sur le bon onglet : 💬 Chat, ⌨️ Codex, 👥 Codex équipe, 🎨 Images, 🎬 Schémas, 🧠 Modèles, 🔌 La clé, ⚙️ Paramètres, 🔑 Variables.
+- **En haut à droite**, une grande horloge et la barre **« Demande à ti-lex IA… »**, qui ouvre directement le Chat.
+- **Pour revenir au Bureau** depuis l'interface, clique sur le bouton 🖥️, à côté du logo.
+
+Le Bureau est un vrai petit bureau, avec des icônes, des **fenêtres** et une barre des tâches. Le bouton **⏏ Sortir du bureau** (ou Échap) te ramène à l'interface.
+
+- **Les fenêtres** sortent de leur icône. Tu les **déplaces** par la barre de titre, tu les **redimensionnes** par le coin, et tu les **agrandis** d'un double-clic. Le bouton ─ les réduit dans la barre des tâches.
+- **Le menu LexOS** (en bas à gauche) liste toutes les applications. L'heure et le modèle d'IA utilisé sont affichés dans la barre.
+
+| Outil | Ce qu'il fait |
+|---|---|
+| ✍️ Texte IA | résumer, corriger le français, réécrire (ton au choix), expliquer simplement, traduire |
+| 📝 Notes | des notes **gardées sur la clé**, et l'IA pour résumer, organiser ou transformer en tâches |
+| ✅ Tâches | une liste de tâches **sur la clé**, avec une barre de progression et 🪄 « découper un objectif en tâches » |
+| 📄 Documents | ouvrir un texte (txt, md, csv, json, code…), le résumer, en tirer les points importants, des questions de révision, ou lui poser une question |
+| 🖼️ Photo | décrire une image, lire le texte d'une image, l'analyser, ou poser une question (il faut un modèle qui voit les images, comme gemma3) |
+| 🧮 Calculatrice | avec un historique, `sqrt`, `sin`, `^`, `%`… |
+| 🔁 Convertisseur | longueur, masse, volume, vitesse, données, temps, température |
+| ⏱️ Minuterie | Pomodoro (25, 5 ou 15 min, ou ton choix), avec un son et une notification |
+| 📋 Presse-papiers | l'historique de ce que tu copies dans LexOS (en mémoire seulement) |
+| 📸 Capture d'écran | capturer l'écran, la garder dans la galerie, ou la faire décrire par l'IA |
+
 ### ⚙️ Paramètres
 - **25 couleurs**, plus 🌈 arc-en-ciel et ta couleur à toi.
 - **20 polices** incluses sur la clé, qui marchent sans Internet.
 - La taille du texte.
 - **7 fonds animés** : Constellation, Aurore, Hyperespace, Pluie de code, Vagues, Braises, Noir. Tu peux aussi mettre **ta propre image**, avec flou, assombrissement et zoom cinéma.
 - Tout est gardé **sur la clé**, donc ton style te suit sur tous les PC.
+
+### ☁️ IA en ligne (ta propre clé API + compteur)
+Sur le Bureau, l'icône **☁️ IA en ligne** permet d'utiliser **Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google), OpenRouter, Groq et Mistral** en plus des modèles locaux.
+- **Chaque personne met sa clé** : « 🔗 Se connecter et prendre ma clé » ouvre la page de ton compte chez le fournisseur. Tu crées une clé API, tu la colles, et c'est tout.
+- La clé est gardée **chiffrée dans le coffre** (mot de passe maître). Elle ne revient jamais dans le navigateur : c'est le moteur qui parle au fournisseur.
+- « 📋 Choisir des modèles » va chercher la liste à jour chez le fournisseur. Les modèles choisis apparaissent dans les menus du Chat, du Codex, etc., avec un ☁️ devant. Un modèle en ligne n'est **jamais choisi tout seul**.
+- **Compteur du mois** : les jetons envoyés et reçus, et une **estimation en $** avec les prix que tu entres (en $ par million de jetons). Tu peux mettre une **limite en jetons et/ou en $**. Rendu à 80 %, tu reçois un avertissement. À 100 %, LexOS n'envoie plus rien jusqu'au mois suivant.
+- **🎨 Images avec ChatGPT** : avec une clé OpenAI, « ☁️ ChatGPT Images » (gpt-image-1) apparaît dans l'onglet 🎨 Images. Les images sont comptées aussi.
 
 ### ☰ Menu de gauche
 S'ouvre et se ferme en douceur, avec le bouton ☰ ou **Ctrl+B**.
@@ -142,9 +187,11 @@ LEXOS/
     ├── moteur.py          ← le serveur (Python, bibliothèque standard seulement)
     ├── turbo_rea.py       ← l'agent ⚡ Turbo REA
     ├── coffre.py          ← le coffre chiffré des clés API
+    ├── nuage.py           ← ☁️ IA en ligne + compteur de jetons
     ├── interface/         ← l'interface (HTML/CSS/JS, polices incluses)
     ├── acces.json         ← empreinte du mot de passe        (privé, pas sur GitHub)
     ├── conversations/ projets/ images/ schemas/ fonds/        (privé, pas sur GitHub)
+    ├── nuage.json / compteur.json ← tes modèles en ligne et ta consommation (privé, pas sur GitHub)
     └── parametres.json    ← tes couleurs, police, fond       (privé, pas sur GitHub)
 ```
 

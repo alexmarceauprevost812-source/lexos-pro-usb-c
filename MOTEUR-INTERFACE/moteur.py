@@ -48,6 +48,8 @@ PROJETS = ICI / "projets"
 FONDS = ICI / "fonds"
 SCHEMAS = ICI / "schemas"
 IMAGES = ICI / "images"
+BUREAU = ICI / "bureau"
+NOM_DOC_BUREAU = re.compile(r"^[a-z][a-z0-9_-]{0,30}$")
 NOM_IMAGE = re.compile(r"^img-\d{10,16}\.png$")
 NOM_SCHEMA = re.compile(r"^[A-Za-z0-9 _.'-]{1,60}$")
 PARAMETRES = ICI / "parametres.json"
@@ -347,6 +349,10 @@ class Acces:
 
 
 ACCES_MOTEUR = Acces()
+from sdcpp import MoteurSD, ErreurSD          # moteur d'images stable-diffusion.cpp
+MOTEUR_SD = MoteurSD(CLE, ICI, CACHE)
+from nuage import Nuage, ErreurNuage, est_nuage   # ☁️ IA en ligne avec la clé API de chacun
+NUAGE = Nuage(ICI)
 ENV_NOMS_CACHE: dict = {}          # noms des variables (jamais les valeurs), pour l'affichage
 NOM_VARIABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
@@ -484,6 +490,21 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 return self._json({"jeton": ACCES_MOTEUR.jeton_apercu(self._jeton())})
             if self.path == "/moteur/studio":
                 return self._studio()
+            if self.path.startswith("/moteur/bureau/"):
+                cle = self.path.rsplit("/", 1)[1]
+                if not NOM_DOC_BUREAU.match(cle):
+                    return self._json({"erreur": "nom invalide"}, 400)
+                try:
+                    return self._json(json.loads((BUREAU / f"{cle}.json").read_text("utf-8")))
+                except (OSError, ValueError):
+                    return self._json(None)
+            if self.path == "/moteur/sd/etat":
+                try:
+                    return self._json(MOTEUR_SD.etat())
+                except Exception as e:
+                    return self._json({"pret": False, "erreur": str(e)})
+            if self.path == "/moteur/nuage":
+                return self._json(NUAGE.etat())
             if self.path == "/moteur/env":
                 return self._json({"coffre": COFFRE_FICHIER.is_file(), "cryptographie": _coffre is not None,
                                    "noms": sorted(ENV_NOMS_CACHE.get("noms", []))})
@@ -556,6 +577,28 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 return self._turbo_rea()
             if self.path == "/moteur/env":
                 return self._env()
+            if self.path == "/moteur/cloner":
+                return self._cloner()
+            if self.path == "/moteur/nuage":
+                return self._nuage()
+            if self.path == "/moteur/nuage/image":
+                return self._nuage_image()
+            if self.path.startswith("/moteur/bureau/"):
+                cle = self.path.rsplit("/", 1)[1]
+                corps = self._corps()
+                if not NOM_DOC_BUREAU.match(cle) or len(corps) > 5_000_000:
+                    return self._json({"erreur": "refusé"}, 400)
+                try:
+                    json.loads(corps or b"null")
+                except ValueError:
+                    return self._json({"erreur": "json invalide"}, 400)
+                BUREAU.mkdir(exist_ok=True)
+                tmp = BUREAU / f".{cle}.tmp"
+                tmp.write_bytes(corps)
+                os.replace(tmp, BUREAU / f"{cle}.json")
+                return self._json({"ok": True})
+            if self.path in ("/moteur/sd/installer", "/moteur/sd/generer"):
+                return self._sd(self.path.rsplit("/", 1)[1])
             if self.path == "/moteur/arreter":
                 self._json({"ok": True})
                 threading.Timer(0.5, arret.set).start()
@@ -630,7 +673,21 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
 
         # ── relais vers Ollama (en flux, mot par mot) ──
         def _proxy(self, methode):
+            if methode == "GET" and self.path.split("?", 1)[0] == "/api/tags":
+                return self._tags()
             corps = self._corps() if methode != "GET" else None
+            if corps and self.path in ("/api/chat", "/api/generate", "/api/show", "/api/delete"):
+                try:
+                    d = json.loads(corps)
+                except ValueError:
+                    d = None
+                if isinstance(d, dict) and est_nuage(d.get("model") or d.get("name")):
+                    if self.path == "/api/show":       # pas « vision » : jamais choisi tout seul
+                        return self._json({"capabilities": ["completion"], "details": {"family": "nuage"},
+                                           "modelfile": "", "nuage": True})
+                    if self.path == "/api/delete":
+                        return self._json({"error": "modèle en ligne : retire-le dans ☁️ IA en ligne"}, 400)
+                    return self._nuage_chat(d, self.path == "/api/generate")
             try:
                 c = http.client.HTTPConnection("127.0.0.1", moteur.port, timeout=900)
                 c.request(methode, self.path, body=corps,
@@ -655,6 +712,97 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             finally:
                 c.close()
                 self.close_connection = True
+
+        # ── liste des modèles : ceux de la clé + ceux en ligne (si la clé API est là) ──
+        def _tags(self):
+            modeles = []
+            try:
+                c = http.client.HTTPConnection("127.0.0.1", moteur.port, timeout=30)
+                c.request("GET", "/api/tags")
+                modeles = json.loads(c.getresponse().read() or b"{}").get("models") or []
+                c.close()
+            except (OSError, ValueError):
+                pass
+            return self._json({"models": modeles + NUAGE.tags()})
+
+        # ── ☁️ discussion avec un modèle en ligne (même format qu'Ollama) ──
+        def _nuage_chat(self, d: dict, generer: bool = False):
+            def adapter(m: dict) -> dict:               # /api/generate répond « response » au lieu de « message »
+                if generer:
+                    m = {**m, "response": m.get("message", {}).get("content", "")}
+                    m.pop("message", None)
+                return m
+            if d.get("stream") is False:
+                try:
+                    return self._json(adapter(NUAGE.discuter_complet(d)))
+                except ErreurNuage as e:
+                    return self._json({"error": str(e)}, 400)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            gen = NUAGE.discuter(d)
+            try:
+                for m in gen:
+                    self.wfile.write((json.dumps(adapter(m), ensure_ascii=False) + "\n").encode())
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                gen.close()                               # « Stop » : on coupe (et on compte ce qui a été fait)
+            except ErreurNuage as e:
+                try:
+                    self.wfile.write((json.dumps({"error": str(e)}, ensure_ascii=False) + "\n").encode())
+                except OSError:
+                    pass
+            except Exception as e:
+                try:
+                    self.wfile.write((json.dumps({"error": f"{type(e).__name__} : {e}"}) + "\n").encode())
+                except OSError:
+                    pass
+            self.close_connection = True
+
+        def _nuage(self):
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            try:
+                action = d.get("action")
+                if action == "config":
+                    NUAGE.sauver_config(d)
+                    return self._json(NUAGE.etat())
+                if action == "lister":
+                    return self._json({"modeles": NUAGE.lister(str(d.get("fournisseur", "")))})
+                if action == "remettre":
+                    NUAGE.remettre()
+                    return self._json(NUAGE.etat())
+            except ErreurNuage as e:
+                return self._json({"erreur": str(e)}, 400)
+            return self._json({"erreur": "action inconnue"}, 400)
+
+        def _nuage_image(self):
+            import base64
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            try:
+                png, info = NUAGE.generer_image(str(d.get("prompt", "")), int(d.get("width") or 1024), int(d.get("height") or 1024))
+                ligne = {"image": base64.b64encode(png).decode(), "done": True, **info}
+            except ErreurNuage as e:
+                ligne = {"error": str(e)}
+            except Exception as e:
+                ligne = {"error": f"{type(e).__name__} : {e}"}
+            try:
+                self.wfile.write((json.dumps(ligne, ensure_ascii=False) + "\n").encode())
+            except OSError:
+                pass
+            self.close_connection = True
 
         # ── état du moteur ──
         def _etat(self):
@@ -765,6 +913,97 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             nom = f"fond-{int(time.time() * 1000)}.{ext}"
             (FONDS / nom).write_bytes(data)
             self._json({"ok": True, "nom": nom})
+
+        # ── 🎨 stable-diffusion.cpp : installer les pièces / créer une image (flux NDJSON façon Ollama) ──
+        def _sd(self, action: str):
+            import base64
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            parti = [False]
+
+            def ecrire(e: dict):
+                if parti[0]:
+                    return
+                try:
+                    self.wfile.write((json.dumps(e, ensure_ascii=False) + "\n").encode()); self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    parti[0] = True                           # bouton « Arrêter » : on coupe sd-cli
+            try:
+                if action == "installer":
+                    etat = MOTEUR_SD.installer(ecrire)
+                    ecrire({"status": "success", "etat": etat})
+                else:
+                    graine = d.get("options", {}).get("seed") if isinstance(d.get("options"), dict) else d.get("seed")
+                    png = MOTEUR_SD.generer(str(d.get("prompt", "")), d.get("width") or 1024, d.get("height") or 1024,
+                                            d.get("steps"), graine, ecrire, annule=lambda: parti[0])
+                    ecrire({"image": base64.b64encode(png).decode(), "done": True})
+            except ErreurSD as e:
+                ecrire({"error": str(e)})
+            except Exception as e:
+                ecrire({"error": f"{type(e).__name__} : {e}"})
+            self.close_connection = True
+
+        # ── 📦 Cloner un dépôt GitHub (sans git, sans IA) ──
+        def _cloner(self):
+            from turbo_rea import cloner_github, analyser_github, ErreurOutil
+            try:
+                d = json.loads(self._corps() or b"{}")
+                proprio, depot, _ = analyser_github(str(d.get("url", "")))
+            except (ValueError, ErreurOutil) as e:
+                return self._json({"erreur": str(e) or "requête invalide"}, 400)
+            dans = str(d.get("dans") or "")
+            if dans:                                            # dans un projet existant, sous-dossier
+                projet = self._dossier_projet(dans)
+                if not projet or not projet.is_dir():
+                    return self._json({"erreur": "projet introuvable"}, 404)
+                sous = re.sub(r"[^\w.-]", "-", str(d.get("dossier") or depot))[:60] or depot
+                cible = self._chemin_dans(projet, sous)
+                if not cible:
+                    return self._json({"erreur": "dossier refusé"}, 400)
+                nom_projet, rel = projet.name, sous
+            else:                                               # nouveau projet
+                base = re.sub(r"[^A-Za-z0-9 _.-]", "-", str(d.get("nom") or depot))[:60].strip(" .-") or "depot"
+                nom_projet, k = base, 2
+                while (PROJETS / nom_projet).exists():
+                    nom_projet = f"{base}-{k}"; k += 1
+                cible, rel = PROJETS / nom_projet, ""
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            dernier = [0.0]
+
+            def ecrire(e: dict):
+                try:
+                    self.wfile.write((json.dumps(e, ensure_ascii=False) + "\n").encode()); self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    raise ErreurOutil("annulé")
+
+            def progres(recu, total):
+                if time.time() - dernier[0] > .2:
+                    dernier[0] = time.time()
+                    ecrire({"type": "progres", "recu": recu, "total": total})
+            try:
+                ecrire({"type": "debut", "depot": f"{proprio}/{depot}", "projet": nom_projet})
+                r = cloner_github(str(d["url"]), str(d.get("branche") or ""), cible, progres,
+                                  jeton=os.environ.get("GITHUB_TOKEN", ""))
+                ecrire({"type": "fin", "projet": nom_projet, "dossier": rel, **r})
+            except ErreurOutil as e:
+                if not rel and cible.exists() and not any(cible.iterdir()):
+                    cible.rmdir()
+                try:
+                    ecrire({"type": "erreur", "texte": str(e)})
+                except ErreurOutil:
+                    pass
+            self.close_connection = True
 
         # ── 🔑 Variables d'environnement, façon Vercel (chiffrées dans le coffre .env.coffre) ──
         # Globales : clé « NOM » (chargées aussi dans le moteur).
@@ -887,6 +1126,13 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                         agent.arret = True                         # bouton « Stop »
             agent = TurboREA(projet, f"http://127.0.0.1:{moteur.port}", str(d["modele"]),
                              d.get("vision") or None, d.get("modele_image") or None, evenement)
+            agent.nuage = NUAGE
+            if d.get("modele_image") == "nuage-image":
+                import base64
+                agent.generateur_image = lambda p, w, h: base64.b64encode(NUAGE.generer_image(p, w, h)[0]).decode()
+            if d.get("modele_image") == "sdcpp":
+                import base64
+                agent.generateur_image = lambda p, w, h: base64.b64encode(MOTEUR_SD.generer(p, w, h, None, None, lambda e: None)).decode()
             if d.get("ouvert"):
                 agent.ouvert = str(d["ouvert"])
                 agent.ouvert_contenu = str(d.get("ouvert_contenu") or "")

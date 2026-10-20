@@ -23,6 +23,7 @@ async function flux(modele, messages, surMorceau, signal) {
       if (!l.trim()) continue;
       let d; try { d = JSON.parse(l); } catch { continue; }
       if (d.error) throw new Error(d.error);
+      if (d.lexos_compteur && typeof noterCompteur === "function") noterCompteur(d.lexos_compteur);
       const m = d.message?.content || "";
       if (m) { tout += m; surMorceau(tout); }
     }
@@ -34,10 +35,10 @@ function remplirSelectModeles(sel, cle, prefere) {
   const garde = mem.lire(cle, "") || prefere || "";
   const liste = modelesTexte();
   sel.innerHTML = liste.length
-    ? liste.map((m) => `<option value="${echapper(m.name)}">${echapper(m.name)}</option>`).join("")
+    ? liste.map((m) => `<option value="${echapper(m.name)}">${echapper(nomModele(m.name))}</option>`).join("")
     : `<option value="">(aucun modèle de texte)</option>`;
   const choix = [garde, prefere, ...liste.filter((m) => /coder|code/i.test(m.name)).map((m) => m.name)]
-    .find((n) => n && liste.some((m) => m.name === n));
+    .find((n) => n && liste.some((m) => m.name === n)) || liste.find((m) => !m.nuage)?.name;
   if (choix) sel.value = choix;
   sel.onchange = () => mem.ecrire(cle, sel.value);
 }
@@ -749,14 +750,7 @@ $("#cx-plus-creer").addEventListener("click", () => {
   $(".cx-plus-zone").classList.remove("ouvert"); $("#cx-turbo").checked = true; majTurbo();
   $("#cx-saisie").value = "Crée une image : "; $("#cx-saisie").focus();
 });
-$("#cx-plus-cloner").addEventListener("click", () => {
-  $(".cx-plus-zone").classList.remove("ouvert");
-  const url = prompt("Adresse du dépôt GitHub public (ex. https://github.com/proprio/depot) :");
-  if (!url) return;
-  $("#cx-turbo").checked = true; majTurbo();
-  $("#cx-saisie").value = `Clone le dépôt ${url.trim()} dans le projet, puis explique-moi ce qu'il contient.`;
-  $("#cx-form").requestSubmit();
-});
+$("#cx-plus-cloner").addEventListener("click", () => { $(".cx-plus-zone").classList.remove("ouvert"); ouvrirClone(); });
 
 /* ════════════════════════ ⚡ TURBO REA ════════════════════════ */
 function majTurbo() {
@@ -788,7 +782,7 @@ async function demanderTurbo(question, pieces) {
   CX.ctrl = new AbortController(); $("#cx-stop").hidden = false;
   let fin = "", enCours = null; const ecritsTurbo = [];
   if (typeof trouverModelesImage === "function" && !IM.cherche) await trouverModelesImage();
-  const imageModele = (typeof IM !== "undefined" && IM.modeles?.[0]) || "";
+  const imageModele = (typeof IM !== "undefined" && (IM.modeles?.includes(mem.lire("lexos-modele-image", "")) ? mem.lire("lexos-modele-image", "") : IM.modeles?.find((m) => m !== "nuage-image"))) || "";
   try {
     const r = await fetch("/moteur/rea", { method: "POST", headers: { "Content-Type": "application/json" }, signal: CX.ctrl.signal,
       body: JSON.stringify({ projet: CX.projet, modele, message: texte, historique: cxHistorique.slice(-8), modele_image: imageModele,

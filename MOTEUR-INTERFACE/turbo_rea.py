@@ -113,11 +113,16 @@ class _PasDeRedirection(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _telecharger(url: str, limite: int, accept: str = "*/*") -> tuple[bytes, str]:
+def _telecharger(url: str, limite: int, accept: str = "*/*", entetes: dict | None = None, progres=None) -> tuple[bytes, str]:
     ouvreur = urllib.request.build_opener(_PasDeRedirection)
+    premier = True
     for _ in range(6):                             # suit les redirections en revérifiant chaque adresse
         _url_publique(url)
-        req = urllib.request.Request(url, headers={"User-Agent": AGENT_WEB, "Accept": accept})
+        h = {"User-Agent": AGENT_WEB, "Accept": accept}
+        if premier and entetes:                    # le jeton GitHub ne va qu'à la 1re adresse (api.github.com)
+            h.update(entetes)
+        premier = False
+        req = urllib.request.Request(url, headers=h)
         try:
             r = ouvreur.open(req, timeout=30)
         except urllib.error.HTTPError as e:
@@ -125,11 +130,73 @@ def _telecharger(url: str, limite: int, accept: str = "*/*") -> tuple[bytes, str
                 url = urllib.parse.urljoin(url, e.headers["Location"])
                 continue
             raise ErreurOutil(f"Le site a répondu {e.code}.") from e
-        data = r.read(limite + 1)
-        if len(data) > limite:
-            raise ErreurOutil("Trop gros à télécharger.")
-        return data, r.headers.get("Content-Type", "")
+        total = int(r.headers.get("Content-Length") or 0)
+        morceaux, recu = [], 0
+        while True:
+            m = r.read(256 * 1024)
+            if not m:
+                break
+            morceaux.append(m); recu += len(m)
+            if recu > limite:
+                raise ErreurOutil("Trop gros à télécharger.")
+            if progres:
+                progres(recu, total)
+        return b"".join(morceaux), r.headers.get("Content-Type", "")
     raise ErreurOutil("Trop de redirections.")
+
+
+RE_GITHUB = re.compile(r"^(?:https?://)?(?:www\.)?github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?(?:/(?:tree|blob)/([^?#]+))?/?(?:[?#].*)?$")
+
+
+def analyser_github(url: str) -> tuple[str, str, str]:
+    m = RE_GITHUB.match(url.strip()) or re.match(r"^([\w.-]+)/([\w.-]+?)(?:\.git)?$", url.strip())
+    if not m:
+        raise ErreurOutil("Donne une adresse comme https://github.com/proprio/depot")
+    return m.group(1), m.group(2), (m.group(3) if m.lastindex and m.lastindex >= 3 else "") or ""
+
+
+def cloner_github(url: str, branche: str, cible: Path, progres=None, jeton: str = "") -> dict:
+    """Copie un dépôt GitHub (zip, sans git) dans « cible ». Dépôt privé : jeton GITHUB_TOKEN."""
+    proprio, depot, branche_url = analyser_github(url)
+    branche = (branche or branche_url or "").strip().split("/")[0] if not branche else branche.strip()
+    if jeton:
+        adresse = f"https://api.github.com/repos/{proprio}/{depot}/zipball/{urllib.parse.quote(branche) if branche else ''}".rstrip("/")
+        entetes = {"Authorization": f"Bearer {jeton}", "X-GitHub-Api-Version": "2022-11-28"}
+    else:
+        adresse = f"https://codeload.github.com/{proprio}/{depot}/zip/{'refs/heads/' + branche if branche else 'HEAD'}"
+        entetes = None
+    try:
+        try:
+            data, _ = _telecharger(adresse, MAX_DEPOT, entetes=entetes, progres=progres)
+        except ErreurOutil:
+            if not jeton:
+                raise
+            # jeton expiré ou refusé : on réessaie comme un dépôt public
+            data, _ = _telecharger(f"https://codeload.github.com/{proprio}/{depot}/zip/{'refs/heads/' + branche if branche else 'HEAD'}",
+                                   MAX_DEPOT, progres=progres)
+    except ErreurOutil as e:
+        raise ErreurOutil(f"Dépôt introuvable, branche inexistante ou dépôt privé ({e})."
+                          + ("" if jeton else " Pour un dépôt privé, ajoute la variable globale GITHUB_TOKEN (🔑 Variables).")) from e
+    if cible.exists() and any(cible.iterdir()):
+        raise ErreurOutil(f"Le dossier « {cible.name} » existe déjà et n'est pas vide.")
+    racine = cible.resolve()
+    racine.mkdir(parents=True, exist_ok=True)
+    n = taille = 0
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        for info in z.infolist():
+            morceaux = info.filename.split("/", 1)          # enlève le dossier « depot-branche/ »
+            if len(morceaux) < 2 or not morceaux[1] or info.is_dir():
+                continue
+            f = (racine / morceaux[1]).resolve()
+            if racine not in f.parents:                       # protection « zip slip »
+                continue
+            taille += info.file_size
+            if taille > MAX_DEPOT * 3 or n > 20000:
+                raise ErreurOutil("Dépôt trop gros.")
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(z.read(info))
+            n += 1
+    return {"proprio": proprio, "depot": depot, "fichiers": n, "taille": taille, "telecharge": len(data)}
 
 
 class _Texte(HTMLParser):
@@ -168,6 +235,7 @@ class TurboREA:
         self.modele_image = modele_image
         self.evenement = evenement
         self.arret = False
+        self.generateur_image = None             # stable-diffusion.cpp (optionnel)
         self.ouvert: str | None = None          # fichier ouvert dans l'éditeur du Codex
         self.ouvert_contenu = ""
         self.ecrits: list[str] = []
@@ -181,6 +249,14 @@ class TurboREA:
         return cible
 
     def _ollama(self, chemin: str, corps: dict, delai: int = 900) -> dict:
+        nuage = getattr(self, "nuage", None)
+        if nuage and str(corps.get("model", "")).startswith("nuage:"):   # ☁️ modèle en ligne
+            if chemin == "/api/show":
+                return {"capabilities": ["completion"]}       # pas d'outils → mode texte
+            try:
+                return nuage.discuter_complet({k: v for k, v in corps.items() if k != "tools"})
+            except Exception as e:
+                raise ErreurOutil(str(e)) from e
         req = urllib.request.Request(self.ollama + chemin, data=json.dumps(corps).encode(),
                                      headers={"Content-Type": "application/json"})
         try:
@@ -272,10 +348,16 @@ class TurboREA:
             path += ".png"
         f = self._chemin(path)
         self.evenement({"type": "info", "texte": "🎨 je peins l'image… (ça peut prendre une minute)"})
-        r = self._ollama("/api/generate", {"model": self.modele_image, "prompt": prompt, "stream": False,
-                                           "width": max(256, min(int(width or 1024), 1536)),
-                                           "height": max(256, min(int(height or 1024), 1536))}, delai=1800)
-        img = r.get("image") or (r.get("images") or [None])[0]
+        w, h = max(256, min(int(width or 1024), 1536)), max(256, min(int(height or 1024), 1536))
+        if self.generateur_image:
+            try:
+                img = self.generateur_image(prompt, w, h)
+            except Exception as e:
+                raise ErreurOutil(f"stable-diffusion.cpp : {e}") from e
+        else:
+            r = self._ollama("/api/generate", {"model": self.modele_image, "prompt": prompt, "stream": False,
+                                               "width": w, "height": h}, delai=1800)
+            img = r.get("image") or (r.get("images") or [None])[0]
         if not img:
             raise ErreurOutil("Le modèle n'a pas renvoyé d'image (Ollama trop vieux ou carte graphique non prise en charge).")
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -285,39 +367,14 @@ class TurboREA:
         return f"Image créée : {rel}"
 
     def outil_clone_github(self, url: str, branch: str = "", dest: str = "") -> str:
-        m = re.match(r"^(?:https?://)?(?:www\.)?github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?(?:/tree/([^?#]+))?/?$", url.strip())
-        if not m:
-            raise ErreurOutil("Donne une adresse comme https://github.com/proprio/depot")
-        proprio, depot, branche_url = m.group(1), m.group(2), m.group(3)
-        branche = (branch or branche_url or "").strip()
-        ref = f"refs/heads/{branche}" if branche else "HEAD"
+        import os
+        proprio, depot, _ = analyser_github(url)
         self.evenement({"type": "info", "texte": f"📦 téléchargement de {proprio}/{depot}…"})
-        try:
-            data, _ = _telecharger(f"https://codeload.github.com/{proprio}/{depot}/zip/{ref}", MAX_DEPOT)
-        except ErreurOutil as e:
-            raise ErreurOutil(f"Dépôt introuvable ou privé ({e}). Seuls les dépôts publics marchent.") from e
         cible = self._chemin(dest or depot)
-        if cible.exists() and any(cible.iterdir()):
-            raise ErreurOutil(f"Le dossier « {dest or depot} » existe déjà et n'est pas vide : choisis un autre dest.")
-        racine = cible.resolve()
-        n = taille = 0
-        with zipfile.ZipFile(io.BytesIO(data)) as z:
-            for info in z.infolist():
-                morceaux = info.filename.split("/", 1)          # enlève le dossier « depot-branche/ »
-                if len(morceaux) < 2 or not morceaux[1] or info.is_dir():
-                    continue
-                f = (racine / morceaux[1]).resolve()
-                if racine not in f.parents:                       # protection « zip slip »
-                    continue
-                taille += info.file_size
-                if taille > MAX_DEPOT * 3 or n > 20000:
-                    raise ErreurOutil("Dépôt trop gros.")
-                f.parent.mkdir(parents=True, exist_ok=True)
-                f.write_bytes(z.read(info))
-                n += 1
-        rel = racine.relative_to(self.dossier.resolve()).as_posix()
+        r = cloner_github(url, branch, cible, jeton=os.environ.get("GITHUB_TOKEN", ""))
+        rel = cible.resolve().relative_to(self.dossier.resolve()).as_posix()
         self.evenement({"type": "fichier", "chemin": rel + "/"})
-        return f"Dépôt {proprio}/{depot} copié dans « {rel}/ » : {n} fichiers. Utilise list_files pour l'explorer."
+        return f"Dépôt {proprio}/{depot} copié dans « {rel}/ » : {r['fichiers']} fichiers. Utilise list_files pour l'explorer."
 
     # ── la boucle de l'agent ──
     def appeler(self, nom: str, args: dict) -> str:

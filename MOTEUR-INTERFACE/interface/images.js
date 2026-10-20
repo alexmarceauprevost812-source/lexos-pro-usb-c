@@ -3,10 +3,11 @@
 
 const IM = { modeles: [], ctrl: null, dernier: null, format: { l: 1024, h: 1024 }, anim: null, pct: 0 };
 const RE_IMAGE = RE_MODELE_IMAGE;
+const urlImage = (m) => m === "sdcpp" ? "/moteur/sd/generer" : m === "nuage-image" ? "/moteur/nuage/image" : "/api/generate";
 
 /* ── Trouver les modèles qui savent faire des images ── */
 async function trouverModelesImage() {
-  const tous = S.modeles.map((m) => m.name);
+  const tous = S.modeles.filter((m) => !m.nuage).map((m) => m.name);
   // On demande à Ollama ce que chaque modèle sait faire : un .gguf d'image importé
   // (ComfyUI / stable-diffusion.cpp) n'a PAS la capacité « image » → on l'écarte.
   IM.casses = [];
@@ -23,14 +24,25 @@ async function trouverModelesImage() {
     return RE_IMAGE.test(n) ? n : null;
   }));
   IM.modeles = verifs.filter(Boolean); IM.cherche = true;
-  $("#im-casses").hidden = !IM.casses.length;
+  // stable-diffusion.cpp : lit les .gguf ComfyUI (z_image_turbo…) déjà sur la clé
+  try { IM.sd = await api("/moteur/sd/etat"); } catch { IM.sd = null; }
+  if (IM.sd?.pret) IM.modeles.unshift("sdcpp");
+  try { const n = await api("/moteur/nuage"); IM.nuage = n.fournisseurs.find((f) => f.id === "openai")?.cle ? n.image_modele : null; } catch { IM.nuage = null; }
+  if (IM.nuage) IM.modeles.push("nuage-image");          // ☁️ ChatGPT Images : jamais en premier
+  $("#im-sd").hidden = !(IM.sd && IM.sd.diffusion && !IM.sd.pret);
+  if (IM.sd && IM.sd.diffusion && !IM.sd.pret) {
+    const noms = { vae: "le décodeur d'image (VAE, ~335 Mo)", binaire: "le programme stable-diffusion.cpp (~40 Mo)", llm: "le lecteur de texte Qwen3-4B (.gguf)" };
+    $("#im-sd-manque").innerHTML = IM.sd.manque.map((m) => `<li>${noms[m] || m}</li>`).join("");
+  }
+  $("#im-casses").hidden = !IM.casses.length || !!IM.sd?.diffusion;
   $("#im-casses").innerHTML = IM.casses.length ? `⚠️ <b>${IM.casses.map(echapper).join(", ")}</b> : ce modèle d'image en .gguf ne marche pas dans Ollama (fait pour ComfyUI / stable-diffusion.cpp). Télécharge plutôt un modèle officiel ci-dessous, puis supprime l'ancien dans l'onglet Modèles.` : "";
   const sel = $("#im-modele");
-  sel.innerHTML = IM.modeles.length ? IM.modeles.map((n) => `<option>${echapper(n)}</option>`).join("") : `<option value="">(aucun modèle d'image)</option>`;
+  const etiquette = (n) => n === "sdcpp" ? `🎨 ${IM.sd?.nom || "stable-diffusion.cpp"}` : n === "nuage-image" ? `☁️ ChatGPT Images (${IM.nuage}) · payant` : n;
+  sel.innerHTML = IM.modeles.length ? IM.modeles.map((n) => `<option value="${echapper(n)}">${echapper(etiquette(n))}</option>`).join("") : `<option value="">(aucun modèle d'image)</option>`;
   const garde = mem.lire("lexos-modele-image", "");
   if (IM.modeles.includes(garde)) sel.value = garde;
   sel.onchange = () => mem.ecrire("lexos-modele-image", sel.value);
-  $("#im-installer").hidden = IM.modeles.length > 0;
+  $("#im-installer").hidden = IM.modeles.length > 0 || !$("#im-sd").hidden;
   $("#im-go").disabled = !IM.modeles.length;
 }
 
@@ -101,7 +113,7 @@ async function creerImage() {
   let estimation = setInterval(() => { if (IM.pct < 92) majProgres(IM.pct + (92 - IM.pct) * .02, IM.pct > 5 ? "je peins…" : null); }, 400);
   let image = null;
   try {
-    const r = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps), signal: IM.ctrl.signal });
+    const r = await fetch(urlImage(modele), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps), signal: IM.ctrl.signal });
     if (!r.ok || !r.body) throw new Error((await r.text()).slice(0, 300) || "Erreur " + r.status);
     const lecteur = r.body.getReader(), dec = new TextDecoder();
     let tampon = "";
@@ -111,6 +123,7 @@ async function creerImage() {
       if (d.error) throw new Error(d.error);
       if (d.total && d.completed != null) { clearInterval(estimation); majProgres((d.completed / d.total) * 100, `étape ${d.completed}/${d.total}`); }
       if (d.image) image = d.image;
+      if (d.lexos_compteur && typeof noterCompteur === "function") noterCompteur(d.lexos_compteur);
       if (Array.isArray(d.images) && d.images[0]) image = d.images[0];
     };
     for (;;) {
@@ -194,30 +207,46 @@ $("#im-galerie").addEventListener("click", async (e) => {
 });
 
 /* ── Télécharger un modèle d'image SUR la clé (ollama pull, en direct) ── */
+/* Télécharge un modèle Ollama SUR la clé (ollama pull, en direct). maj(pct, texte) suit la progression. */
+async function tirerModele(nom, maj) {
+  const r = await fetch("/api/pull", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: nom, stream: true }) });
+  if (!r.ok || !r.body) { const t = await r.text().catch(() => ""); throw new Error(t.slice(0, 200) || "Erreur " + r.status); }
+  const lecteur = r.body.getReader(), dec = new TextDecoder();
+  let tampon = "", reussi = false;
+  for (;;) {
+    const { value, done } = await lecteur.read();
+    if (done) break;
+    tampon += dec.decode(value, { stream: true });
+    const lignes = tampon.split("\n"); tampon = lignes.pop();
+    for (const l of lignes.concat(done ? [tampon] : [])) {
+      let d; try { d = JSON.parse(l); } catch { continue; }
+      if (d.error) {
+        let aide = "";
+        if (/412|newer version|pre-release/i.test(d.error)) aide = " → le moteur Ollama de la clé est trop vieux pour ce modèle.";
+        else if (/does not exist|not found|404/i.test(d.error)) aide = " → ce nom de modèle n'existe pas (ou pas pour Linux).";
+        else if (/dial tcp|no such host|timeout|connection/i.test(d.error)) aide = " → pas d'Internet, ou ollama.com bloqué.";
+        else if (/platform|darwin|macos|mlx/i.test(d.error)) aide = " → ce modèle n'est pas offert pour Linux dans cette version.";
+        else if (/space|no space/i.test(d.error)) aide = " → plus assez de place sur la clé.";
+        throw new Error(`Ollama dit : « ${d.error} »${aide}`);
+      }
+      if (d.status === "success") reussi = true;
+      const pct = d.total ? (d.completed || 0) / d.total * 100 : null;
+      maj(pct, (d.status || "") + (d.total ? ` — ${octets(d.completed || 0)} / ${octets(d.total)}` : ""));
+    }
+  }
+  try { const d = JSON.parse(tampon); if (d.status === "success") reussi = true; if (d.error) throw new Error(d.error); } catch (e) { if (e.message && !/JSON/.test(e.message)) throw e; }
+  if (!reussi) throw new Error("téléchargement interrompu (Internet coupé ?). Relance : il reprend où il était.");
+  await chargerModeles(); IM.cherche = false; await trouverModelesImage();
+}
+
 $$("[data-tirer]").forEach((b) => b.addEventListener("click", async () => {
   const nom = b.dataset.tirer;
   if (!confirm(`Télécharger ${nom} sur la clé ? Ça peut être long (plusieurs Go) et il faut Internet.`)) return;
   $$("[data-tirer]").forEach((x) => { x.disabled = true; });
   $("#im-tirage").hidden = false;
   try {
-    const r = await fetch("/api/pull", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: nom, stream: true }) });
-    const lecteur = r.body.getReader(), dec = new TextDecoder();
-    let tampon = "";
-    for (;;) {
-      const { value, done } = await lecteur.read();
-      if (done) break;
-      tampon += dec.decode(value, { stream: true });
-      const lignes = tampon.split("\n"); tampon = lignes.pop();
-      for (const l of lignes) {
-        let d; try { d = JSON.parse(l); } catch { continue; }
-        if (d.error) throw new Error(d.error);
-        const pct = d.total ? (d.completed || 0) / d.total * 100 : 0;
-        $("#im-tirage-i").style.width = pct + "%";
-        $("#im-tirage-txt").textContent = (d.status || "") + (d.total ? ` — ${octets(d.completed || 0)} / ${octets(d.total)}` : "");
-      }
-    }
+    await tirerModele(nom, (pct, txt) => { if (pct != null) $("#im-tirage-i").style.width = pct + "%"; $("#im-tirage-txt").textContent = txt; });
     toast(`${nom} est sur la clé ✔`);
-    await chargerModeles(); await trouverModelesImage();
   } catch (err) { toast("Téléchargement impossible : " + err.message, true); }
   finally { $$("[data-tirer]").forEach((x) => { x.disabled = false; }); }
 }));
@@ -231,7 +260,8 @@ $$(".onglet").forEach((o) => o.addEventListener("click", () => {
 /* ── Créer une image directement dans le Chat (« crée une image de… ») ── */
 async function imageDansChat(texte) {
   if (!IM.cherche) await trouverModelesImage();
-  const modele = IM.modeles[0];
+  const choisi = mem.lire("lexos-modele-image", "");
+  const modele = IM.modeles.includes(choisi) ? choisi : IM.modeles.find((m) => m !== "nuage-image");
   ajouterMsg("user", texte);
   S.conv.messages.push({ role: "user", content: texte });
   const bulle = ajouterMsg("assistant", ""); bulle.classList.add("ecrit");
@@ -245,7 +275,7 @@ async function imageDansChat(texte) {
     S.conv.messages.push({ role: "assistant", content: rep }); sauver(); return;
   }
   const prompt = texte.replace(RE_DEMANDE_IMAGE, "").replace(/^[\s:,-]*(de|d'|du|avec|qui|représentant)?\s*/i, "").trim() || texte;
-  t.innerHTML = `<div class="chat-image-attente"><canvas></canvas><b>🎨 je peins avec ${echapper(modele)}…</b><small>0%</small></div>`;
+  t.innerHTML = `<div class="chat-image-attente"><canvas></canvas><b>🎨 je peins avec ${echapper(modele === "sdcpp" ? (IM.sd?.nom || "Z-Image") : modele === "nuage-image" ? "ChatGPT Images" : modele)}…</b><small>chargement…</small></div>`;
   const zone = $(".chat-image-attente", t), cv = $("canvas", zone), x = cv.getContext("2d");
   cv.width = 320; cv.height = 320;
   let k = 0, anim;
@@ -261,7 +291,7 @@ async function imageDansChat(texte) {
   dessinerAttente();
   const debut = performance.now(); let image = null, rep;
   try {
-    const r = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" },
+    const r = await fetch(urlImage(modele), { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: modele, prompt, width: 1024, height: 1024, stream: true }) });
     if (!r.ok || !r.body) throw new Error((await r.text()).slice(0, 300));
     const lec = r.body.getReader(), dec = new TextDecoder(); let tampon = "";
@@ -292,3 +322,31 @@ async function imageDansChat(texte) {
     S.conv.messages.push({ role: "assistant", content: rep }); sauver();
   }
 }
+
+
+/* ── Installer les pièces de stable-diffusion.cpp (VAE + programme) SUR la clé ── */
+$("#im-sd-installer").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  if (!confirm("Télécharger le moteur d'images sur la clé ? (environ 375 Mo, il faut Internet)")) return;
+  b.disabled = true; b.classList.add("chargement"); $("#im-sd-tirage").hidden = false;
+  try {
+    const r = await fetch("/moteur/sd/installer", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const lec = r.body.getReader(), dec = new TextDecoder(); let tampon = "", ok = false;
+    for (;;) {
+      const { value, done } = await lec.read(); if (done) break;
+      tampon += dec.decode(value, { stream: true });
+      const lignes = tampon.split("\n"); tampon = lignes.pop();
+      for (const l of lignes) {
+        let d; try { d = JSON.parse(l); } catch { continue; }
+        if (d.error) throw new Error(d.error);
+        if (d.status === "success") ok = true;
+        if (d.total) $("#im-sd-i").style.width = (d.completed / d.total * 100) + "%";
+        $("#im-sd-txt").textContent = (d.status || "") + (d.total ? ` — ${octets(d.completed)} / ${octets(d.total)}` : "");
+      }
+    }
+    if (!ok) throw new Error("installation interrompue");
+    etincelles(b, 40); toast("🎨 Moteur d'images installé sur la clé !");
+    IM.cherche = false; await trouverModelesImage();
+  } catch (err) { $("#im-sd-txt").textContent = "✖ " + err.message; toast("Installation impossible : " + err.message, true); }
+  finally { b.disabled = false; b.classList.remove("chargement"); }
+});

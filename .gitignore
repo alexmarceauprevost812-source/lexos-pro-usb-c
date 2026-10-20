@@ -1,0 +1,16 @@
+# LexOS — fichiers privés : jamais sur GitHub
+MOTEUR-INTERFACE/acces.json
+MOTEUR-INTERFACE/.env.coffre
+MOTEUR-INTERFACE/parametres.json
+MOTEUR-INTERFACE/nuage.json
+MOTEUR-INTERFACE/compteur.json
+MOTEUR-INTERFACE/conversations/
+MOTEUR-INTERFACE/projets/
+MOTEUR-INTERFACE/images/
+MOTEUR-INTERFACE/schemas/
+MOTEUR-INTERFACE/fonds/
+MOTEUR-INTERFACE/bureau/
+MOTEUR-INTERFACE/*.tmp
+__pycache__/
+.env
+.env.*

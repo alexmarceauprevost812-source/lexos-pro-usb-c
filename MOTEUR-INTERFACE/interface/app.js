@@ -137,6 +137,7 @@ async function demarrer() {
   machineAEcrire($(".machine"), $(".machine").dataset.texte);
   afficherEtat();
   setInterval(ping, 10000);
+  if (typeof bureauAuDemarrage === "function") bureauAuDemarrage();
 }
 
 async function ping() {
@@ -180,14 +181,15 @@ async function chargerModeles() {
   const garde = mem.lire("lexos-modele", "") || S.etat?.defaut || "";
   const texte = modelesTexte();
   sel.innerHTML = texte.length
-    ? texte.map((m) => `<option value="${echapper(m.name)}">${echapper(m.name)}</option>`).join("")
+    ? texte.map((m) => `<option value="${echapper(m.name)}">${echapper(nomModele(m.name))}</option>`).join("")
     : `<option value="">(aucun modèle de texte sur la clé)</option>`;
   if (texte.some((m) => m.name === garde)) sel.value = garde;
   rendreModeles();
 }
 /* Les modèles d'IMAGE ne savent pas discuter : on les garde hors des menus Chat / Codex */
 const RE_MODELE_IMAGE = /z[-_ ]?image|flux|sdxl|stable[-_ ]?diffusion|\bsd3|qwen[-_]?image|hidream/i;
-const modelesTexte = () => S.modeles.filter((m) => !RE_MODELE_IMAGE.test(m.name));
+const modelesTexte = () => S.modeles.filter((m) => m.nuage || !RE_MODELE_IMAGE.test(m.name));
+const nomModele = (n) => String(n || "").startsWith("nuage:") ? "☁️ " + n.slice(6) : n;
 function expliquerErreur(msg) {
   if (/unknown model architecture|error loading model/i.test(msg))
     return "Ce modèle ne peut pas être chargé par Ollama (architecture inconnue). Si c'est un modèle d'image en .gguf (fait pour ComfyUI / stable-diffusion.cpp), il ne marche pas dans Ollama : télécharge plutôt x/z-image-turbo dans l'onglet 🎨 Images.";
@@ -205,6 +207,23 @@ function rendreModeles() {
     const d = m.details || {};
     const tags = [d.parameter_size, d.quantization_level, d.family].filter(Boolean);
     const choisi = m.name === actuel;
+    if (m.nuage) return `<div class="carte modele-nuage ${choisi ? "choisi" : ""}" style="animation-delay:${i * 70}ms">
+      <span class="badge-nuage">☁️ en ligne</span>
+      <h3>${echapper(m.name.slice(6))}</h3>
+      <div class="sous">${echapper(d.parameter_size || "")} · ta clé API · compté</div>
+      <button class="btn ${choisi ? "btn-contour" : "btn-plein"}" data-utiliser="${echapper(m.name)}">${choisi ? "En cours d'utilisation" : "Utiliser ce modèle"}</button>
+    </div>`;
+    if (RE_MODELE_IMAGE.test(m.name)) {
+      const casse = m.name.startsWith("cle/") || (typeof IM !== "undefined" && IM.casses?.includes(m.name));
+      return `<div class="carte ${casse ? "modele-casse" : "modele-image"}" style="animation-delay:${i * 70}ms">
+        <span class="badge-image">${casse ? "⚠️ ne marche pas dans Ollama" : "🎨 modèle d'image"}</span>
+        <h3>${echapper(m.name)}</h3>
+        <div class="sous">${octets(m.size)} sur la clé</div>
+        ${casse ? `<p class="gguf-note">Importé depuis un .gguf ComfyUI : Ollama ne peut pas le charger. Supprime-le pour libérer ${octets(m.size)}.</p>
+          <button class="btn btn-contour" data-supprimer-modele="${echapper(m.name)}">🗑 Supprimer</button>`
+        : `<button class="btn btn-plein" data-aller-images>🎨 Créer des images</button>`}
+      </div>`;
+    }
     return `<div class="carte ${choisi ? "choisi" : ""}" style="animation-delay:${i * 70}ms">
       ${choisi ? '<span class="badge-actif">● actif</span>' : ""}
       <h3>${echapper(m.name)}</h3>
@@ -214,7 +233,20 @@ function rendreModeles() {
     </div>`;
   }).join("");
 }
-$("#cartes-modeles").addEventListener("click", (e) => {
+$("#cartes-modeles").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-aller-images]")) return allerA("images"), $('.onglet[data-vue="images"]').click();
+  const sup = e.target.closest("[data-supprimer-modele]");
+  if (sup) {
+    const nom = sup.dataset.supprimerModele;
+    if (!confirm(`Supprimer ${nom} de la clé ?`)) return;
+    try {
+      const r = await fetch("/api/delete", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: nom }) });
+      if (!r.ok) throw new Error((await r.text()).slice(0, 200) || "Erreur " + r.status);
+      sup.closest(".carte").classList.add("sort"); toast(`🗑 ${nom} supprimé`);
+      setTimeout(chargerModeles, 400);
+    } catch (err) { toast("Suppression impossible : " + err.message, true); }
+    return;
+  }
   const b = e.target.closest("[data-utiliser]");
   if (!b) return;
   $("#modele").value = b.dataset.utiliser;
@@ -225,19 +257,45 @@ $("#modele").addEventListener("change", () => {
   mem.ecrire("lexos-modele", $("#modele").value);
   $("#puce-version").classList.remove("flash"); void $("#puce-version").offsetWidth; $("#puce-version").classList.add("flash");
   rendreModeles();
-  toast("Modèle : " + $("#modele").value);
+  toast("Modèle : " + nomModele($("#modele").value));
 });
 
 function rendreGguf() {
   const g = S.etat?.gguf || [];
   const box = $("#cartes-gguf");
   if (!g.length) { box.innerHTML = `<div class="vide">Aucun fichier .gguf trouvé sur la clé.</div>`; return; }
-  box.innerHTML = g.map((f, i) => `<div class="carte" style="animation-delay:${i * 70}ms">
+  box.innerHTML = g.map((f, i) => RE_MODELE_IMAGE.test(f.nom) ? `<div class="carte gguf-image" style="animation-delay:${i * 70}ms">
+      <span class="badge-image">🎨 modèle d'image</span>
+      <h3>${echapper(f.nom)}</h3>
+      <div class="sous">${octets(f.taille)} · ${echapper(f.chemin)}</div>
+      <p class="gguf-note">Ce fichier est fait pour <b>ComfyUI / stable-diffusion.cpp</b> : Ollama ne sait pas le lire. Prends la <b>version officielle d'Ollama</b>, elle se télécharge directement sur la clé :</p>
+      <button class="btn btn-plein brille" data-tirer-officiel="x/z-image-turbo">⬇ Z-Image Turbo officiel <small>(~13 Go)</small></button>
+      <button class="btn btn-contour" data-tirer-officiel="x/flux2-klein:4b">⬇ FLUX.2 Klein 4B <small>(plus léger, mieux pour 8 Go de VRAM)</small></button>
+      <div class="gguf-tirage" hidden><div class="force-barre"><i></i></div><span></span></div>
+    </div>` : `<div class="carte" style="animation-delay:${i * 70}ms">
       <h3>${echapper(f.nom)}</h3>
       <div class="sous">${octets(f.taille)} · ${echapper(f.chemin)}</div>
       <button class="btn btn-plein" data-importer="${echapper(f.chemin)}">Importer dans le moteur</button>
     </div>`).join("");
 }
+$("#cartes-gguf").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-tirer-officiel]");
+  if (!b || b.disabled || typeof tirerModele !== "function") return;
+  const carte = b.closest(".carte"), nom = b.dataset.tirerOfficiel;
+  if (!confirm(`Télécharger ${nom} sur la clé ?\nIl faut Internet, et c'est long (plusieurs Go). Tu peux continuer à utiliser LexOS pendant ce temps.`)) return;
+  $$("[data-tirer-officiel]", carte).forEach((x) => { x.disabled = true; });
+  const zone = $(".gguf-tirage", carte); zone.hidden = false; b.classList.add("chargement");
+  try {
+    await tirerModele(nom, (pct, txt) => { if (pct != null) $("i", zone).style.width = pct + "%"; $("span", zone).textContent = txt; });
+    $("span", zone).textContent = "✔ installé sur la clé !"; $("i", zone).style.width = "100%";
+    etincelles(b, 40); toast(`🎨 ${nom} est sur la clé : va dans l'onglet Images ou demande une image dans le Chat`);
+  } catch (err) {
+    $("span", zone).innerHTML = `<b class="erreur-tirage">✖ ${echapper(err.message)}</b> <button type="button" class="copier" data-copier-erreur>📋 Copier l'erreur</button>`;
+    $("[data-copier-erreur]", zone).onclick = (ev) => { copierTexte(err.message); ev.target.textContent = "Copié ✔"; };
+    toast("Téléchargement impossible : " + err.message, true);
+  }
+  finally { b.classList.remove("chargement"); $$("[data-tirer-officiel]", carte).forEach((x) => { x.disabled = false; }); }
+});
 $("#cartes-gguf").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-importer]");
   if (!b || b.disabled) return;
@@ -407,7 +465,7 @@ async function envoyer() {
   const bulle = ajouterMsg("assistant", "");
   bulle.classList.add("ecrit");
   const t = $(".texte", bulle);
-  let rep = "", pense = "", mots = 0;
+  let rep = "", pense = "", mots = 0, jetonsNuage = 0;
   const debut = performance.now();
   S.ctrl = new AbortController();
   $("#stop").hidden = false; btn.hidden = true;
@@ -429,6 +487,7 @@ async function envoyer() {
         if (!l.trim()) continue;
         let d; try { d = JSON.parse(l); } catch { continue; }
         if (d.error) throw new Error(d.error);
+        if (d.lexos_compteur && typeof noterCompteur === "function") { noterCompteur(d.lexos_compteur); jetonsNuage = (d.prompt_eval_count || 0) + (d.eval_count || 0); }
         const morceau = d.message?.content || "";
         pense += d.message?.thinking || "";
         rep += morceau; mots += morceau.split(/\s+/).filter(Boolean).length;
@@ -451,7 +510,7 @@ async function envoyer() {
     remplirIA(t, rep, pense);
     const s = ((performance.now() - debut) / 1000).toFixed(1);
     const meta = document.createElement("div"); meta.className = "meta";
-    meta.textContent = `${modele} · ${s} s`;
+    meta.textContent = `${nomModele(modele)} · ${s} s` + (jetonsNuage ? ` · ${jetonsNuage} jetons` : "");
     t.parentElement.appendChild(meta);
     $("#fil").scrollTop = $("#fil").scrollHeight;
     S.conv.messages.push({ role: "assistant", content: rep });
