@@ -1,0 +1,54 @@
+# Construit l'APK Android de LexOS Mobile (dossier mobile/) sur GitHub, gratuitement.
+# Se lance tout seul quand le dossier mobile/ change, ou à la main :
+#   onglet « Actions » → « APK LexOS Mobile » → « Run workflow ».
+# ~15-25 min plus tard : télécharge « LexOS-Mobile-apk » en bas de la page du build.
+name: APK LexOS Mobile
+
+on:
+  push:
+    branches: [claude, main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/apk-mobile.yml'
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Générer le projet Android
+        run: npx expo prebuild -p android --no-install
+
+      - name: Compiler l'APK (arm64, pour les vrais téléphones)
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Renommer
+        run: cp android/app/build/outputs/apk/release/app-release.apk LexOS-Mobile.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LexOS-Mobile-apk
+          path: mobile/LexOS-Mobile.apk
