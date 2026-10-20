@@ -152,6 +152,7 @@
           <button class="btn btn-contour mini" id="cx-chemin" title="Copie la commande cd pour aller dans ce projet">📂 Chemin du projet</button>
           <button class="btn btn-plein mini brille" id="cx-studio" title="Voir tous tes projets">🎛️ Studio</button>
           <button class="btn btn-contour mini" data-cloner title="Copier un dépôt GitHub sur la clé">📦 Cloner</button>
+          <button class="btn btn-contour mini" data-partager title="Envoyer ce projet sur GitHub avec ton jeton">📤 Partager</button>
           <button class="btn btn-contour mini btn-env" data-env title="Variables d'environnement du projet">🔑 Variables</button>
         </div>
         <div class="cx-groupe">
@@ -642,6 +643,34 @@
   </form>
 </div>
 
+<div id="partage" hidden>
+  <form class="clone-boite" id="partage-form" autocomplete="off">
+    <div class="env-tete">
+      <div class="clone-boite-ic"><span>📤</span></div>
+      <div><h3>Partager sur GitHub</h3><small>ton projet devient un dépôt · le jeton reste sur ton PC</small></div>
+      <button type="button" class="btn-icone" id="partage-fermer" title="Fermer">✕</button>
+    </div>
+    <p id="partage-jeton" class="partage-note" hidden></p>
+    <label class="clone-champ">Nom du dépôt<input id="partage-depot" placeholder="mon-projet" spellcheck="false"></label>
+    <label class="clone-champ">Message du commit <small>(optionnel)</small><input id="partage-message" placeholder="Envoi depuis LexOS Moteur" spellcheck="false"></label>
+    <div class="env-envs clone-ou" id="partage-ou">
+      <button type="button" data-prive="1" class="actif">🔒 Privé</button>
+      <button type="button" data-prive="0">🌍 Public</button>
+      <i class="env-envs-glisse"></i>
+    </div>
+    <div class="clone-progres" id="partage-progres" hidden>
+      <div class="clone-anim"><span>📤</span><i></i><i></i><i></i></div>
+      <div class="force-barre"><i id="partage-barre"></i></div>
+      <p id="partage-etat">connexion à GitHub…</p>
+    </div>
+    <div class="clone-fini" id="partage-fini" hidden></div>
+    <div class="clone-btns">
+      <span class="clone-prive" id="partage-info"></span>
+      <button class="btn btn-plein brille" id="partage-go">📤 Partager</button>
+    </div>
+  </form>
+</div>
+
 <div id="modal" hidden>
   <div class="modal-boite">
     <div class="modal-icone">⏻</div>
@@ -670,6 +699,7 @@
 <script src="images.js"></script>
 <script src="variables.js"></script>
 <script src="cloner.js"></script>
+<script src="partage.js"></script>
 <script src="nuage.js"></script>
 <script src="abonnement.js"></script>
 <script src="bureau.js"></script>

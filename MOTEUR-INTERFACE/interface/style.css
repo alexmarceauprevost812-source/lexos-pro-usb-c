@@ -1375,3 +1375,42 @@ li.pl-case::before { content: "○"; color: var(--gris); margin-right: 7px; }
 li.pl-case.fait { color: var(--gris); }
 li.pl-case.fait::before { content: "✔"; color: #2fd067; font-weight: 900; }
 @media (prefers-reduced-motion: reduce) { .pl-e.e .pl-coche, .pl-e, .pl-a { animation: none; } }
+
+/* ═════════════ CODEX : le menu d'actions du bas passe en COLONNE À DROITE ═════════════ */
+.cx-bas {
+  max-width: 1120px;
+  display: grid !important;
+  grid-template-columns: 1fr minmax(150px, 190px);
+  grid-template-areas:
+    "coller  actions"
+    "pieces  actions"
+    "form    actions";
+  align-items: start;
+  gap: 8px 14px;
+}
+.cx-bas .cx-actions {
+  grid-area: actions;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 0 !important;
+  align-self: stretch;
+  border-left: 1px solid var(--ligne);
+  padding-left: 14px !important;
+}
+.cx-bas .cx-actions .sugg-mini,
+.cx-bas .cx-actions .turbo { width: 100%; justify-content: center; margin: 0; }
+.cx-bas .cx-coller { grid-area: coller; }
+.cx-bas #cx-pieces { grid-area: pieces; }
+.cx-bas #cx-form { grid-area: form; }
+@media (max-width: 820px) {
+  .cx-bas { grid-template-columns: 1fr; grid-template-areas: "form" "actions" "coller" "pieces"; }
+  .cx-bas .cx-actions { flex-direction: row; flex-wrap: wrap; border-left: 0; padding-left: 0 !important; justify-content: center; }
+  .cx-bas .cx-actions .sugg-mini, .cx-bas .cx-actions .turbo { width: auto; }
+}
+
+/* 📤 Partage GitHub : réutilise le style du clone, + une note jeton */
+.partage-note { background: rgba(var(--acc-rgb),.08); border: 1px solid rgba(var(--acc-rgb),.35); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--blanc-doux); }
+.partage-note[hidden] { display: none; }
+#partage-fini a { margin-top: 4px; text-decoration: none; }

@@ -539,6 +539,9 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             if self.path == "/moteur/fonds":
                 FONDS.mkdir(exist_ok=True)
                 return self._json(sorted(f.name for f in FONDS.iterdir() if NOM_FOND.match(f.name)))
+            if self.path == "/moteur/github":
+                import github_partage
+                return self._json({"pret": bool(github_partage.jeton_du_coffre())})
             if self.path == "/moteur/conversations":
                 return self._liste_conv()
             if self.path.startswith("/moteur/conversations/"):
@@ -556,6 +559,8 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 return self._proxy("POST")
             if self.path.startswith("/moteur/conversations/"):
                 return self._ecrire_conv(self.path.rsplit("/", 1)[1])
+            if self.path == "/moteur/partager":
+                return self._partager()
             if self.path.startswith("/moteur/projets"):
                 return self._projets_post()
             if self.path == "/moteur/parametres":
@@ -1002,6 +1007,38 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 try:
                     ecrire({"type": "erreur", "texte": str(e)})
                 except ErreurOutil:
+                    pass
+            self.close_connection = True
+
+        # ── 📤 Partager un projet sur GitHub (jeton GITHUB_TOKEN du coffre) ──
+        def _partager(self):
+            import github_partage
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            projet = self._dossier_projet(str(d.get("projet", "")))
+            if not projet or not projet.is_dir():
+                return self._json({"erreur": "projet introuvable"}, 404)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+
+            def ecrire(e):
+                try:
+                    self.wfile.write((json.dumps(e, ensure_ascii=False) + "\n").encode()); self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    raise github_partage.ErreurGitHub("annulé")
+            try:
+                r = github_partage.partager(projet, str(d.get("depot") or projet.name),
+                                            bool(d.get("prive", True)), str(d.get("message") or ""), progres=ecrire)
+                ecrire({"type": "fin", **r})
+            except github_partage.ErreurGitHub as e:
+                try:
+                    ecrire({"type": "erreur", "texte": str(e)})
+                except github_partage.ErreurGitHub:
                     pass
             self.close_connection = True
 
