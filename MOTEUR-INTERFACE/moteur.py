@@ -784,6 +784,9 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                         agent.arret = True                         # bouton « Stop »
             agent = TurboREA(projet, f"http://127.0.0.1:{moteur.port}", str(d["modele"]),
                              d.get("vision") or None, d.get("modele_image") or None, evenement)
+            if d.get("ouvert"):
+                agent.ouvert = str(d["ouvert"])
+                agent.ouvert_contenu = str(d.get("ouvert_contenu") or "")
             try:
                 fin = agent.tourner(d.get("historique") or [], str(d["message"]))
                 evenement({"type": "fin", "texte": fin})

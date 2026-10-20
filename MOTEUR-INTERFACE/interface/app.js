@@ -84,7 +84,7 @@ function machineAEcrire(el, texte, vitesse = 38) {
 function rendre(md) {
   const blocs = [];
   md = md.replace(/```(\w*)\n?([\s\S]*?)(```|$)/g, (_, lang, code) => {
-    blocs.push(`<pre><div class="pre-tete"><span>${echapper(lang || "code")}</span><button class="copier" type="button">Copier</button></div><code>${echapper(code.replace(/\n$/, ""))}</code></pre>`);
+    blocs.push(`<pre><div class="pre-tete"><span>${echapper(lang || "code")}</span><button class="copier" type="button">Copier</button></div><code>${typeof colorier === "function" ? colorier(code.replace(/\n$/, ""), lang) : echapper(code.replace(/\n$/, ""))}</code></pre>`);
     return `\u0000${blocs.length - 1}\u0000`;
   });
   const enLigne = (s) => echapper(s)

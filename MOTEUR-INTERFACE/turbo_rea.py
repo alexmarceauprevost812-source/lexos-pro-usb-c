@@ -168,6 +168,9 @@ class TurboREA:
         self.modele_image = modele_image
         self.evenement = evenement
         self.arret = False
+        self.ouvert: str | None = None          # fichier ouvert dans l'éditeur du Codex
+        self.ouvert_contenu = ""
+        self.ecrits: list[str] = []
 
     # ── utilitaires ──
     def _chemin(self, rel: str) -> Path:
@@ -249,7 +252,9 @@ class TurboREA:
         if f.exists():
             (f.parent / (f.name + ".avant-codex")).write_bytes(f.read_bytes())
         f.write_text(content, "utf-8")
-        self.evenement({"type": "fichier", "chemin": f.relative_to(self.dossier.resolve()).as_posix()})
+        rel = f.relative_to(self.dossier.resolve()).as_posix()
+        self.ecrits.append(rel)
+        self.evenement({"type": "fichier", "chemin": rel, "contenu": content if len(content) < 400_000 else None})
         return f"Écrit : {path} ({len(content)} caractères)"
 
     def outil_describe_image(self, path: str, question: str = "Décris cette image en détail, en français.") -> str:
@@ -328,10 +333,46 @@ class TurboREA:
         except Exception as e:                                    # la boucle ne plante jamais
             return f"Erreur inattendue ({type(e).__name__}) : {e}"
 
+    # ── modèles sans outils : on lit les fichiers dans le texte de la réponse ──
+    RE_BLOC_FICHIER = re.compile(r"(?:^|\n)#{1,4}\s*(?:FICHIER|FILE|Fichier)\s*:?\s*`?([^\n`]+?)`?\s*\n+```[^\n]*\n(.*?)```", re.S)
+    RE_BLOC = re.compile(r"```([\w+-]*)[^\n]*\n(.*?)```", re.S)
+
+    def _sait_outils(self) -> bool:
+        try:
+            caps = self._ollama("/api/show", {"model": self.modele}, delai=30).get("capabilities")
+        except ErreurOutil:
+            return True
+        return not isinstance(caps, list) or "tools" in caps
+
+    def _ecrire_depuis_texte(self, texte: str) -> list[str]:
+        """Écrit les fichiers trouvés dans la réponse. 1) blocs « ### FICHIER: chemin »,
+        2) sinon un seul gros bloc de code → le fichier ouvert dans l'éditeur."""
+        faits = []
+        for chemin, contenu in self.RE_BLOC_FICHIER.findall(texte):
+            chemin = chemin.strip().strip("*").strip()
+            if chemin and self.appeler("write_file", {"path": chemin, "content": contenu}).startswith("Écrit"):
+                faits.append(chemin)
+        if faits or not self.ouvert:
+            return faits
+        blocs = [(l.lower(), c) for l, c in self.RE_BLOC.findall(texte)
+                 if l.lower() not in ("bash", "sh", "shell", "console", "terminal", "cmd", "powershell")]
+        if len(blocs) == 1 and blocs[0][1].count("\n") >= 2:
+            if self.appeler("write_file", {"path": self.ouvert, "content": blocs[0][1]}).startswith("Écrit"):
+                faits.append(self.ouvert)
+        return faits
+
+    def _contexte(self) -> str:
+        if not self.ouvert:
+            return ""
+        return (f"\n\nFichier ouvert dans l'éditeur : {self.ouvert}\n```\n{self.ouvert_contenu[:20000]}\n```"
+                "\nSi la demande parle de « ce code » ou « ce fichier », c'est celui-là : modifie-le avec write_file (contenu COMPLET).")
+
     def tourner(self, historique: list[dict], demande: str) -> str:
-        messages = [{"role": "system", "content": PROMPT.format(projet=self.dossier.name)}]
-        messages += [m for m in historique[-10:] if m.get("role") in ("user", "assistant") and m.get("content")]
-        messages.append({"role": "user", "content": demande})
+        histo = [m for m in historique[-10:] if m.get("role") in ("user", "assistant") and m.get("content")]
+        if not self._sait_outils():
+            return self._tourner_texte(histo, demande)
+        messages = [{"role": "system", "content": PROMPT.format(projet=self.dossier.name)}] + histo
+        messages.append({"role": "user", "content": demande + self._contexte()})
         for etape in range(1, MAX_ETAPES + 1):
             if self.arret:
                 return "(arrêté)"
@@ -344,7 +385,10 @@ class TurboREA:
             if msg.get("content") and appels:
                 self.evenement({"type": "pensee", "texte": msg["content"][:600]})
             if not appels:
-                return (msg.get("content") or "").strip() or "(fini)"
+                fin = (msg.get("content") or "").strip() or "(fini)"
+                if not self.ecrits:                     # il a écrit le code dans sa réponse au lieu d'utiliser l'outil
+                    self._ecrire_depuis_texte(fin)
+                return fin
             for a in appels:
                 fn = a.get("function") or {}
                 nom, args = fn.get("name", "?"), fn.get("arguments") or {}
@@ -361,3 +405,24 @@ class TurboREA:
                                 "duree": round(time.time() - t0, 1), "apercu": res[:240]})
                 messages.append({"role": "tool", "tool_name": nom, "content": res})
         return "(J'ai atteint la limite d'étapes. Dis « continue » pour que je poursuive.)"
+
+    def _tourner_texte(self, histo: list[dict], demande: str) -> str:
+        """Pour les petits modèles qui ne savent pas appeler d'outils : une seule réponse,
+        et on écrit nous-mêmes les fichiers qu'elle contient."""
+        self.evenement({"type": "info", "texte": f"ℹ️ {self.modele} ne sait pas utiliser d'outils : mode écriture directe (pas de web ni d'images). "
+                                                 "Pour le Turbo complet, prends qwen2.5-coder:7b ou qwen3:8b."})
+        fichiers = self.outil_list_files(".")
+        prompt = (f"Tu es REA, l'agent de programmation de LexOS. Réponds en français québécois simple. Projet : « {self.dossier.name} ».\n"
+                  f"Fichiers du projet :\n{fichiers}\n\n"
+                  "Pour créer ou modifier un fichier, écris EXACTEMENT ce format (le fichier sera écrit automatiquement) :\n"
+                  "### FICHIER: chemin/du/fichier.ext\n```langage\n...contenu COMPLET...\n```\n"
+                  "Les commandes à lancer vont dans un bloc ```bash séparé. Termine par un court résumé.")
+        self.evenement({"type": "etape", "n": 1})
+        r = self._ollama("/api/chat", {"model": self.modele, "stream": False, "options": {"temperature": 0.3, "num_ctx": 16384},
+                                       "messages": [{"role": "system", "content": prompt}] + histo +
+                                                   [{"role": "user", "content": demande + self._contexte()}]})
+        fin = ((r.get("message") or {}).get("content") or "").strip()
+        faits = self._ecrire_depuis_texte(fin)
+        if faits:
+            self.evenement({"type": "info", "texte": "✍️ écrit dans : " + ", ".join(faits)})
+        return fin or "(aucune réponse)"

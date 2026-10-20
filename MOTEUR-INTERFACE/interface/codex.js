@@ -61,13 +61,24 @@ const urlProjet = (p) => "/moteur/projets/" + encodeURIComponent(p);
 /* ════════════════════════ CODEX ════════════════════════ */
 const ed = $("#cx-texte"), lignes = $("#cx-lignes");
 
+const couleursEd = $("#cx-couleurs");
+let colorierPrevu = false;
+function recolorier() {
+  if (colorierPrevu) return; colorierPrevu = true;
+  requestAnimationFrame(() => {
+    colorierPrevu = false;
+    couleursEd.innerHTML = colorier(ed.value, langueDe(CX.fichier)) + "\n";
+    couleursEd.scrollTop = ed.scrollTop; couleursEd.scrollLeft = ed.scrollLeft;
+  });
+}
 function majLignes() {
   const n = ed.value.split("\n").length;
   lignes.textContent = Array.from({ length: n }, (_, i) => i + 1).join("\n");
   lignes.scrollTop = ed.scrollTop;
+  recolorier();
 }
 ed.addEventListener("input", () => { majLignes(); marquerModifie(true); });
-ed.addEventListener("scroll", () => { lignes.scrollTop = ed.scrollTop; });
+ed.addEventListener("scroll", () => { lignes.scrollTop = ed.scrollTop; couleursEd.scrollTop = ed.scrollTop; couleursEd.scrollLeft = ed.scrollLeft; });
 ed.addEventListener("keydown", (e) => {
   if (e.key === "Tab") {
     e.preventDefault();
@@ -152,6 +163,28 @@ async function ouvrirFichier(chemin) {
       $("#cx-nom").textContent = chemin;
     });
   } catch (err) { toast(err.message, true); }
+}
+
+/* ── Écrire un fichier EN DIRECT dans l'éditeur (le code se tape tout seul) ── */
+let fileEcriture = Promise.resolve();
+function ecrireEnDirect(chemin, contenu) {
+  fileEcriture = fileEcriture.then(async () => {
+    if (chemin !== CX.fichier) {
+      await tournerPage(sensVers(chemin), () => { CX.fichier = chemin; ed.value = ""; majLignes(); $("#cx-nom").textContent = chemin; });
+      $$("#cx-fichiers li").forEach((l) => l.classList.toggle("actif", l.dataset.f === chemin));
+    }
+    const code = $(".cx-code"); code.classList.add("tape");
+    const total = contenu.length, pas = Math.max(8, Math.ceil(total / 70));
+    for (let i = 0; i < total; i += pas) {
+      ed.value = contenu.slice(0, i + pas); majLignes();
+      ed.scrollTop = ed.scrollHeight; lignes.scrollTop = ed.scrollTop;
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    ed.value = contenu; majLignes(); ed.scrollTop = 0; lignes.scrollTop = 0;
+    code.classList.remove("tape"); code.classList.remove("applique"); void ed.offsetWidth; code.classList.add("applique");
+    marquerModifie(false); $("#cx-nom").textContent = chemin;
+  }).catch(() => {});
+  return fileEcriture;
 }
 
 /* Conversation Codex repliable (la zone d'écriture reste en bas, au centre) */
@@ -295,7 +328,7 @@ function boutonsAppliquer(b) {
         await copierTexte(cmd); retourCopie(t);
         toast("Colle-la dans ton terminal, puis recolle le résultat avec 📥");
       };
-      tete.insertBefore(t, $(".copier:not(.appliquer)", tete));
+      tete.insertBefore(t, [...tete.children].find((x) => x.classList.contains("copier") && !x.classList.contains("appliquer")) || null);
       return;
     }
     const a = document.createElement("button");
@@ -306,36 +339,95 @@ function boutonsAppliquer(b) {
       $(".cx-code").classList.remove("applique"); void ed.offsetWidth; $(".cx-code").classList.add("applique");
       etincelles(a, 16); toast("Code appliqué — n'oublie pas d'enregistrer 💾");
     };
-    tete.insertBefore(a, $(".copier:not(.appliquer)", tete));
+    tete.insertBefore(a, [...tete.children].find((x) => x.classList.contains("copier") && !x.classList.contains("appliquer")) || null);
   });
+}
+
+const LANG_EXT = { python: "py", py: "py", javascript: "js", js: "js", typescript: "ts", ts: "ts", html: "html", css: "css", json: "json", markdown: "md", md: "md", java: "java", c: "c", cpp: "cpp", rust: "rs", go: "go", php: "php", ruby: "rb", sql: "sql" };
+const RE_FICHIER_BLOC = /(?:^|\n)#{1,4}\s*(?:FICHIER|FILE|Fichier)\s*:?\s*`?([^\n`]+?)`?\s*\n+```[^\n]*\n([\s\S]*?)(?:```|$)/g;
+function blocPrincipal(texte) {          // premier bloc de code qui n'est pas une commande (même pas fini)
+  const re = /```([\w+-]*)[^\n]*\n([\s\S]*?)(```|$)/g;
+  for (let m; (m = re.exec(texte));) if (!LANG_TERMINAL.test(m[1] || "")) return { lang: (m[1] || "").toLowerCase(), code: m[2], fini: !!m[3] };
+  return null;
+}
+function cacherCodeDansBulle(b, nom) {        // le code est dans l'éditeur : on ne le répète pas en bas
+  $$("pre", b).forEach((pre) => {
+    const lang = $(".pre-tete span", pre)?.textContent || "";
+    if (LANG_TERMINAL.test(lang)) return;
+    const puce = document.createElement("div"); puce.className = "puce-ecrit";
+    puce.innerHTML = `✍️ code écrit dans l'éditeur <b>${echapper(nom || CX.fichier || "")}</b> ↑`;
+    pre.replaceWith(puce);
+  });
+}
+async function nomLibre(ext) {
+  let f = []; try { f = (await api(urlProjet(CX.projet) + "/fichiers")).map((x) => x.chemin); } catch {}
+  for (let i = 1; ; i++) { const n = i === 1 ? `nouveau.${ext}` : `nouveau-${i}.${ext}`; if (!f.includes(n)) return n; }
 }
 
 async function demanderCodex(question) {
   const modele = $("#cx-modele").value;
   if (!question || CX.ctrl) return;
   if (!modele) return toast("Aucun modèle — regarde l'onglet Modèles.", true);
+  const direct = $("#cx-direct").checked;
   bulleCx("moi", question);
   const contexte = CX.fichier || ed.value
     ? `Fichier ouvert : ${CX.fichier || "(sans nom)"}\n\`\`\`\n${ed.value.slice(0, 24000)}\n\`\`\`\n\nDemande : ${question}`
     : question;
-  const messages = [{ role: "system", content: CX_SYSTEME }, ...cxHistorique.slice(-6), { role: "user", content: contexte }];
+  const systeme = CX_SYSTEME + (direct ? " IMPORTANT : ton code est écrit directement dans l'éditeur d'Alex. Donne le fichier COMPLET dans UN SEUL bloc de code (ou, pour plusieurs fichiers, un bloc par fichier précédé de « ### FICHIER: chemin »)." : "");
+  const messages = [{ role: "system", content: systeme }, ...cxHistorique.slice(-6), { role: "user", content: contexte }];
   const b = bulleCx("ia", ""); b.classList.add("ecrit");
   b.innerHTML = `<span class="points"><i></i><i></i><i></i></span>`;
   CX.ctrl = new AbortController(); $("#cx-stop").hidden = false;
-  let rep = "";
+  let rep = "", avantEd = ed.value, enDirect = false;
+  const multi = () => /#{1,4}\s*(?:FICHIER|FILE)\s*:/i.test(rep);
   try {
     rep = await flux(modele, messages, (t) => {
-      b.innerHTML = rendre(sansPensee(t)) || `<span class="points"><i></i><i></i><i></i></span>`;
+      rep = sansPensee(t);
+      b.innerHTML = rendre(rep) || `<span class="points"><i></i><i></i><i></i></span>`;
+      if (direct && !multi()) {
+        const bloc = blocPrincipal(rep);
+        if (bloc) {
+          if (!enDirect) { enDirect = true; $(".cx-code").classList.add("tape"); }
+          ed.value = bloc.code; majLignes(); ed.scrollTop = ed.scrollHeight; lignes.scrollTop = ed.scrollTop;
+          cacherCodeDansBulle(b);
+        }
+      }
       $("#cx-fil").scrollTop = $("#cx-fil").scrollHeight;
     }, CX.ctrl.signal);
+    rep = sansPensee(rep);
   } catch (err) {
     if (err.name !== "AbortError") toast("Codex n'a pas pu répondre : " + err.message, true);
+    if (enDirect && err.name === "AbortError") { ed.value = avantEd; majLignes(); enDirect = false; toast("Arrêté : l'éditeur est revenu comme avant."); }
   } finally {
     CX.ctrl = null; $("#cx-stop").hidden = true; b.classList.remove("ecrit");
-    b.innerHTML = rendre(sansPensee(rep) || "*(arrêté)*"); boutonsAppliquer(b);
-    cxHistorique.push({ role: "user", content: question }, { role: "assistant", content: sansPensee(rep) });
+    $(".cx-code").classList.remove("tape");
+    b.innerHTML = rendre(rep || "*(arrêté)*"); boutonsAppliquer(b);
+    // Écriture directe : on enregistre sur la clé
+    if (direct && rep) {
+      if (multi()) {
+        const faits = [];
+        for (const m of rep.matchAll(RE_FICHIER_BLOC)) {
+          const chemin = m[1].trim().replace(/^\*+|\*+$/g, "");
+          try { await api(urlProjet(CX.projet) + "/fichier", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chemin, contenu: m[2] }) }); faits.push([chemin, m[2]]); } catch {}
+        }
+        for (const [chemin, contenu] of faits) await ecrireEnDirect(chemin, contenu);
+        if (faits.length) { listerFichiers(); toast(`✍️ ${faits.length} fichier(s) écrit(s) sur la clé`); cacherCodeDansBulle(b); }
+      } else if (enDirect) {
+        const bloc = blocPrincipal(rep);
+        if (bloc) {
+          if (!CX.fichier) { CX.fichier = await nomLibre(LANG_EXT[bloc.lang] || "txt"); $("#cx-nom").textContent = CX.fichier; }
+          ed.value = bloc.code; majLignes(); ed.scrollTop = 0;
+          await sauverFichier();
+          $(".cx-code").classList.remove("applique"); void ed.offsetWidth; $(".cx-code").classList.add("applique");
+          cacherCodeDansBulle(b);
+        }
+      }
+    }
+    cxHistorique.push({ role: "user", content: question }, { role: "assistant", content: rep });
   }
 }
+$("#cx-direct").checked = mem.lire("lexos-direct", "1") === "1";
+$("#cx-direct").addEventListener("change", (e) => { mem.ecrire("lexos-direct", e.target.checked ? "1" : "0"); if (e.target.checked) etincelles($(".turbo.direct"), 16); });
 $("#cx-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (CX.ctrl) return;
@@ -692,12 +784,13 @@ async function demanderTurbo(question, pieces) {
   const fil = $(".turbo-fil", b), etape = $(".turbo-etape", b);
   const defile = () => { $("#cx-fil").scrollTop = $("#cx-fil").scrollHeight; };
   CX.ctrl = new AbortController(); $("#cx-stop").hidden = false;
-  let fin = "", enCours = null;
+  let fin = "", enCours = null; const ecritsTurbo = [];
   if (typeof trouverModelesImage === "function" && !IM.cherche) await trouverModelesImage();
   const imageModele = (typeof IM !== "undefined" && IM.modeles?.[0]) || "";
   try {
     const r = await fetch("/moteur/rea", { method: "POST", headers: { "Content-Type": "application/json" }, signal: CX.ctrl.signal,
-      body: JSON.stringify({ projet: CX.projet, modele, message: texte, historique: cxHistorique.slice(-8), modele_image: imageModele }) });
+      body: JSON.stringify({ projet: CX.projet, modele, message: texte, historique: cxHistorique.slice(-8), modele_image: imageModele,
+        ouvert: CX.fichier || null, ouvert_contenu: CX.fichier ? ed.value : "" }) });
     if (!r.ok || !r.body) throw new Error((await r.text()).slice(0, 200));
     const lecteur = r.body.getReader(), dec = new TextDecoder();
     let tampon = "";
@@ -724,7 +817,11 @@ async function demanderTurbo(question, pieces) {
         }
         else if (ev.type === "fichier") {
           listerFichiers();
-          if (ev.chemin === CX.fichier && !CX.modifie) { const f = CX.fichier; CX.fichier = ""; ouvrirFichier(f); }
+          if (typeof ev.contenu === "string" && !ev.chemin.endsWith("/")) {
+            if (CX.modifie && ev.chemin !== CX.fichier) await sauverFichier();
+            ecrireEnDirect(ev.chemin, ev.contenu); ecritsTurbo.push(ev.chemin);
+            const li = document.createElement("li"); li.className = "t-info"; li.textContent = `✍️ écrit en direct dans l'éditeur : ${ev.chemin}`; fil.appendChild(li);
+          }
         }
         else if (ev.type === "image") {
           const li = document.createElement("li"); li.className = "t-image";
@@ -744,6 +841,7 @@ async function demanderTurbo(question, pieces) {
     $$(".encours", b).forEach((x) => { x.classList.remove("encours"); $(".t-etat", x).textContent = "—"; });
     etape.textContent = "terminé ✔";
     $(".turbo-final", b).innerHTML = rendre(sansPensee(fin)); boutonsAppliquer(b);
+    if (ecritsTurbo.length) cacherCodeDansBulle($(".turbo-final", b), ecritsTurbo.join(", "));
     cxHistorique.push({ role: "user", content: texte }, { role: "assistant", content: sansPensee(fin) });
     defile();
   }

@@ -824,3 +824,37 @@ body.verrouille #app { filter: blur(10px) saturate(.6); }
 .chat-image-attente canvas { width: 240px; height: 240px; border-radius: 14px; border: 1px solid rgba(var(--acc-rgb),.5); background: #070707; }
 .chat-image-attente small { color: var(--orange); }
 .chat-image { display: block; max-width: min(420px, 100%); border-radius: 14px; border: 1px solid var(--orange); box-shadow: 0 14px 40px rgba(0,0,0,.6), 0 0 30px rgba(var(--acc-rgb),.2); animation: revele 1.3s cubic-bezier(.2,.8,.2,1) both; margin-bottom: 8px; }
+
+/* ═════════════════════════ ÉDITEUR EN COULEURS ═════════════════════════ */
+.cx-zone { position: relative; flex: 1; min-width: 0; min-height: 0; }
+#cx-couleurs, .cx-zone #cx-texte { position: absolute; inset: 0; margin: 0; padding: 14px; font: inherit; line-height: inherit; white-space: pre; tab-size: 4; word-wrap: normal; overflow: auto; border: 0; letter-spacing: 0; }
+#cx-couleurs { pointer-events: none; overflow: hidden; color: var(--blanc-doux); }
+.cx-zone #cx-texte { color: transparent; background: transparent; caret-color: var(--orange); resize: none; outline: none; -webkit-text-fill-color: transparent; }
+.cx-zone #cx-texte::placeholder { color: #55555c; -webkit-text-fill-color: #55555c; }
+.cx-zone #cx-texte::selection { background: rgba(var(--acc-rgb),.35); -webkit-text-fill-color: transparent; }
+.cx-code.tape { box-shadow: inset 0 0 0 1px rgba(var(--acc-rgb),.6), inset 0 0 60px rgba(var(--acc-rgb),.10); }
+.cx-code.tape::before { content: "✍️ l'IA écrit…"; position: absolute; top: 10px; right: 16px; z-index: 3; font-size: 12px; color: var(--sur-accent); background: var(--orange); padding: 4px 10px; border-radius: 20px; animation: clignote 1s infinite; font-family: var(--police); }
+.puce-ecrit { margin: 8px 0; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: rgba(var(--acc-rgb),.1); border: 1px dashed rgba(var(--acc-rgb),.6); color: var(--blanc-doux); animation: pop .4s cubic-bezier(.2,1.6,.4,1); }
+.puce-ecrit b { color: var(--orange); font-family: ui-monospace, monospace; font-weight: 500; }
+.turbo.direct:has(input:checked) { border-color: #4ade80; box-shadow: 0 0 18px rgba(74,222,128,.25); }
+.turbo.direct input:checked + .turbo-piste { background: #22c55e; box-shadow: 0 0 14px rgba(34,197,94,.6); }
+.turbo.direct:has(input:checked) b { color: #4ade80; }
+
+/* Jolies couleurs du code (éditeur + blocs de code) */
+.tk-mot { color: var(--orange); font-weight: 600; }
+.tk-chaine { color: #a5e075; }
+.tk-nombre { color: #f9c74f; }
+.tk-com { color: #6b7280; font-style: italic; }
+.tk-fonction { color: #7cc4ff; }
+.tk-classe { color: #ffcb6b; }
+.tk-special { color: #c792ea; }
+.tk-deco { color: #f472b6; }
+.tk-op { color: #89ddff; }
+.tk-cle { color: #7cc4ff; }
+.tk-balise { color: var(--orange); }
+.tk-attr { color: #ffcb6b; }
+.tk-entite { color: #c792ea; }
+.tk-couleur { color: #f472b6; text-decoration: underline dotted; }
+.tk-variable { color: #c792ea; }
+.tk-option { color: #89ddff; }
+.tk-titre { color: var(--orange); font-weight: 700; }

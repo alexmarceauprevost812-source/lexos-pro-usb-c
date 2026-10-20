@@ -162,7 +162,7 @@
               <div class="cx-onglet-fichier"><span id="cx-nom">Aucun fichier</span><span id="cx-modifie" hidden>● modifié</span>
                 <button class="btn btn-contour mini" id="cx-lancer" title="Copie la commande pour lancer ce fichier dans ton terminal">▶ Commande pour lancer</button>
                 <button class="btn btn-plein mini brille" id="cx-sauver">💾 Enregistrer</button></div>
-              <div class="cx-code"><pre id="cx-lignes">1</pre><textarea id="cx-texte" spellcheck="false" placeholder="Choisis ou crée un fichier, ou demande à Codex d'écrire du code ↓"></textarea></div>
+              <div class="cx-code"><pre id="cx-lignes">1</pre><div class="cx-zone"><pre id="cx-couleurs" aria-hidden="true"></pre><textarea id="cx-texte" spellcheck="false" placeholder="Choisis ou crée un fichier, ou demande à Codex d'écrire du code ↓"></textarea></div></div>
             </div>
           </div>
           <div class="cx-ia">
@@ -177,6 +177,8 @@
                 <button class="sugg-mini" data-cx="Ajoute des commentaires en français à ce code.">Commenter</button>
                 <button class="sugg-mini" data-cx="Améliore et simplifie ce code sans changer ce qu'il fait.">Améliorer</button>
                 <button class="sugg-mini chaud" id="cx-resultat" type="button">📥 Résultat du terminal</button>
+                <label class="turbo direct" title="Le code de Codex s'écrit directement dans l'éditeur (et s'enregistre)">
+                  <input type="checkbox" id="cx-direct" checked><span class="turbo-piste"><i>✍️</i></span><b>Écriture directe</b></label>
                 <label class="turbo" title="REA travaille tout seul : web, fichiers, images, dépôts GitHub">
                   <input type="checkbox" id="cx-turbo"><span class="turbo-piste"><i>⚡</i></span><b>Turbo REA</b></label>
               </div>
@@ -455,6 +457,7 @@
 </div>
 
 <script src="securite.js"></script>
+<script src="couleurs.js"></script>
 <script src="app.js"></script>
 <script src="codex.js"></script>
 <script src="fond.js"></script>
