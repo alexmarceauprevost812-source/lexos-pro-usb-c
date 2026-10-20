@@ -107,7 +107,7 @@ Avant d'effacer quoi que ce soit, il te montre ce qui sera gardé et ce qui sera
 
 ### LexOS Moteur (2e interface)
 
-À la racine de la clé, **LANCER-MOTEUR.sh** (Windows : **LANCER-MOTEUR.bat**) ouvre l'interface « LexOS · Moteur portable » : Chat, Codex, Codex équipe, Schémas animés, Modèles, fonds d'écran. Elle utilise le même moteur et les mêmes modèles IA que TI-LEX-AL (`lexos-ia/ia/`). Ses conversations et ses projets sont gardés dans `MOTEUR-INTERFACE/` sur la clé, et une mise à jour de la clé ne remplace que son code. Son code source est dans [`moteur-interface/`](moteur-interface/).
+À la racine de la clé, **LANCER-MOTEUR.sh** (Windows : **LANCER-MOTEUR.bat**) ouvre l'interface « LexOS · Moteur portable » : Chat, Codex, Codex équipe, Schémas animés, Modèles, fonds d'écran. Elle utilise le même moteur et les mêmes modèles IA que TI-LEX-AL (`lexos-ia/ia/`). Ses conversations, ses projets, son mot de passe et son coffre sont gardés dans `MOTEUR-INTERFACE/` sur la clé. Une mise à jour de la clé ne remplace que son code. Son code source est dans [`MOTEUR-INTERFACE/`](../MOTEUR-INTERFACE/), à la racine du dépôt. `--nettoyer` et le formatage gardent son mot de passe, son coffre et ses réglages.
 
 ## 2. Un clic pour activer les IA
 

@@ -125,17 +125,21 @@ ICÔNES SUR LE BUREAU DU PC (Linux, une seule fois par PC) :
 Tout fonctionne sans Internet. Quitter (0) arrête les IA.
 Python 3 doit être présent sur le PC.
 EOF
-# Moteur d'interface portable (LANCER-MOTEUR) à la racine de la clé.
-# Seul le code est remplacé : conversations, projets, fonds et schémas restent.
-if [ -d "$DEPOT/moteur-interface/MOTEUR-INTERFACE" ]; then
+# LexOS Moteur (2e interface, LANCER-MOTEUR) à la racine de la clé : la version
+# du dossier MOTEUR-INTERFACE/ du dépôt. Seul le code est remplacé : mot de passe,
+# coffre, conversations, projets, images, fonds, bureau et réglages restent.
+MOTEUR_SRC="$DEPOT/../MOTEUR-INTERFACE"
+if [ -f "$MOTEUR_SRC/moteur.py" ]; then
   MI="$CLE/MOTEUR-INTERFACE"
   mkdir -p "$MI"
-  rm -rf "${MI:?}/interface" && cp -r "$DEPOT/moteur-interface/MOTEUR-INTERFACE/interface" "$MI/interface"
-  cp "$DEPOT/moteur-interface/MOTEUR-INTERFACE/moteur.py" "$MI/moteur.py"
+  rm -rf "${MI:?}/interface" && cp -r "$MOTEUR_SRC/interface" "$MI/interface"
+  cp "$MOTEUR_SRC"/*.py "$MI/"
   for f in LANCER-MOTEUR.sh LANCER-MOTEUR.bat LISEZ-MOI-MOTEUR.txt; do
-    cp "$DEPOT/moteur-interface/$f" "$CLE/$f"
+    [ -f "$DEPOT/../$f" ] && cp "$DEPOT/../$f" "$CLE/$f"
   done
-  sed "s|^Icon=.*|Icon=$MI/interface/logo.png|" "$DEPOT/moteur-interface/LexOS-Moteur.desktop" >"$CLE/LexOS-Moteur.desktop"
+  if [ -f "$DEPOT/../LexOS-Moteur.desktop" ]; then
+    sed "s|^Icon=.*|Icon=$MI/interface/logo.png|" "$DEPOT/../LexOS-Moteur.desktop" >"$CLE/LexOS-Moteur.desktop"
+  fi
   chmod +x "$CLE/LANCER-MOTEUR.sh" "$CLE/LexOS-Moteur.desktop" 2>/dev/null || true
 fi
 echo "${VERT}✔ code, lanceurs et icônes copiés${RAZ}"

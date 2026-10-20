@@ -3,7 +3,8 @@
 #  LexOS IA — repartir à neuf : reformater la clé USB-C en gardant les modèles IA
 #
 #  1. Copie sur le PC ce qui vaut la peine d'être gardé :
-#       les modèles IA (Ollama + Z-Image Turbo), le Cerveau (mémoire) et tes choix
+#       les modèles IA (Ollama + Z-Image Turbo), le Cerveau (mémoire), tes choix,
+#       et le mot de passe + le coffre + les réglages de LexOS Moteur
 #  2. Reformate la clé en exFAT (Linux + Windows), nom LEXOS
 #       → tout le reste est EFFACÉ : projets, conversations, images, autres fichiers
 #  3. Remet les modèles sur la clé, puis installe la dernière version de LexOS IA
@@ -51,6 +52,8 @@ CLE="$(cd "$CLE" && pwd)"
 cd "$HOME"   # un terminal ouvert dans la clé empêcherait de la démonter
 SUDO=""; [ "$(id -u)" = 0 ] || SUDO="sudo"
 PATH="$PATH:/usr/sbin:/sbin"
+
+REGLAGES_MOTEUR=(acces.json .env.coffre nuage.json parametres.json compteur.json)   # LexOS Moteur
 
 compter() {  # nombre de fichiers + octets (indépendant du format du disque)
   find "$1" -type f -printf '%s\n' | awk '{ n++; s += $1 } END { printf "%d fichiers, %d octets", n, s }'
@@ -131,7 +134,8 @@ if [ -n "$RESTAURER" ]; then
   SAUVE="$(cd "$RESTAURER" 2>/dev/null && pwd)" || erreur "sauvegarde introuvable : $RESTAURER"
   echo "${ORANGE}${GRAS}LexOS IA — remettre la sauvegarde sur la clé${RAZ}"
   GARDER=()
-  for g in lexos-ia/ia/modeles lexos-ia/images-ia/modeles lexos-ia/memoire lexos-ia/config.json; do
+  for g in lexos-ia/ia/modeles lexos-ia/images-ia/modeles lexos-ia/memoire lexos-ia/config.json \
+           "${REGLAGES_MOTEUR[@]/#/MOTEUR-INTERFACE/}"; do
     [ -e "$SAUVE/$g" ] && GARDER+=("$g")
   done
   [ ${#GARDER[@]} -gt 0 ] || erreur "$SAUVE ne contient pas de modèles LexOS."
@@ -155,10 +159,17 @@ if [ "$NETTOYER" = 1 ]; then
     find "$CLE/lexos-ia/ia/modeles/manifests" -mindepth 3 -type f 2>/dev/null \
       | sed -E 's#.*/manifests/[^/]+/(library/)?##; s#/#:#' | awk 'NR <= 20 { print "      • " $0 }'
   fi
+  for r in "${REGLAGES_MOTEUR[@]}"; do
+    [ -f "$CLE/MOTEUR-INTERFACE/$r" ] && echo "  ${VERT}✔${RAZ} MOTEUR-INTERFACE/$r ${GRIS}(LexOS Moteur : mot de passe, coffre, réglages)${RAZ}"
+  done
   etape "On efface"
   EFFACER=()
-  for f in "$CLE"/*; do [ "${f##*/}" = lexos-ia ] || EFFACER+=("$f"); done
+  for f in "$CLE"/*; do
+    case "${f##*/}" in lexos-ia|MOTEUR-INTERFACE) ;; *) EFFACER+=("$f") ;; esac
+  done
   for f in "$CLE"/lexos-ia/*; do garde "${f##*/}" || EFFACER+=("$f"); done
+  reglage() { local x; for x in "${REGLAGES_MOTEUR[@]}"; do [ "$1" = "$x" ] && return 0; done; return 1; }
+  for f in "$CLE"/MOTEUR-INTERFACE/*; do reglage "${f##*/}" || EFFACER+=("$f"); done
   for f in "${EFFACER[@]}"; do
     echo "  ${ROUGE}✗${RAZ} ${f#"$CLE"/} ${GRIS}($(du -sh "$f" 2>/dev/null | cut -f1))${RAZ}"
   done | awk 'NR <= 60'
@@ -209,6 +220,9 @@ if [ "$MEMOIRE" = 1 ]; then
   [ -d "$CLE/lexos-ia/memoire" ] && GARDER+=("lexos-ia/memoire")
   [ -f "$CLE/lexos-ia/config.json" ] && GARDER+=("lexos-ia/config.json")
 fi
+for r in "${REGLAGES_MOTEUR[@]}"; do
+  [ -f "$CLE/MOTEUR-INTERFACE/$r" ] && GARDER+=("MOTEUR-INTERFACE/$r")
+done
 [ ${#GARDER[@]} -gt 0 ] || echo "${GRIS}(aucun modèle trouvé sur la clé : elle sera formatée vide)${RAZ}"
 BESOIN_KO=0
 for g in "${GARDER[@]}"; do
@@ -231,12 +245,13 @@ fi
 etape "Ce qui sera EFFACÉ"
 for f in "$CLE"/*; do
   [ -e "$f" ] || continue
-  case "${f#"$CLE"/}" in lexos-ia|ACTIVER-IA.*|APP-IA.*|LISEZ-MOI-IA.txt) continue ;; esac
+  case "${f#"$CLE"/}" in lexos-ia|MOTEUR-INTERFACE|ACTIVER-IA.*|APP-IA.*|LISEZ-MOI-IA.txt|LANCER-MOTEUR.*|LISEZ-MOI-MOTEUR.txt|LexOS-Moteur.desktop) continue ;; esac
   echo "  ${ROUGE}✗${RAZ} ${f#"$CLE"/}"
 done | awk 'NR <= 40'
-for d in projets conversations images; do
-  if [ -d "$CLE/lexos-ia/$d" ]; then
-    echo "  ${ROUGE}✗${RAZ} lexos-ia/$d ${GRIS}($(find "$CLE/lexos-ia/$d" -mindepth 1 -maxdepth 1 | wc -l) éléments)${RAZ}"
+for d in lexos-ia/projets lexos-ia/conversations lexos-ia/images MOTEUR-INTERFACE/projets \
+         MOTEUR-INTERFACE/conversations MOTEUR-INTERFACE/images MOTEUR-INTERFACE/schemas; do
+  if [ -d "$CLE/$d" ]; then
+    echo "  ${ROUGE}✗${RAZ} $d ${GRIS}($(find "$CLE/$d" -mindepth 1 -maxdepth 1 | wc -l) éléments)${RAZ}"
   fi
 done
 [ "$MEMOIRE" = 1 ] || echo "  ${ROUGE}✗${RAZ} lexos-ia/memoire (Cerveau) ${GRIS}(--sans-memoire)${RAZ}"
