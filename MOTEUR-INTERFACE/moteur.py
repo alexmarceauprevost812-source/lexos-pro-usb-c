@@ -20,6 +20,9 @@ Usage :  python3 moteur.py [--port 8787] [--modeles DOSSIER] [--sans-navigateur]
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
+import secrets as _secrets
 import http.client
 import json
 import os
@@ -44,6 +47,8 @@ CONVERSATIONS = ICI / "conversations"
 PROJETS = ICI / "projets"
 FONDS = ICI / "fonds"
 SCHEMAS = ICI / "schemas"
+IMAGES = ICI / "images"
+NOM_IMAGE = re.compile(r"^img-\d{10,16}\.png$")
 NOM_SCHEMA = re.compile(r"^[A-Za-z0-9 _.'-]{1,60}$")
 PARAMETRES = ICI / "parametres.json"
 NOM_FOND = re.compile(r"^[A-Za-z0-9_-]{1,40}\.(png|jpe?g|webp|gif)$", re.I)
@@ -199,6 +204,148 @@ class Moteur:
                 self.proc.kill()
 
 
+# ─────────────────────────────── Mot de passe (accès) ───────────────────────
+# Le mot de passe n'est JAMAIS gardé : seulement une empreinte scrypt (lente
+# exprès) + un sel aléatoire, dans MOTEUR-INTERFACE/acces.json.
+# Si un coffre chiffré (.env.coffre, fait avec coffre.py) est sur la clé et que
+# « cryptography » est installé, le même mot de passe maître l'ouvre aussi :
+# les clés API sont chargées en mémoire seulement, jamais écrites en clair.
+ACCES = ICI / "acces.json"
+COFFRE_FICHIER = ICI / ".env.coffre"
+try:
+    sys.path.insert(0, str(ICI))
+    import coffre as _coffre                     # coffre.py (à côté de ce fichier)
+    _coffre.FICHIER_COFFRE = str(COFFRE_FICHIER)
+except Exception:                                # cryptography absent → pas de coffre
+    _coffre = None
+
+
+class Acces:
+    ESSAIS = 3
+
+    def __init__(self):
+        self.sessions: dict[str, float] = {}
+        self.echecs = 0
+        self.bloque_jusqua = 0.0
+        self.verrou = threading.Lock()
+
+    # empreinte du mot de passe
+    @staticmethod
+    def _empreinte(mdp: str, sel: bytes) -> bytes:
+        return hashlib.scrypt(mdp.encode("utf-8"), salt=sel, n=2**15, r=8, p=1,
+                              maxmem=64 * 1024 * 1024, dklen=32)
+
+    def configure(self) -> bool:
+        return ACCES.is_file() or (COFFRE_FICHIER.is_file() and _coffre is not None)
+
+    def coffre_present(self) -> bool:
+        return COFFRE_FICHIER.is_file()
+
+    def _ecrire(self, mdp: str) -> None:
+        sel = os.urandom(16)
+        tmp = ACCES.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"version": 1, "algo": "scrypt-n15-r8-p1",
+                                   "sel": sel.hex(), "empreinte": self._empreinte(mdp, sel).hex()}), "utf-8")
+        os.replace(tmp, ACCES)
+        try:
+            ACCES.chmod(0o600)
+        except OSError:
+            pass
+
+    def _bon(self, mdp: str) -> bool:
+        if ACCES.is_file():
+            try:
+                d = json.loads(ACCES.read_text("utf-8"))
+                ok = hmac.compare_digest(self._empreinte(mdp, bytes.fromhex(d["sel"])),
+                                         bytes.fromhex(d["empreinte"]))
+            except (OSError, ValueError, KeyError):
+                return False
+            if ok:
+                self._ouvrir_coffre(mdp)
+            return ok
+        if COFFRE_FICHIER.is_file() and _coffre is not None:   # seulement le coffre
+            if self._ouvrir_coffre(mdp):
+                self._ecrire(mdp)
+                return True
+        return False
+
+    def _ouvrir_coffre(self, mdp: str) -> bool:
+        if not (COFFRE_FICHIER.is_file() and _coffre is not None):
+            return False
+        try:
+            os.environ.update(_coffre._lire_coffre(mdp))
+            return True
+        except Exception:
+            return False
+
+    def _nouvelle_session(self) -> str:
+        jeton = _secrets.token_urlsafe(32)
+        self.sessions[jeton] = time.time()
+        return jeton
+
+    # actions
+    def creer(self, mdp: str) -> tuple[bool, str]:
+        with self.verrou:
+            if self.configure():
+                return False, "un mot de passe existe déjà"
+            if len(mdp) < 8:
+                return False, "minimum 8 caractères"
+            self._ecrire(mdp)
+            return True, self._nouvelle_session()
+
+    def entrer(self, mdp: str) -> tuple[bool, str, float]:
+        with self.verrou:
+            attente = self.bloque_jusqua - time.time()
+            if attente > 0:
+                return False, "trop d'essais, attends un peu", attente
+            if self._bon(mdp):
+                self.echecs = 0
+                return True, self._nouvelle_session(), 0
+            self.echecs += 1
+            restants = self.ESSAIS - self.echecs % self.ESSAIS
+            if self.echecs % self.ESSAIS == 0:          # 30 s, puis 60, 120… (max 15 min)
+                self.bloque_jusqua = time.time() + min(900, 30 * 2 ** (self.echecs // self.ESSAIS - 1))
+                return False, "trop d'essais : moteur verrouillé un moment", self.bloque_jusqua - time.time()
+            time.sleep(1.5)
+            return False, f"mot de passe incorrect — essais restants : {restants}", 0
+
+    def changer(self, ancien: str, nouveau: str) -> tuple[bool, str]:
+        with self.verrou:
+            if not self._bon(ancien):
+                return False, "ancien mot de passe incorrect"
+            if len(nouveau) < 8:
+                return False, "minimum 8 caractères"
+            if COFFRE_FICHIER.is_file() and _coffre is not None:   # re-chiffre le coffre
+                try:
+                    _coffre._ecrire_coffre(_coffre._lire_coffre(ancien), nouveau)
+                except Exception as e:
+                    return False, f"coffre non modifié : {e}"
+            self._ecrire(nouveau)
+            self.sessions.clear()
+            return True, self._nouvelle_session()
+
+    def valide(self, jeton: str | None) -> bool:
+        return bool(jeton) and jeton in self.sessions
+
+    # Aperçu du Studio : un jeton dans l'adresse (l'aperçu tourne en bac à
+    # sable, sans cookie), valide seulement tant que la session existe.
+    def jeton_apercu(self, session: str) -> str:
+        if not hasattr(self, "apercus"):
+            self.apercus = {}
+        for k, v in self.apercus.items():
+            if v == session:
+                return k
+        k = _secrets.token_urlsafe(24)
+        self.apercus[k] = session
+        return k
+
+    def apercu_valide(self, k: str) -> bool:
+        return self.valide(getattr(self, "apercus", {}).get(k))
+
+
+ACCES_MOTEUR = Acces()
+
+
 # ─────────────────────────────── Fichiers .gguf ──────────────────────────────
 SAUTER = {".git", ".venv", "venv", "deps", "blobs", "lib", "node_modules",
           "heretic-runtime", "heretic-outils", "__pycache__", "huggingface",
@@ -256,25 +403,93 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             n = int(self.headers.get("Content-Length") or 0)
             return self.rfile.read(n) if n else b""
 
-        def _hote_ok(self) -> bool:
-            # Bloque le « DNS rebinding » : un site étranger qui se ferait passer pour 127.0.0.1.
-            port = self.server.server_address[1]
-            if self.headers.get("Host", "") in (f"127.0.0.1:{port}", f"localhost:{port}"):
-                return True
-            self._json({"erreur": "hôte refusé"}, 403)
-            return False
-
         def _origine_ok(self) -> bool:
             # Bloque les sites web étrangers qui essaieraient de parler au moteur.
             o = self.headers.get("Origin")
             return not o or o.startswith(("http://127.0.0.1:", "http://localhost:"))
 
+        # ── portier : rien de privé sans le mot de passe ──
+        def _jeton(self) -> str | None:
+            for morceau in (self.headers.get("Cookie") or "").split(";"):
+                k, _, v = morceau.strip().partition("=")
+                if k == "lexos_session":
+                    return v
+            return None
+
+        def _bloque(self) -> bool:
+            p = self.path.split("?", 1)[0]
+            prive = (p.startswith(("/api/", "/fonds/", "/schemas/", "/images/"))
+                     or (p.startswith("/moteur/") and not p.startswith("/moteur/acces/")
+                         and not (p == "/moteur/parametres" and self.command == "GET")))
+            if prive and not ACCES_MOTEUR.valide(self._jeton()):
+                self._json({"erreur": "verrouillé", "verrou": True}, 401)
+                return True
+            return False
+
+        def _session_json(self, obj, jeton: str | None, code=200):
+            data = json.dumps(obj, ensure_ascii=False).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            if jeton is not None:
+                self.send_header("Set-Cookie", f"lexos_session={jeton}; HttpOnly; SameSite=Strict; Path=/"
+                                 + ("; Max-Age=0" if jeton == "" else ""))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _acces(self):
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            action = self.path.split("?", 1)[0].rsplit("/", 1)[1]
+            if action == "creer":
+                ok, r = ACCES_MOTEUR.creer(str(d.get("mdp", "")))
+                return self._session_json({"ok": True}, r) if ok else self._json({"erreur": r}, 400)
+            if action == "entrer":
+                ok, r, attente = ACCES_MOTEUR.entrer(str(d.get("mdp", "")))
+                if ok:
+                    return self._session_json({"ok": True, "coffre": ACCES_MOTEUR.coffre_present() and _coffre is not None}, r)
+                return self._json({"erreur": r, "attente": round(attente)}, 429 if attente else 403)
+            if action == "sortir":
+                ACCES_MOTEUR.sessions.pop(self._jeton() or "", None)
+                return self._session_json({"ok": True}, "")
+            if action == "changer":
+                if not ACCES_MOTEUR.valide(self._jeton()):
+                    return self._json({"erreur": "verrouillé"}, 401)
+                ok, r = ACCES_MOTEUR.changer(str(d.get("ancien", "")), str(d.get("nouveau", "")))
+                return self._session_json({"ok": True}, r) if ok else self._json({"erreur": r}, 400)
+            self._json({"erreur": "inconnu"}, 404)
+
         # ── routes ──
         def do_GET(self):
-            if not self._hote_ok():
+            if self.path == "/moteur/acces/etat":
+                return self._json({"configure": ACCES_MOTEUR.configure(),
+                                   "connecte": ACCES_MOTEUR.valide(self._jeton()),
+                                   "coffre": ACCES_MOTEUR.coffre_present(),
+                                   "cryptographie": _coffre is not None})
+            if self.path.startswith("/apercu/"):
+                return self._apercu()
+            if self._bloque():
                 return
             if self.path.startswith("/api/"):
                 return self._proxy("GET")
+            if self.path == "/moteur/apercu-jeton":
+                return self._json({"jeton": ACCES_MOTEUR.jeton_apercu(self._jeton())})
+            if self.path == "/moteur/studio":
+                return self._studio()
+            if self.path == "/moteur/images":
+                IMAGES.mkdir(exist_ok=True)
+                out = []
+                for f in sorted(IMAGES.glob("img-*.png"), reverse=True):
+                    info = {}
+                    try:
+                        info = json.loads(f.with_suffix(".json").read_text("utf-8"))
+                    except (OSError, ValueError):
+                        pass
+                    out.append({"nom": f.name, **info})
+                return self._json(out[:300])
             if self.path == "/moteur/etat":
                 return self._etat()
             if self.path.startswith("/moteur/projets"):
@@ -302,10 +517,12 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             return self._statique()
 
         def do_POST(self):
-            if not self._hote_ok():
-                return
             if not self._origine_ok():
                 return self._json({"erreur": "origine refusée"}, 403)
+            if self.path.startswith("/moteur/acces/"):
+                return self._acces()
+            if self._bloque():
+                return
             if self.path.startswith("/api/"):
                 return self._proxy("POST")
             if self.path.startswith("/moteur/conversations/"):
@@ -321,10 +538,14 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                 return self._json({"ok": True})
             if self.path == "/moteur/schemas":
                 return self._sauver_schema()
+            if self.path == "/moteur/images":
+                return self._sauver_image()
             if self.path == "/moteur/fonds":
                 return self._ajouter_fond()
             if self.path == "/moteur/importer":
                 return self._importer()
+            if self.path == "/moteur/rea":
+                return self._turbo_rea()
             if self.path == "/moteur/arreter":
                 self._json({"ok": True})
                 threading.Timer(0.5, arret.set).start()
@@ -332,12 +553,18 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             self._json({"erreur": "inconnu"}, 404)
 
         def do_DELETE(self):
-            if not self._hote_ok():
-                return
             if not self._origine_ok():
                 return self._json({"erreur": "origine refusée"}, 403)
+            if self._bloque():
+                return
             if self.path.startswith("/api/"):
                 return self._proxy("DELETE")
+            if self.path.startswith("/moteur/images/"):
+                nom = self.path.rsplit("/", 1)[1]
+                if NOM_IMAGE.match(nom):
+                    (IMAGES / nom).unlink(missing_ok=True)
+                    (IMAGES / nom).with_suffix(".json").unlink(missing_ok=True)
+                    return self._json({"ok": True})
             if self.path.startswith("/moteur/schemas/"):
                 from urllib.parse import unquote
                 nom = unquote(self.path.rsplit("/", 1)[1])
@@ -365,6 +592,9 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             if chemin.startswith("/cle-images/"):     # images déjà sur la clé
                 base = CLE / "lexos-ia" / "app" / "images"
                 chemin = chemin[len("/cle-images"):]
+            elif chemin.startswith("/images/"):
+                base = IMAGES
+                chemin = chemin[len("/images"):]
             elif chemin.startswith("/schemas/"):
                 from urllib.parse import unquote
                 base = SCHEMAS
@@ -448,6 +678,10 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             g = permis.get(demande.get("chemin", ""))
             if not g:
                 return self._json({"erreur": "fichier .gguf introuvable sur la clé"}, 404)
+            if re.search(r"z[-_ ]?image|flux|sdxl|stable[-_ ]?diffusion|sd3|qwen[-_]?image|hidream|wan2", g["nom"], re.I):
+                return self._json({"erreur": "c'est un modèle d'IMAGE en .gguf (pour ComfyUI / stable-diffusion.cpp) : "
+                                   "Ollama ne sait pas le charger. Dans l'onglet 🎨 Images, télécharge plutôt "
+                                   "x/z-image-turbo (version officielle d'Ollama)."}, 400)
             nom = nom_modele(g["nom"])
             mf = CACHE / "Modelfile.import"
             mf.write_text(f"FROM {CLE / g['chemin']}\n", "utf-8")
@@ -461,6 +695,24 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             if p.returncode:
                 return self._json({"erreur": (p.stderr or p.stdout)[-400:]}, 500)
             self._json({"ok": True, "modele": nom})
+
+        # ── images créées par l'IA (gardées SUR la clé) ──
+        def _sauver_image(self):
+            import base64
+            try:
+                d = json.loads(self._corps() or b"{}")
+                data = base64.b64decode(d.get("data", ""), validate=True)
+            except ValueError:
+                return self._json({"erreur": "image invalide"}, 400)
+            if not data.startswith(b"\x89PNG") and not data.startswith(b"\xff\xd8"):
+                return self._json({"erreur": "ce n'est pas une image"}, 400)
+            IMAGES.mkdir(exist_ok=True)
+            nom = f"img-{int(time.time() * 1000)}.png"
+            (IMAGES / nom).write_bytes(data)
+            info = {k: d.get(k) for k in ("prompt", "modele", "largeur", "hauteur", "graine", "etapes", "duree")}
+            info["date"] = time.time()
+            (IMAGES / nom).with_suffix(".json").write_text(json.dumps(info, ensure_ascii=False), "utf-8")
+            self._json({"ok": True, "nom": nom})
 
         # ── schémas animés : texte, image et vidéo gardés SUR la clé ──
         def _sauver_schema(self):
@@ -504,6 +756,108 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             (FONDS / nom).write_bytes(data)
             self._json({"ok": True, "nom": nom})
 
+        # ── ⚡ Turbo REA : l'agent travaille dans le projet et raconte ce qu'il fait ──
+        def _turbo_rea(self):
+            from turbo_rea import TurboREA
+            try:
+                d = json.loads(self._corps() or b"{}")
+            except ValueError:
+                return self._json({"erreur": "json invalide"}, 400)
+            projet = self._dossier_projet(str(d.get("projet", "")))
+            if not projet or not projet.is_dir():
+                return self._json({"erreur": "projet introuvable"}, 404)
+            if not d.get("modele") or not str(d.get("message", "")).strip():
+                return self._json({"erreur": "modèle ou message manquant"}, 400)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            agent = None
+
+            def evenement(e: dict):
+                try:
+                    self.wfile.write((json.dumps(e, ensure_ascii=False) + "\n").encode())
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    if agent:
+                        agent.arret = True                         # bouton « Stop »
+            agent = TurboREA(projet, f"http://127.0.0.1:{moteur.port}", str(d["modele"]),
+                             d.get("vision") or None, d.get("modele_image") or None, evenement)
+            try:
+                fin = agent.tourner(d.get("historique") or [], str(d["message"]))
+                evenement({"type": "fin", "texte": fin})
+            except Exception as e:
+                evenement({"type": "erreur", "texte": f"{type(e).__name__} : {e}"})
+            self.close_connection = True
+
+        # ── Studio : vue d'ensemble des projets ──
+        def _studio(self):
+            PROJETS.mkdir(exist_ok=True)
+            out = []
+            for p in sorted(PROJETS.iterdir()):
+                if not p.is_dir() or p.name.startswith("."):
+                    continue
+                fichiers, taille, maj, langages = [], 0, p.stat().st_mtime, {}
+                for racine, dossiers, noms in os.walk(p):
+                    dossiers[:] = [d for d in dossiers if not d.startswith(".") and d not in SAUTER]
+                    for n in noms:
+                        if n.endswith(".avant-codex") or n.startswith("."):
+                            continue
+                        f = Path(racine) / n
+                        try:
+                            st = f.stat()
+                        except OSError:
+                            continue
+                        rel = f.relative_to(p).as_posix()
+                        fichiers.append(rel)
+                        taille += st.st_size
+                        maj = max(maj, st.st_mtime)
+                        ext = f.suffix.lower().lstrip(".") or "autre"
+                        langages[ext] = langages.get(ext, 0) + 1
+                    if len(fichiers) > 2000:
+                        break
+                web = next((f for f in ("index.html", "web/index.html", "public/index.html", "site/index.html")
+                            if f in fichiers), None) or next((f for f in fichiers if f.endswith(".html")), None)
+                principal = next((f for f in fichiers if re.search(r"(^|/)(main|app|index)\.\w+$", f)), fichiers[0] if fichiers else None)
+                lisez = next((f for f in fichiers if f.lower() in ("readme.md", "lisez-moi.md", "readme.txt", "lisez-moi.txt")), None)
+                resume = ""
+                if lisez:
+                    try:
+                        resume = (p / lisez).read_text("utf-8", errors="replace")[:600]
+                    except OSError:
+                        pass
+                out.append({"nom": p.name, "fichiers": len(fichiers), "liste": fichiers[:12], "taille": taille,
+                            "maj": maj, "langages": langages, "web": web, "principal": principal, "resume": resume})
+            self._json(sorted(out, key=lambda x: x["maj"], reverse=True))
+
+        def _apercu(self):
+            from urllib.parse import unquote
+            morceaux = self.path.split("?", 1)[0].split("/", 4)      # ['', 'apercu', jeton, projet, chemin]
+            if len(morceaux) < 4 or not ACCES_MOTEUR.apercu_valide(morceaux[2]):
+                return self.send_error(403)
+            projet = self._dossier_projet(morceaux[3])
+            rel = unquote(morceaux[4]) if len(morceaux) > 4 and morceaux[4] else "index.html"
+            if not projet or not projet.is_dir():
+                return self.send_error(404)
+            f = self._chemin_dans(projet, rel)
+            if f and f.is_dir():
+                f = f / "index.html"
+            if not f or not f.is_file():
+                return self.send_error(404)
+            data = f.read_bytes()
+            types = dict(TYPES, **{".mjs": "text/javascript; charset=utf-8", ".jpg": "image/jpeg",
+                                   ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp",
+                                   ".mp3": "audio/mpeg", ".wav": "audio/wav", ".mp4": "video/mp4"})
+            self.send_response(200)
+            self.send_header("Content-Type", types.get(f.suffix.lower(), "application/octet-stream"))
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            # l'aperçu roule dans un bac à sable : il ne peut pas toucher au moteur
+            self.send_header("Content-Security-Policy", "sandbox allow-scripts allow-forms allow-modals allow-popups")
+            self.end_headers()
+            self.wfile.write(data)
+
         # ── projets Codex (gardés SUR la clé) ──
         def _dossier_projet(self, nom: str) -> Path | None:
             from urllib.parse import unquote
@@ -541,6 +895,22 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
                         if len(out) >= 500:
                             break
                 return self._json(out)
+            if len(parts) == 2 and parts[1] == "brut":            # image, etc. telle quelle
+                rel = parse_qs(u.query).get("chemin", [""])[0]
+                f = self._chemin_dans(projet, rel)
+                if not f or not f.is_file():
+                    return self.send_error(404)
+                data = f.read_bytes()
+                typ = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+                       ".webp": "image/webp", ".svg": "image/svg+xml", ".bmp": "image/bmp"}.get(f.suffix.lower(), "application/octet-stream")
+                self.send_response(200)
+                self.send_header("Content-Type", typ)
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Security-Policy", "sandbox")
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if len(parts) == 2 and parts[1] == "fichier":
                 rel = parse_qs(u.query).get("chemin", [""])[0]
                 f = self._chemin_dans(projet, rel)
@@ -566,6 +936,24 @@ def fabriquer_gestionnaire(moteur: Moteur, arret: threading.Event):
             projet = self._dossier_projet(parts[0])
             if not projet or not projet.is_dir():
                 return self._json({"erreur": "projet introuvable"}, 404)
+            if len(parts) == 2 and parts[1] == "televerser":      # ajouter une image / un fichier
+                import base64
+                f = self._chemin_dans(projet, str(d.get("chemin", "")).strip())
+                if not f:
+                    return self._json({"erreur": "chemin refusé"}, 400)
+                try:
+                    data = base64.b64decode(d.get("data", ""), validate=True)
+                except ValueError:
+                    return self._json({"erreur": "données invalides"}, 400)
+                if len(data) > 25_000_000:
+                    return self._json({"erreur": "fichier trop gros (25 Mo max)"}, 413)
+                if f.exists():                                   # ne jamais écraser : on renomme
+                    base, ext, k = f.stem, f.suffix, 2
+                    while f.exists():
+                        f = f.with_name(f"{base}-{k}{ext}"); k += 1
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(data)
+                return self._json({"ok": True, "chemin": f.relative_to(projet.resolve()).as_posix()})
             if len(parts) == 2 and parts[1] == "fichier":
                 f = self._chemin_dans(projet, str(d.get("chemin", "")).strip())
                 if not f:

@@ -32,11 +32,12 @@ async function flux(modele, messages, surMorceau, signal) {
 
 function remplirSelectModeles(sel, cle, prefere) {
   const garde = mem.lire(cle, "") || prefere || "";
-  sel.innerHTML = S.modeles.length
-    ? S.modeles.map((m) => `<option value="${echapper(m.name)}">${echapper(m.name)}</option>`).join("")
-    : `<option value="">(aucun modèle)</option>`;
-  const choix = [garde, prefere, ...S.modeles.filter((m) => /coder|code/i.test(m.name)).map((m) => m.name)]
-    .find((n) => n && S.modeles.some((m) => m.name === n));
+  const liste = modelesTexte();
+  sel.innerHTML = liste.length
+    ? liste.map((m) => `<option value="${echapper(m.name)}">${echapper(m.name)}</option>`).join("")
+    : `<option value="">(aucun modèle de texte)</option>`;
+  const choix = [garde, prefere, ...liste.filter((m) => /coder|code/i.test(m.name)).map((m) => m.name)]
+    .find((n) => n && liste.some((m) => m.name === n));
   if (choix) sel.value = choix;
   sel.onchange = () => mem.ecrire(cle, sel.value);
 }
@@ -100,7 +101,7 @@ async function listerFichiers() {
 }
 function icone(n) {
   const e = n.split(".").pop().toLowerCase();
-  return { py: "🐍", js: "📜", html: "🌐", css: "🎨", json: "🧾", md: "📝", sh: "⚙️", txt: "📄" }[e] || "📄";
+  return { py: "🐍", js: "📜", html: "🌐", css: "🎨", json: "🧾", md: "📝", sh: "⚙️", txt: "📄", png: "🖼️", jpg: "🖼️", jpeg: "🖼️", gif: "🖼️", webp: "🖼️", svg: "🖼️", zip: "📦" }[e] || "📄";
 }
 $("#cx-fichiers").addEventListener("click", (e) => {
   const li = e.target.closest("li[data-f]");
@@ -140,6 +141,7 @@ function sensVers(chemin) {
 
 async function ouvrirFichier(chemin) {
   if (chemin === CX.fichier) return;
+  if (/\.(png|jpe?g|gif|webp|bmp)$/i.test(chemin)) { window.open(`${urlProjet(CX.projet)}/brut?chemin=${encodeURIComponent(chemin)}`, "_blank"); return; }
   if (CX.modifie && !confirm("Le fichier n'est pas enregistré. L'abandonner ?")) return;
   try {
     const d = await api(`${urlProjet(CX.projet)}/fichier?chemin=${encodeURIComponent(chemin)}`);
@@ -334,10 +336,17 @@ async function demanderCodex(question) {
     cxHistorique.push({ role: "user", content: question }, { role: "assistant", content: sansPensee(rep) });
   }
 }
-$("#cx-form").addEventListener("submit", (e) => {
+$("#cx-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const q = $("#cx-saisie").value.trim(); $("#cx-saisie").value = "";
-  etincelles($("#cx-form .rond"), 14); demanderCodex(q);
+  if (CX.ctrl) return;
+  const q = $("#cx-saisie").value.trim();
+  if (!q && !PIECES.length) return;
+  $("#cx-saisie").value = ""; $("#cx-saisie").style.height = "auto";
+  etincelles($("#cx-form .rond"), 14);
+  const pieces = await envoyerPieces();
+  if ($("#cx-turbo").checked) return demanderTurbo(q, pieces);
+  const mention = pieces.length ? "\n\n(J'ai ajouté au projet : " + pieces.map((p) => p.chemin).join(", ") + ")" : "";
+  if (q || mention) demanderCodex((q || "Voici des fichiers que j'ai ajoutés.") + mention);
 });
 $("#cx-saisie").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#cx-form").requestSubmit(); } });
 $("#cx-stop").addEventListener("click", () => CX.ctrl?.abort());
@@ -497,3 +506,245 @@ $$(".onglet").forEach((o) => o.addEventListener("click", () => {
   if (o.dataset.vue === "equipe") { if (!CX.eqCtrl) rendreAgents(); listerProjets($("#cx-projet"), $("#eq-projet")); }
 }));
 majLignes();
+
+/* ════════════════════════ STUDIO : voir tous ses projets ════════════════════════ */
+const STUDIO = { projets: [], jeton: "", ouvert: "" };
+const COULEUR_LANG = { py: "#3b82f6", js: "#facc15", html: "#f97316", css: "#a855f7", json: "#94a3b8", md: "#e5e7eb",
+  sh: "#22c55e", ts: "#38bdf8", jsx: "#22d3ee", txt: "#9ca3af", png: "#ec4899", jpg: "#ec4899", svg: "#f472b6" };
+const ilYa = (t) => { const s = (Date.now() / 1000 - t) | 0; if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${s / 60 | 0} min`; if (s < 86400) return `il y a ${s / 3600 | 0} h`; return `il y a ${s / 86400 | 0} j`; };
+
+async function ouvrirStudio() {
+  const st = $("#studio");
+  st.hidden = false; st.classList.remove("sort"); $(".cx-grille").classList.add("recule");
+  try { STUDIO.jeton = (await api("/moteur/apercu-jeton")).jeton; } catch {}
+  await chargerStudio();
+}
+function fermerStudio() {
+  const st = $("#studio");
+  st.classList.add("sort"); $(".cx-grille").classList.remove("recule");
+  setTimeout(() => { st.hidden = true; st.classList.remove("sort"); }, 420);
+}
+async function chargerStudio() {
+  try { STUDIO.projets = await api("/moteur/studio"); } catch (e) { STUDIO.projets = []; toast(e.message, true); }
+  rendreStudio();
+}
+function rendreStudio() {
+  const f = $("#studio-cherche").value.trim().toLowerCase();
+  const liste = STUDIO.projets.filter((p) => !f || p.nom.toLowerCase().includes(f) || p.liste.some((x) => x.toLowerCase().includes(f)));
+  $("#studio-cartes").innerHTML = liste.length ? liste.map((p, i) => {
+    const tot = Object.values(p.langages).reduce((a, b) => a + b, 0) || 1;
+    const langs = Object.entries(p.langages).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return `<div class="carte studio-carte ${p.nom === CX.projet ? "actif" : ""}" style="animation-delay:${i * 70}ms" data-p="${echapper(p.nom)}">
+      <div class="sc-entete"><div class="sc-icone">${p.web ? "🌐" : p.principal?.endsWith(".py") ? "🐍" : "📁"}</div>
+        <div><h3>${echapper(p.nom)}</h3><div class="sous">${p.fichiers} fichier(s) · ${octets(p.taille)} · ${ilYa(p.maj)}</div></div></div>
+      <div class="barre-langs">${langs.map(([l, n]) => `<i style="flex:${n};background:${COULEUR_LANG[l] || "var(--orange)"}" title="${echapper(l)} : ${n}"></i>`).join("")}</div>
+      <div class="tags">${langs.map(([l, n]) => `<span class="tag">.${echapper(l)} ${Math.round(n / tot * 100)}%</span>`).join("")}</div>
+      ${p.resume ? `<p class="sc-resume">${echapper(p.resume.replace(/[#*`>]/g, "").slice(0, 160))}…</p>` : ""}
+      <ul class="sc-fichiers">${p.liste.slice(0, 6).map((x) => `<li data-f="${echapper(x)}">${icone(x)} ${echapper(x)}</li>`).join("")}${p.fichiers > 6 ? `<li class="plus">+ ${p.fichiers - 6} autre(s)</li>` : ""}</ul>
+      <div class="sc-btns">
+        <button class="btn btn-plein mini" data-act="ouvrir">✏️ Ouvrir</button>
+        ${p.web ? `<button class="btn btn-contour mini" data-act="apercu">👁 Aperçu</button>` : ""}
+        ${p.principal && commandeLancer(p.principal) ? `<button class="btn btn-contour mini" data-act="lancer">▶ Commande</button>` : ""}
+      </div></div>`;
+  }).join("") : `<div class="vide">Aucun projet${f ? " trouvé" : " encore — crée-en un ou lance le Codex équipe"}.</div>`;
+}
+$("#studio-cartes").addEventListener("click", async (e) => {
+  const carte = e.target.closest(".studio-carte");
+  if (!carte) return;
+  const p = STUDIO.projets.find((x) => x.nom === carte.dataset.p);
+  const act = e.target.closest("[data-act]")?.dataset.act, fichier = e.target.closest("li[data-f]")?.dataset.f;
+  if (act === "apercu") return montrerApercu(p, carte);
+  if (act === "lancer") {
+    const b = e.target.closest("button");
+    await copierTexte(`${commandeCd(p.nom)} && ${commandeLancer(p.principal)}`); retourCopie(b);
+    return toast("Commande copiée — colle-la dans ton terminal ✔");
+  }
+  if (act === "ouvrir" || fichier) {
+    etincelles(carte, 22);
+    carte.classList.add("choisie");
+    $("#cx-projet").value = p.nom;
+    if (CX.projet !== p.nom) {
+      if (CX.modifie && !confirm("Le fichier n'est pas enregistré. Changer de projet quand même ?")) return;
+      CX.projet = p.nom; mem.ecrire("lexos-projet", p.nom); CX.fichier = ""; marquerModifie(false);
+      await listerFichiers();
+    }
+    setTimeout(() => { fermerStudio(); const f = fichier || p.principal; if (f) setTimeout(() => ouvrirFichier(f), 300); }, 380);
+  }
+});
+function montrerApercu(p, carte) {
+  if (!STUDIO.jeton) return toast("Aperçu indisponible (reconnecte-toi).", true);
+  STUDIO.ouvert = p;
+  const url = `/apercu/${encodeURIComponent(STUDIO.jeton)}/${encodeURIComponent(p.nom)}/${p.web.split("/").map(encodeURIComponent).join("/")}`;
+  $("#apercu-cadre").src = url;
+  $("#apercu-adresse").textContent = `${p.nom}/${p.web}`;
+  $("#studio-apercu").hidden = false;
+  $(".studio-corps").classList.add("avec-apercu");
+  $$(".studio-carte").forEach((c) => c.classList.toggle("en-apercu", c === carte));
+}
+$("#apercu-fermer").addEventListener("click", () => {
+  $("#studio-apercu").classList.add("sort");
+  setTimeout(() => { $("#studio-apercu").hidden = true; $("#studio-apercu").classList.remove("sort"); $("#apercu-cadre").src = "about:blank"; $(".studio-corps").classList.remove("avec-apercu"); }, 380);
+  $$(".studio-carte").forEach((c) => c.classList.remove("en-apercu"));
+});
+$("#apercu-recharger").addEventListener("click", (e) => { const c = $("#apercu-cadre"); c.src = c.src; e.currentTarget.animate([{ transform: "rotate(0)" }, { transform: "rotate(360deg)" }], 500); });
+$("#apercu-tel").addEventListener("click", () => $(".apercu-scene").classList.add("tel"));
+$("#apercu-ordi").addEventListener("click", () => $(".apercu-scene").classList.remove("tel"));
+$("#apercu-fenetre").addEventListener("click", () => window.open($("#apercu-cadre").src, "_blank", "noopener"));
+$("#cx-studio").addEventListener("click", (e) => { etincelles(e.currentTarget, 16); ouvrirStudio(); });
+$("#studio-fermer").addEventListener("click", fermerStudio);
+$("#studio-cherche").addEventListener("input", rendreStudio);
+$("#studio-nouveau").addEventListener("click", async () => { $("#cx-nouveau-projet").click(); setTimeout(chargerStudio, 900); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#studio").hidden) fermerStudio(); });
+
+
+/* ════════════════════════ ＋ AJOUTER (images, fichiers) ════════════════════════ */
+const PIECES = [];   // { nom, type, data(b64), apercu }
+$("#cx-plus").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const ouvert = $(".cx-plus-zone").classList.toggle("ouvert");
+  if (ouvert) etincelles($("#cx-plus"), 10);
+});
+document.addEventListener("click", (e) => { if (!e.target.closest(".cx-plus-zone")) $(".cx-plus-zone")?.classList.remove("ouvert"); });
+async function ajouterPieces(liste) {
+  for (const f of liste) {
+    if (f.size > 25e6) { toast(`${f.name} : trop gros (25 Mo max)`, true); continue; }
+    const data = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result.split(",")[1]); fr.readAsDataURL(f); });
+    PIECES.push({ nom: f.name.replace(/[^\w.\- ]+/g, "_"), type: f.type, data, image: f.type.startsWith("image/") });
+  }
+  $(".cx-plus-zone").classList.remove("ouvert");
+  rendrePieces();
+}
+$("#cx-fichier-img").addEventListener("change", (e) => { ajouterPieces([...e.target.files]); e.target.value = ""; });
+$("#cx-fichier-doc").addEventListener("change", (e) => { ajouterPieces([...e.target.files]); e.target.value = ""; });
+function rendrePieces() {
+  $("#cx-pieces").innerHTML = PIECES.map((p, i) => `<div class="cx-piece" style="animation-delay:${i * 60}ms">
+      ${p.image ? `<img src="data:${p.type};base64,${p.data}" alt="">` : `<span class="cx-piece-ic">📄</span>`}
+      <span class="cx-piece-nom">${echapper(p.nom)}</span><button type="button" data-i="${i}" title="Retirer">✕</button></div>`).join("");
+}
+$("#cx-pieces").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-i]"); if (!b) return;
+  const el = b.closest(".cx-piece"); el.classList.add("sort");
+  setTimeout(() => { PIECES.splice(+b.dataset.i, 1); rendrePieces(); }, 250);
+});
+// glisser-déposer des images directement sur la zone d'écriture
+["dragover", "dragenter"].forEach((ev) => $(".cx-bas").addEventListener(ev, (e) => { e.preventDefault(); $(".cx-bas").classList.add("depot"); }));
+["dragleave", "drop"].forEach((ev) => $(".cx-bas").addEventListener(ev, (e) => { e.preventDefault(); $(".cx-bas").classList.remove("depot"); }));
+$(".cx-bas").addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) ajouterPieces([...e.dataTransfer.files]); });
+// coller une image (Ctrl+V)
+$("#cx-saisie").addEventListener("paste", (e) => {
+  const f = [...(e.clipboardData?.files || [])];
+  if (f.length) { e.preventDefault(); ajouterPieces(f); }
+});
+
+async function envoyerPieces() {
+  if (!PIECES.length) return [];
+  if (!CX.projet) { toast("Choisis d'abord un projet.", true); return []; }
+  const faits = [];
+  for (const p of PIECES.splice(0)) {
+    try {
+      const r = await api(urlProjet(CX.projet) + "/televerser", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chemin: (p.image ? "images/" : "") + p.nom, data: p.data }) });
+      faits.push({ chemin: r.chemin, image: p.image, data: p.data, type: p.type });
+    } catch (err) { toast(`${p.nom} : ${err.message}`, true); }
+  }
+  rendrePieces(); listerFichiers();
+  return faits;
+}
+
+$("#cx-plus-creer").addEventListener("click", () => {
+  $(".cx-plus-zone").classList.remove("ouvert"); $("#cx-turbo").checked = true; majTurbo();
+  $("#cx-saisie").value = "Crée une image : "; $("#cx-saisie").focus();
+});
+$("#cx-plus-cloner").addEventListener("click", () => {
+  $(".cx-plus-zone").classList.remove("ouvert");
+  const url = prompt("Adresse du dépôt GitHub public (ex. https://github.com/proprio/depot) :");
+  if (!url) return;
+  $("#cx-turbo").checked = true; majTurbo();
+  $("#cx-saisie").value = `Clone le dépôt ${url.trim()} dans le projet, puis explique-moi ce qu'il contient.`;
+  $("#cx-form").requestSubmit();
+});
+
+/* ════════════════════════ ⚡ TURBO REA ════════════════════════ */
+function majTurbo() {
+  const on = $("#cx-turbo").checked;
+  $(".cx-ia").classList.toggle("turbo-on", on);
+  $("#cx-saisie").placeholder = on ? "⚡ Turbo REA : « crée un site avec un logo », « clone ce dépôt »…"
+    : "Demande à Codex…  (Entrée = envoyer · Maj+Entrée = ligne)";
+  mem.ecrire("lexos-turbo", on ? "1" : "");
+}
+$("#cx-turbo").addEventListener("change", (e) => { majTurbo(); if (e.target.checked) { etincelles($(".turbo"), 22); toast("⚡ Turbo REA activé : REA travaille tout seul dans le projet"); } });
+$("#cx-turbo").checked = !!mem.lire("lexos-turbo", ""); majTurbo();
+
+const IC_OUTIL = { web_search: "🔎", fetch_page: "🌐", list_files: "📂", read_file: "📖", write_file: "✍️", describe_image: "👁", create_image: "🎨", clone_github: "📦" };
+const NOM_OUTIL = { web_search: "cherche sur le web", fetch_page: "lit une page", list_files: "regarde les fichiers", read_file: "lit", write_file: "écrit", describe_image: "regarde l'image", create_image: "crée une image", clone_github: "clone le dépôt" };
+const urlBrut = (chemin) => `${urlProjet(CX.projet)}/brut?chemin=${encodeURIComponent(chemin)}`;
+
+async function demanderTurbo(question, pieces) {
+  const modele = $("#cx-modele").value;
+  if (!modele) return toast("Aucun modèle — regarde l'onglet Modèles.", true);
+  if (!CX.projet) return toast("Choisis d'abord un projet.", true);
+  let texte = question;
+  if (pieces.length) texte += "\n\n(J'ai ajouté au projet : " + pieces.map((p) => p.chemin).join(", ") + ")";
+  const moi = bulleCx("moi", question || "(fichiers ajoutés)");
+  pieces.filter((p) => p.image).forEach((p) => { const i = document.createElement("img"); i.className = "cx-img"; i.src = `data:${p.type};base64,${p.data}`; moi.prepend(i); });
+  const b = bulleCx("ia", ""); b.classList.add("ecrit", "turbo-bulle");
+  b.innerHTML = `<div class="turbo-tete">⚡ <b>Turbo REA</b> <span class="turbo-etape">démarre…</span></div><ol class="turbo-fil"></ol><div class="turbo-final"></div>`;
+  const fil = $(".turbo-fil", b), etape = $(".turbo-etape", b);
+  const defile = () => { $("#cx-fil").scrollTop = $("#cx-fil").scrollHeight; };
+  CX.ctrl = new AbortController(); $("#cx-stop").hidden = false;
+  let fin = "", enCours = null;
+  if (typeof trouverModelesImage === "function" && !IM.cherche) await trouverModelesImage();
+  const imageModele = (typeof IM !== "undefined" && IM.modeles?.[0]) || "";
+  try {
+    const r = await fetch("/moteur/rea", { method: "POST", headers: { "Content-Type": "application/json" }, signal: CX.ctrl.signal,
+      body: JSON.stringify({ projet: CX.projet, modele, message: texte, historique: cxHistorique.slice(-8), modele_image: imageModele }) });
+    if (!r.ok || !r.body) throw new Error((await r.text()).slice(0, 200));
+    const lecteur = r.body.getReader(), dec = new TextDecoder();
+    let tampon = "";
+    for (;;) {
+      const { value, done } = await lecteur.read();
+      if (done) break;
+      tampon += dec.decode(value, { stream: true });
+      const lignes = tampon.split("\n"); tampon = lignes.pop();
+      for (const l of lignes) {
+        let ev; try { ev = JSON.parse(l); } catch { continue; }
+        if (ev.type === "etape") etape.textContent = `étape ${ev.n}`;
+        else if (ev.type === "pensee") { const li = document.createElement("li"); li.className = "t-pensee"; li.textContent = "💭 " + ev.texte; fil.appendChild(li); }
+        else if (ev.type === "info") { const li = document.createElement("li"); li.className = "t-info"; li.textContent = ev.texte; fil.appendChild(li); }
+        else if (ev.type === "outil") {
+          enCours = document.createElement("li"); enCours.className = "t-outil encours";
+          const arg = Object.values(ev.args || {})[0];
+          enCours.innerHTML = `<span class="t-ic">${IC_OUTIL[ev.nom] || "🔧"}</span><span>${echapper(NOM_OUTIL[ev.nom] || ev.nom)} ${arg ? `<code>${echapper(String(arg))}</code>` : ""}</span><span class="t-etat"><i class="t-roue"></i></span>`;
+          fil.appendChild(enCours);
+        }
+        else if (ev.type === "resultat" && enCours) {
+          enCours.classList.remove("encours"); enCours.classList.add(ev.ok ? "ok" : "rate");
+          $(".t-etat", enCours).textContent = (ev.ok ? "✔ " : "✖ ") + ev.duree + " s";
+          if (!ev.ok) enCours.title = ev.apercu;
+        }
+        else if (ev.type === "fichier") {
+          listerFichiers();
+          if (ev.chemin === CX.fichier && !CX.modifie) { const f = CX.fichier; CX.fichier = ""; ouvrirFichier(f); }
+        }
+        else if (ev.type === "image") {
+          const li = document.createElement("li"); li.className = "t-image";
+          li.innerHTML = `<img src="${urlBrut(ev.chemin)}&t=${Date.now()}" alt=""><span>🎨 ${echapper(ev.chemin)}</span>`;
+          fil.appendChild(li); listerFichiers(); etincelles(li, 30);
+        }
+        else if (ev.type === "fin") fin = ev.texte;
+        else if (ev.type === "erreur") throw new Error(ev.texte);
+        defile();
+      }
+    }
+  } catch (err) {
+    if (err.name !== "AbortError") { toast("Turbo REA : " + err.message, true); fin = fin || "⚠️ " + err.message; }
+    else fin = fin || "*(arrêté)*";
+  } finally {
+    CX.ctrl = null; $("#cx-stop").hidden = true; b.classList.remove("ecrit");
+    $$(".encours", b).forEach((x) => { x.classList.remove("encours"); $(".t-etat", x).textContent = "—"; });
+    etape.textContent = "terminé ✔";
+    $(".turbo-final", b).innerHTML = rendre(sansPensee(fin)); boutonsAppliquer(b);
+    cxHistorique.push({ role: "user", content: texte }, { role: "assistant", content: sansPensee(fin) });
+    defile();
+  }
+}

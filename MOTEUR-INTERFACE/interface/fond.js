@@ -369,3 +369,9 @@ $$(".onglet").forEach((o) => o.addEventListener("click", () => { if (o.dataset.v
     if (p && Object.keys(p).length) { Object.assign(P, PAR_DEFAUT, p); appliquer(); }
   } catch {}
 })();
+
+/* Après le mot de passe : on recharge l'image de fond (privée) et les réglages */
+window.addEventListener("lexos:deverrouille", async () => {
+  try { const p = await api("/moteur/parametres"); if (p && Object.keys(p).length) Object.assign(P, PAR_DEFAUT, p); } catch {}
+  appliquer(false);
+});

@@ -119,7 +119,9 @@ document.addEventListener("click", (e) => {
 /* ════════════════════════ Démarrage ════════════════════════ */
 async function demarrer() {
   const etape = (t, pct) => { $("#boot-etape").textContent = t; $("#boot-progres").style.width = pct + "%"; };
-  etape("Recherche de la clé…", 15); await attendre(450);
+  etape("Vérification de l'accès…", 8); await attendre(500);
+  await exigerAcces();
+  etape("Recherche de la clé…", 15); await attendre(350);
   try {
     S.etat = await api("/moteur/etat");
     etape("Clé trouvée : " + S.etat.cle, 40); await attendre(450);
@@ -176,12 +178,25 @@ async function chargerModeles() {
   } catch { S.modeles = []; }
   const sel = $("#modele");
   const garde = mem.lire("lexos-modele", "") || S.etat?.defaut || "";
-  sel.innerHTML = S.modeles.length
-    ? S.modeles.map((m) => `<option value="${echapper(m.name)}">${echapper(m.name)}</option>`).join("")
-    : `<option value="">(aucun modèle sur la clé)</option>`;
-  if (S.modeles.some((m) => m.name === garde)) sel.value = garde;
+  const texte = modelesTexte();
+  sel.innerHTML = texte.length
+    ? texte.map((m) => `<option value="${echapper(m.name)}">${echapper(m.name)}</option>`).join("")
+    : `<option value="">(aucun modèle de texte sur la clé)</option>`;
+  if (texte.some((m) => m.name === garde)) sel.value = garde;
   rendreModeles();
 }
+/* Les modèles d'IMAGE ne savent pas discuter : on les garde hors des menus Chat / Codex */
+const RE_MODELE_IMAGE = /z[-_ ]?image|flux|sdxl|stable[-_ ]?diffusion|\bsd3|qwen[-_]?image|hidream/i;
+const modelesTexte = () => S.modeles.filter((m) => !RE_MODELE_IMAGE.test(m.name));
+function expliquerErreur(msg) {
+  if (/unknown model architecture|error loading model/i.test(msg))
+    return "Ce modèle ne peut pas être chargé par Ollama (architecture inconnue). Si c'est un modèle d'image en .gguf (fait pour ComfyUI / stable-diffusion.cpp), il ne marche pas dans Ollama : télécharge plutôt x/z-image-turbo dans l'onglet 🎨 Images.";
+  if (/does not support (chat|generate)|not support/i.test(msg)) return "Ce modèle ne sait pas discuter. Choisis un modèle de texte (qwen3, llama…).";
+  if (/out of memory|cuda|cudaMalloc/i.test(msg)) return "Pas assez de mémoire sur la carte graphique pour ce modèle. Essaie un modèle plus petit.";
+  return msg;
+}
+const RE_DEMANDE_IMAGE = /\b(cr[ée]+r?|g[ée]n[èée]re[rz]?|dessine[rz]?|fais|fai|peins?|montre)[- ]?(moi|nous)?\s+(une?|des|la|le|mon|ma)?\s*(image|dessin|logo|photo|illustration|affiche|ic[oô]ne|portrait|paysage|fond d'[ée]cran)/i;
+
 function rendreModeles() {
   const actuel = $("#modele").value;
   const box = $("#cartes-modeles");
@@ -378,6 +393,10 @@ async function envoyer() {
   etincelles(btn);
 
   if (!S.conv) S.conv = { id: nouvelId(), titre: texte.slice(0, 48), messages: [] };
+  if (RE_DEMANDE_IMAGE.test(texte) && typeof imageDansChat === "function") {
+    saisie.value = ""; saisie.style.height = "auto";
+    return imageDansChat(texte);
+  }
   const images = S.images.splice(0); rendrePieces();
   const msgUser = { role: "user", content: texte };
   if (images.length) msgUser.images = images;
@@ -424,7 +443,7 @@ async function envoyer() {
       }
     }
   } catch (err) {
-    if (err.name !== "AbortError") { toast("L'IA n'a pas pu répondre : " + err.message, true); if (!rep) rep = "⚠️ " + err.message; }
+    if (err.name !== "AbortError") { const m = expliquerErreur(err.message); toast("L'IA n'a pas pu répondre : " + m, true); if (!rep) rep = "⚠️ " + m; }
     else rep += rep ? "\n\n*(arrêté)*" : "*(arrêté)*";
   } finally {
     S.ctrl = null; $("#stop").hidden = true; btn.hidden = false;

@@ -23,6 +23,32 @@
 
 <div id="fond-image"></div>
 <div id="fond-voile"></div>
+
+<!-- ═══════════════ ÉCRAN DE MOT DE PASSE ═══════════════ -->
+<div id="verrou" hidden>
+  <div class="verrou-boite">
+    <div class="cadenas" id="cadenas">
+      <svg viewBox="0 0 64 72" aria-hidden="true">
+        <path class="anse" d="M18 32V22a14 14 0 0 1 28 0v10" />
+        <rect class="corps" x="8" y="32" width="48" height="36" rx="9" />
+        <circle class="trou" cx="32" cy="48" r="5" /><rect class="trou" x="30" y="50" width="4" height="9" rx="2" />
+      </svg>
+      <div class="cadenas-onde"></div>
+    </div>
+    <h2 id="verrou-titre">LexOS est verrouillé</h2>
+    <p id="verrou-sous">Entre ton mot de passe pour continuer.</p>
+    <form id="verrou-form" autocomplete="off">
+      <div class="champ"><input type="password" id="mdp1" placeholder="Mot de passe" autocomplete="current-password">
+        <button type="button" class="oeil" data-cible="mdp1" title="Voir le mot de passe">👁</button></div>
+      <div class="champ" id="champ2" hidden><input type="password" id="mdp2" placeholder="Confirme le mot de passe" autocomplete="new-password">
+        <button type="button" class="oeil" data-cible="mdp2" title="Voir le mot de passe">👁</button></div>
+      <div class="force" id="force" hidden><div class="force-barre"><i id="force-i"></i></div><span id="force-txt"></span></div>
+      <p class="verrou-msg" id="verrou-msg"></p>
+      <button class="btn btn-plein brille" id="verrou-go">🔓 Déverrouiller</button>
+    </form>
+    <small class="verrou-note" id="verrou-note">Mot de passe oublié ? Supprime <code>MOTEUR-INTERFACE/acces.json</code> sur la clé pour en créer un nouveau.</small>
+  </div>
+</div>
 <canvas id="fond"></canvas>
 <div id="orbes"><div class="orbe o1"></div><div class="orbe o2"></div><div class="orbe o3"></div></div>
 <div class="grille"></div>
@@ -44,6 +70,7 @@
       <button class="onglet actif" data-vue="chat"><span>💬</span> Chat</button>
       <button class="onglet" data-vue="codex"><span>⌨️</span> Codex</button>
       <button class="onglet" data-vue="equipe"><span>👥</span> Codex équipe</button>
+      <button class="onglet" data-vue="images"><span>🎨</span> Images</button>
       <button class="onglet" data-vue="schemas"><span>🎬</span> Schémas animés</button>
       <button class="onglet" data-vue="modeles"><span>🧠</span> Modèles</button>
       <button class="onglet" data-vue="cle"><span>🔌</span> La clé</button>
@@ -58,6 +85,7 @@
       <div class="etat-ligne"><span class="point" id="point"></span><b id="etat-texte">Connexion…</b></div>
       <div class="etat-pc" id="etat-pc">—</div>
       <div class="voyage"><span class="usb">⇄</span> se déplace avec la clé</div>
+      <button id="verrouiller" class="btn btn-contour petit">🔒 Verrouiller</button>
       <button id="eteindre" class="btn btn-contour petit">⏻ Éteindre et débrancher</button>
     </div>
   </aside>
@@ -119,6 +147,7 @@
           <button class="btn btn-contour mini" id="cx-nouveau-projet">＋ Projet</button>
           <button class="btn btn-contour mini" id="cx-nouveau-fichier">＋ Fichier</button>
           <button class="btn btn-contour mini" id="cx-chemin" title="Copie la commande cd pour aller dans ce projet">📂 Chemin du projet</button>
+          <button class="btn btn-plein mini brille" id="cx-studio" title="Voir tous tes projets">🎛️ Studio</button>
         </div>
         <div class="cx-groupe">
           <label>Modèle Codex</label>
@@ -148,6 +177,8 @@
                 <button class="sugg-mini" data-cx="Ajoute des commentaires en français à ce code.">Commenter</button>
                 <button class="sugg-mini" data-cx="Améliore et simplifie ce code sans changer ce qu'il fait.">Améliorer</button>
                 <button class="sugg-mini chaud" id="cx-resultat" type="button">📥 Résultat du terminal</button>
+                <label class="turbo" title="REA travaille tout seul : web, fichiers, images, dépôts GitHub">
+                  <input type="checkbox" id="cx-turbo"><span class="turbo-piste"><i>⚡</i></span><b>Turbo REA</b></label>
               </div>
               <div id="cx-coller" class="cx-coller" hidden>
                 <div class="term-tete"><i></i><i></i><i></i><span>colle ici ce que ton terminal a affiché</span></div>
@@ -157,10 +188,44 @@
                   <button type="button" class="btn btn-plein mini" id="cx-coller-envoyer">Envoyer à Codex ➜</button>
                 </div>
               </div>
-              <form id="cx-form" class="boite cx-boite"><textarea id="cx-saisie" rows="1" placeholder="Demande à Codex…  (Entrée = envoyer · Maj+Entrée = ligne)"></textarea>
+              <div id="cx-pieces" class="cx-pieces"></div>
+              <form id="cx-form" class="boite cx-boite">
+                <div class="cx-plus-zone">
+                  <button type="button" class="cx-plus" id="cx-plus" aria-label="Ajouter" title="Ajouter des images ou des fichiers"><span>＋</span></button>
+                  <div class="cx-plus-menu" id="cx-plus-menu">
+                    <label class="cx-plus-choix" style="--i:0">🖼️ Ajouter des images<input type="file" id="cx-fichier-img" accept="image/*" multiple hidden></label>
+                    <label class="cx-plus-choix" style="--i:1">📄 Ajouter des fichiers<input type="file" id="cx-fichier-doc" multiple hidden></label>
+                    <button type="button" class="cx-plus-choix" style="--i:2" id="cx-plus-creer">🎨 Créer une image (Turbo REA)</button>
+                    <button type="button" class="cx-plus-choix" style="--i:3" id="cx-plus-cloner">📦 Cloner un dépôt GitHub</button>
+                  </div>
+                </div>
+                <textarea id="cx-saisie" rows="1" placeholder="Demande à Codex…  (Entrée = envoyer · Maj+Entrée = ligne)"></textarea>
                 <button type="button" id="cx-stop" class="btn btn-contour mini" hidden>■ Stop</button>
                 <button class="btn btn-plein rond" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.2-7.3z"/></svg></button></form>
             </div>
+          </div>
+        </div>
+      </div>
+      <div class="studio" id="studio" hidden>
+        <div class="studio-tete">
+          <div><h2>🎛️ Studio <small>tous tes projets, sur la clé</small></h2></div>
+          <input id="studio-cherche" placeholder="🔎 Chercher un projet…">
+          <button class="btn btn-contour mini" id="studio-nouveau">＋ Nouveau projet</button>
+          <button class="btn btn-plein mini" id="studio-fermer">⌨️ Retour au code</button>
+        </div>
+        <div class="studio-corps">
+          <div class="studio-cartes" id="studio-cartes"></div>
+          <div class="studio-apercu" id="studio-apercu" hidden>
+            <div class="nav-fenetre">
+              <span class="pts"><i></i><i></i><i></i></span>
+              <span class="nav-adresse" id="apercu-adresse">aperçu</span>
+              <button class="btn-icone" id="apercu-ordi" title="Ordinateur">💻</button>
+              <button class="btn-icone" id="apercu-tel" title="Téléphone">📱</button>
+              <button class="btn-icone" id="apercu-recharger" title="Recharger">↻</button>
+              <button class="btn-icone" id="apercu-fenetre" title="Ouvrir dans une fenêtre">⧉</button>
+              <button class="btn-icone" id="apercu-fermer" title="Fermer l'aperçu">✕</button>
+            </div>
+            <div class="apercu-scene"><iframe id="apercu-cadre" sandbox="allow-scripts allow-forms allow-modals allow-popups" title="Aperçu du projet"></iframe></div>
           </div>
         </div>
       </div>
@@ -182,6 +247,60 @@
         </form>
         <div class="eq-piste" id="eq-piste"></div>
         <div id="eq-resultat"></div>
+      </div>
+    </section>
+
+    <!-- Vue IMAGES -->
+    <section class="vue" id="vue-images">
+      <div class="im-grille">
+        <div class="im-gauche">
+          <div class="sc-bloc">
+            <h4>Décris ton image</h4>
+            <textarea id="im-prompt" rows="5" placeholder="Ex. : un loup en néon orange sur un lac gelé du Lac-Saint-Jean, nuit étoilée, style photo"></textarea>
+            <div class="im-idees">
+              <button type="button" class="sugg-mini" data-idee="logo minimaliste d'une clé USB-C lumineuse orange sur fond noir, style néon">💡 Logo</button>
+              <button type="button" class="sugg-mini" data-idee="paysage du Saguenay en automne, lumière dorée, photo réaliste, très détaillé">🍁 Paysage</button>
+              <button type="button" class="sugg-mini" data-idee="robot sympathique qui code sur un vieux terminal, ambiance cyberpunk orange et noir">🤖 Robot</button>
+            </div>
+          </div>
+          <div class="sc-bloc">
+            <h4>Réglages</h4>
+            <label class="im-champ">Modèle d'image <select id="im-modele"></select></label>
+            <div class="im-formats" id="im-formats">
+              <button type="button" class="im-format actif" data-l="1024" data-h="1024"><i style="aspect-ratio:1"></i>Carré</button>
+              <button type="button" class="im-format" data-l="1280" data-h="720"><i style="aspect-ratio:16/9"></i>Paysage</button>
+              <button type="button" class="im-format" data-l="720" data-h="1280"><i style="aspect-ratio:9/16"></i>Portrait</button>
+              <button type="button" class="im-format" data-l="768" data-h="768"><i style="aspect-ratio:1;width:70%"></i>Rapide</button>
+            </div>
+            <label class="reglage"><span>Étapes (qualité ↔ vitesse)</span><input type="range" id="im-etapes" min="0" max="30" value="0"><output>auto</output></label>
+            <label class="im-champ">Graine <span class="im-graine"><input id="im-graine" placeholder="au hasard" inputmode="numeric"><button type="button" class="btn-icone" id="im-de" title="Nouvelle graine">🎲</button></span></label>
+          </div>
+          <button class="btn btn-plein brille im-go" id="im-go">✨ Créer l'image</button>
+          <p class="im-casses" id="im-casses" hidden></p>
+          <div class="im-installer" id="im-installer" hidden>
+            <h4>Aucun modèle d'image sur la clé</h4>
+            <p>Ollama sait créer des images en local (fonction <b>expérimentale</b> : Linux avec carte NVIDIA, ou Mac). Télécharge un modèle directement <b>sur la clé</b> :</p>
+            <button type="button" class="btn btn-contour mini" data-tirer="x/z-image-turbo">⬇ Z-Image Turbo (~13 Go)</button>
+            <button type="button" class="btn btn-contour mini" data-tirer="x/flux2-klein:4b">⬇ FLUX.2 Klein 4B (plus léger)</button>
+            <div class="im-tirage" id="im-tirage" hidden><div class="force-barre"><i id="im-tirage-i"></i></div><span id="im-tirage-txt"></span></div>
+          </div>
+        </div>
+        <div class="im-droite">
+          <div class="im-toile" id="im-toile">
+            <canvas id="im-magie"></canvas>
+            <img id="im-resultat" alt="">
+            <div class="im-vide" id="im-vide"><span>🎨</span><p>Ton image apparaîtra ici</p></div>
+            <div class="im-progres" id="im-progres" hidden><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="jauge-fond"/><circle cx="60" cy="60" r="52" class="im-arc" id="im-arc"/></svg><b id="im-pct">0%</b><small id="im-etat">je peins…</small></div>
+          </div>
+          <div class="im-actions" id="im-actions" hidden>
+            <a class="btn btn-contour mini" id="im-ouvrir" target="_blank">🔍 Taille réelle</a>
+            <button type="button" class="btn btn-contour mini" id="im-refaire">🔁 Variante</button>
+            <button type="button" class="btn btn-contour mini" id="im-fond">🖼️ Mettre en fond d'écran</button>
+            <span class="sc-info" id="im-info"></span>
+          </div>
+          <h4 class="im-titre-galerie">Galerie <small>sur la clé · MOTEUR-INTERFACE/images</small></h4>
+          <div class="im-galerie" id="im-galerie"></div>
+        </div>
       </div>
     </section>
 
@@ -241,6 +360,25 @@
     <!-- Vue PARAMÈTRES -->
     <section class="vue" id="vue-parametres">
       <div class="vue-defile">
+        <h2 class="titre-vue">🔐 Sécurité <small>mot de passe de l'utilisateur</small></h2>
+        <div class="carte securite">
+          <form id="changer-mdp" class="sec-col" autocomplete="off">
+            <h3>Changer le mot de passe</h3>
+            <input type="password" id="mdp-ancien" placeholder="Mot de passe actuel" autocomplete="current-password">
+            <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password">
+            <input type="password" id="mdp-confirme" placeholder="Confirme le nouveau" autocomplete="new-password">
+            <button class="btn btn-plein mini">🔑 Changer</button>
+          </form>
+          <div class="sec-col">
+            <h3>Verrouillage automatique</h3>
+            <label class="sec-ligne">Verrouiller après
+              <select id="auto-verrou"><option value="0">jamais</option><option value="5">5 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 heure</option></select>
+              sans activité</label>
+            <h3>Coffre des clés API</h3>
+            <p class="sec-info" id="sec-coffre">—</p>
+          </div>
+        </div>
+
         <h2 class="titre-vue">Couleur des boutons <small>tout l'interface change de couleur</small></h2>
         <div class="couleurs" id="couleurs"></div>
         <div class="couleur-perso">
@@ -316,9 +454,11 @@
   <p>Tu peux débrancher la clé USB-C. À la prochaine, Alex.</p>
 </div>
 
+<script src="securite.js"></script>
 <script src="app.js"></script>
 <script src="codex.js"></script>
 <script src="fond.js"></script>
 <script src="schema.js"></script>
+<script src="images.js"></script>
 </body>
 </html>
