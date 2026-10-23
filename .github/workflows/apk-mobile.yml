@@ -43,12 +43,36 @@ jobs:
       - name: Installer les dépendances
         run: npm ci
 
+      - name: Numéroter la version (versionCode = numéro du build)
+        run: node -e "const f='app.json',c=JSON.parse(require('fs').readFileSync(f));c.expo.android.versionCode=100+Number(process.env.GITHUB_RUN_NUMBER);require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+
       - name: Générer le projet Android
         run: npx expo prebuild -p android --no-install
 
       - name: Compiler l'APK (arm64, pour les vrais téléphones)
         working-directory: mobile/android
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Signer avec la clé commune LexOS
+        env:
+          LEXOS_KEYSTORE_BASE64: ${{ secrets.LEXOS_KEYSTORE_BASE64 }}
+          LEXOS_KEYSTORE_PASSWORD: ${{ secrets.LEXOS_KEYSTORE_PASSWORD }}
+          LEXOS_KEY_ALIAS: ${{ secrets.LEXOS_KEY_ALIAS }}
+        run: |
+          if [ -z "$LEXOS_KEYSTORE_BASE64" ]; then
+            echo "::warning::Clé commune LexOS absente (secrets non disponibles) : l'APK garde sa signature de test."
+            exit 0
+          fi
+          echo "$LEXOS_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/lexos.keystore"
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n1)"
+          for apk in android/app/build/outputs/apk/release/app-release.apk; do
+            "$APKSIGNER" sign --ks "$RUNNER_TEMP/lexos.keystore" --ks-key-alias "$LEXOS_KEY_ALIAS" \
+              --ks-pass env:LEXOS_KEYSTORE_PASSWORD --key-pass env:LEXOS_KEYSTORE_PASSWORD \
+              --out "$apk.signed" "$apk"
+            mv "$apk.signed" "$apk"
+            "$APKSIGNER" verify --print-certs "$apk" | head -n 3
+          done
+          rm -f "$RUNNER_TEMP/lexos.keystore"
 
       - name: Renommer
         run: cp android/app/build/outputs/apk/release/app-release.apk LexOS-Mobile.apk
