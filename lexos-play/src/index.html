@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>LexOS Play</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 1. Démarrage : écran noir, yeux rouges -->
+<div id="boot"><div class="boot-eyes"><i></i><i></i></div><div class="skip">clique pour passer</div></div>
+
+<!-- 2. Connexion -->
+<div id="login" class="hidden">
+  <h1>LEXOS</h1>
+  <p class="tag">Play. Build. Own your machine.</p>
+  <input id="pw" type="password" placeholder="Mot de passe (n'importe lequel)" autocomplete="off">
+  <div class="hint">Appuie sur Entrée. C'est une simulation, aucun vrai mot de passe.</div>
+</div>
+
+<!-- 3. Bureau -->
+<div id="desktop" class="hidden">
+  <div id="demon">
+    <svg viewBox="0 0 300 340" aria-hidden="true">
+      <g class="horn" fill="var(--accent)">
+        <path d="M70 90 Q40 30 80 0 Q85 50 110 80Z"/><path d="M230 90 Q260 30 220 0 Q215 50 190 80Z"/>
+      </g>
+      <path d="M150 20 C230 20 270 90 262 170 C256 240 210 320 150 330 C90 320 44 240 38 170 C30 90 70 20 150 20Z"
+            fill="#0a0a0a" stroke="var(--accent)" stroke-width="3"/>
+      <path d="M95 250 Q150 285 205 250" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M110 262 L118 280 L128 266 M172 266 L182 280 L190 262" fill="none" stroke="#ddd" stroke-width="3" stroke-linejoin="round"/>
+      <text x="150" y="312" text-anchor="middle" font-size="13" fill="var(--accent)" letter-spacing="4" font-family="monospace">TI-LEX-AL</text>
+      <g id="eyeL" transform="translate(105 150)">
+        <ellipse rx="30" ry="18" fill="#050505" stroke="var(--accent)" stroke-width="2"/>
+        <circle class="eye-glow pupil" r="9" fill="var(--eye)"/>
+      </g>
+      <g id="eyeR" transform="translate(195 150)">
+        <ellipse rx="30" ry="18" fill="#050505" stroke="var(--accent)" stroke-width="2"/>
+        <circle class="eye-glow pupil" r="9" fill="var(--eye)"/>
+      </g>
+    </svg>
+  </div>
+  <div id="wallpaper-text">Play. Build. Own your machine.</div>
+  <div id="windows"></div>
+</div>
+
+<div id="topzone"></div>
+<div id="topbar" class="hidden">
+  <div><b>LexOS Play</b> · simulation</div>
+  <div><span id="lvlname">Curieux</span><span id="xpbar"><i></i></span><span id="xptxt">0 XP</span></div>
+  <div id="clock">--:--</div>
+</div>
+<div id="dock" class="hidden"></div>
+<div id="toasts"></div>
+
+<div id="final" class="hidden">
+  <h1>Maître de ta machine</h1>
+  <p>Tu as réussi les 7 missions. Tu sais maintenant te promener, lire, créer et personnaliser un système.
+     Ça, c'était la simulation. Prêt pour le vrai?</p>
+  <div class="row">
+    <button class="btn" id="install">Installer le vrai LexOS</button>
+    <button class="btn ghost" id="keep">Continuer à jouer</button>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/fs.js"></script>
+<script src="js/missions.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/apps.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
